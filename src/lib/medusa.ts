@@ -8,10 +8,34 @@ function logApiError(operation: string, error: any) {
 	console.error(`Medusa API Error (${operation}):`, errorMessage);
 }
 
-export const medusa = new Medusa({
-	baseUrl: publicEnv.PUBLIC_MEDUSA_BACKEND_URL!,
-	publishableKey: publicEnv.PUBLIC_MEDUSA_PUBLISHABLE_KEY!
-});
+let storeClient: Medusa | null = null;
+
+export function getStoreClient(): Medusa | null {
+	const baseUrl = publicEnv.PUBLIC_MEDUSA_BACKEND_URL;
+	const publishableKey = publicEnv.PUBLIC_MEDUSA_PUBLISHABLE_KEY;
+	// Require a valid http(s) URL and a key
+	if (
+		typeof baseUrl !== 'string' ||
+		baseUrl.trim() === '' ||
+		!/^https?:\/\//.test(baseUrl) ||
+		typeof publishableKey !== 'string' ||
+		publishableKey.trim() === ''
+	) {
+		return null;
+	}
+	if (!storeClient) {
+		try {
+			storeClient = new Medusa({
+				baseUrl,
+				publishableKey
+			});
+		} catch (err) {
+			console.warn('Failed to initialize Medusa store client:', (err as any)?.message ?? err);
+			storeClient = null;
+		}
+	}
+	return storeClient;
+}
 
 let meiliClient: MeiliSearch | null = null;
 
@@ -38,9 +62,10 @@ function getMeiliClient(): MeiliSearch | null {
 let cachedRegion: { id: string; name: string; currency_code: string } | null = null;
 
 export async function listRegions(): Promise<HttpTypes.StoreRegion[]> {
-	if (!medusa) return [];
+	const client = getStoreClient();
+	if (!client) return [];
 	try {
-		const { regions } = await medusa.store.region.list();
+		const { regions } = await client.store.region.list();
 		return regions ?? [];
 	} catch (error) {
 		logApiError('listRegions', error);
@@ -83,8 +108,10 @@ export async function listAllCollections(): Promise<HttpTypes.StoreCollection[]>
 	let offset = 0;
 	const limit = 50;
 	
-	const client = medusa.store.collection;
-	if (!client) return [];
+	const store = getStoreClient();
+	if (!store) return [];
+
+	const client = store.store.collection;
 
 	try {
 		while (true) {
@@ -109,9 +136,10 @@ export async function listAllCollections(): Promise<HttpTypes.StoreCollection[]>
 }
 
 export async function getCollectionByHandle(handle: string): Promise<HttpTypes.StoreCollection | null> {
-	if (!medusa) return null;
+	const store = getStoreClient();
+	if (!store) return null;
 	try {
-		const client = medusa.store.collection;
+		const client = store.store.collection;
 		const { collections } = await client.list({ handle, limit: 1, fields: '+metadata' });
 		return collections[0] ?? null;
 	} catch (error: any) {
@@ -173,7 +201,9 @@ export async function listAllProductCategories(): Promise<HttpTypes.StoreProduct
 
 	try {
 		while (true) {
-			const resp = await (medusa as any).client.fetch(`/store/product-categories`, {
+			const store = getStoreClient();
+			if (!store) return all;
+			const resp = await (store as any).client.fetch(`/store/product-categories`, {
 				method: 'GET',
 				query: { offset, limit, fields: '+metadata' }
 			});
@@ -197,7 +227,9 @@ export async function listAllProductCategories(): Promise<HttpTypes.StoreProduct
 
 export async function getProductCategoryByHandle(handle: string): Promise<HttpTypes.StoreProductCategory | null> {
 	try {
-		const resp = await (medusa as any).client.fetch(`/store/product-categories`, {
+		const store = getStoreClient();
+		if (!store) return null;
+		const resp = await (store as any).client.fetch(`/store/product-categories`, {
 			method: 'GET',
 			query: { handle, limit: 1, fields: '+metadata' }
 		});
@@ -258,11 +290,15 @@ export async function getProductByHandle(handle: string, fields: string = DEFAUL
 	// Relations expanded via * in fields
 	if (region?.id) query.region_id = region.id;
 	try {
-		const { products } = await medusa.store.product.list(query as any);
+		const store = getStoreClient();
+		if (!store) return null;
+		const { products } = await store.store.product.list(query as any);
 		if (products?.[0]) return products[0];
 	} catch (error: any) {
 		try {
-			const resp = await (medusa as any).client.fetch(`/store/products`, { method: 'GET', query });
+			const store = getStoreClient();
+			if (!store) return null;
+			const resp = await (store as any).client.fetch(`/store/products`, { method: 'GET', query });
 			const products: HttpTypes.StoreProduct[] = (resp as any).products ?? [];
 			if (products[0]) return products[0];
 		} catch (fallbackErr) {
@@ -298,7 +334,9 @@ export async function listProducts(params: Record<string, any> & ListProductsBas
 		const query: any = { limit, offset, fields, ...rest };
 		if (q) query.q = q;
 		if (region?.id) query.region_id = region.id;
-		const resp = await medusa.store.product.list(query);
+		const store = getStoreClient();
+		if (!store) return { products: [], count: 0, limit: params.limit ?? 12, offset: params.offset ?? 0 };
+		const resp = await store.store.product.list(query);
 		return {
 			products: (resp as any).products ?? [],
 			count: (resp as any).count ?? ((resp as any).products?.length ?? 0),
@@ -317,7 +355,9 @@ export async function listBasicProducts(limit = 20, offset = 0): Promise<ListPro
 		const fields = 'id,handle,title,created_at,thumbnail,*images,variants.id,*variants.calculated_price';
 		const query: any = { limit, offset, fields };
 		if (region?.id) query.region_id = region.id;
-		const resp = await medusa.store.product.list(query);
+		const store = getStoreClient();
+		if (!store) return { products: [], count: 0, limit, offset };
+		const resp = await store.store.product.list(query);
 		return {
 			products: (resp as any).products ?? [],
 			count: (resp as any).count ?? ((resp as any).products?.length ?? 0),

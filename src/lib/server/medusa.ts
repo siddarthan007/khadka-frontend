@@ -9,10 +9,27 @@ function logApiError(operation: string, error: any) {
 	console.error(`Medusa API Error (${operation}):`, errorMessage);
 }
 
-export const adminMedusa = new Medusa({
-	baseUrl: publicEnv.PUBLIC_MEDUSA_BACKEND_URL!,
-	apiKey: privateEnv.MEDUSA_ADMIN_API_KEY!
-});
+let adminClient: Medusa | null = null;
+
+export function getAdminClient(): Medusa | null {
+	const baseUrl = publicEnv.PUBLIC_MEDUSA_BACKEND_URL;
+	const apiKey = privateEnv.MEDUSA_ADMIN_API_KEY;
+	if (
+		typeof baseUrl !== 'string' || baseUrl.trim() === '' || !/^https?:\/\//.test(baseUrl) ||
+		typeof apiKey !== 'string' || apiKey.trim() === ''
+	) {
+		return null;
+	}
+	if (!adminClient) {
+		try {
+			adminClient = new Medusa({ baseUrl, apiKey });
+		} catch (err) {
+			console.warn('Failed to initialize Medusa admin client:', (err as any)?.message ?? err);
+			adminClient = null;
+		}
+	}
+	return adminClient;
+}
 
 let meilisearchClient: MeiliSearch | null = null;
 
@@ -37,9 +54,10 @@ export function getMeilisearchClient(): MeiliSearch | null {
 }
 
 export async function getStoreInfo(): Promise<HttpTypes.AdminStore | null> {
-	if (adminMedusa) {
+	const admin = getAdminClient();
+	if (admin) {
 		try {
-			const { store } = await adminMedusa.admin.store.retrieve(privateEnv.MEDUSA_STORE_ID!);
+			const { store } = await admin.admin.store.retrieve(privateEnv.MEDUSA_STORE_ID!);
 			return store;
 		} catch (error) {
 			logApiError('getStoreInfo', error);
@@ -50,8 +68,9 @@ export async function getStoreInfo(): Promise<HttpTypes.AdminStore | null> {
 
 export async function getHeroSlides(): Promise<any[] | null> {
 	try {
-		if (!adminMedusa) return [];
-		const raw: Response = await adminMedusa.client.fetch("/admin/slides", { method: "GET" });
+		const admin = getAdminClient();
+		if (!admin) return [];
+		const raw: Response = await admin.client.fetch("/admin/slides", { method: "GET" });
 		const data = raw && typeof raw.json === "function" ? await raw.json() : raw;
 		const slides = Array.isArray(data) ? data : (data?.slides ?? []);
 		return slides.map((s: any) => ({

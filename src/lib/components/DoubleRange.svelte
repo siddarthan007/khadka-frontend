@@ -9,8 +9,8 @@
     export let value: [number, number] = [0, 100];
     export let prefix = '$';
     export let minGap = 0;
-    export let currency: string | undefined;
-    export let locale: string | undefined;
+    export let currency: string | undefined = undefined;
+    export let locale: string | undefined = undefined;
     export let onInput: ((v: [number, number]) => void) | undefined;
     export let onChange: ((v: [number, number]) => void) | undefined;
   

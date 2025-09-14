@@ -1,4 +1,4 @@
-import { adminMedusa } from '$lib/server/medusa';
+import { getAdminClient } from '$lib/server/medusa';
 import type { HttpTypes } from '@medusajs/types';
 import { getHierarchicalProductCategories } from '$lib/medusa';
 
@@ -6,7 +6,9 @@ async function listAllCollectionsWithMetadata(): Promise<HttpTypes.AdminCollecti
 	const all: HttpTypes.AdminCollection[] = [];
 	let offset = 0;
 	const limit = 50;
-	const client = adminMedusa.admin.productCollection;
+	const admin = getAdminClient();
+	if (!admin) return [];
+	const client = admin.admin.productCollection;
 
 	try {
 		while (true) {
