@@ -13,11 +13,27 @@ export const medusa = new Medusa({
 	publishableKey: publicEnv.PUBLIC_MEDUSA_PUBLISHABLE_KEY!
 });
 
-const meili = new MeiliSearch({
-	host: publicEnv.PUBLIC_MEILISEARCH_URL!,
-	apiKey: publicEnv.PUBLIC_MEILISEARCH_API_KEY!,
-	timeout: 10000,
-});
+let meiliClient: MeiliSearch | null = null;
+
+function getMeiliClient(): MeiliSearch | null {
+	const host = publicEnv.PUBLIC_MEILISEARCH_URL;
+	if (typeof host !== 'string' || host.trim() === '' || !/^https?:\/\//.test(host)) {
+		return null;
+	}
+	if (!meiliClient) {
+		try {
+			meiliClient = new MeiliSearch({
+				host,
+				apiKey: publicEnv.PUBLIC_MEILISEARCH_API_KEY,
+				timeout: 10000,
+			});
+		} catch (err) {
+			console.warn('Failed to initialize MeiliSearch:', (err as any)?.message ?? err);
+			meiliClient = null;
+		}
+	}
+	return meiliClient;
+}
 
 let cachedRegion: { id: string; name: string; currency_code: string } | null = null;
 
@@ -107,11 +123,12 @@ export async function getCollectionByHandle(handle: string): Promise<HttpTypes.S
 
 export async function searchProducts(query: string, limit: number = 10) {
 	try {
-		if (!meili) {
+		const client = getMeiliClient();
+		if (!client) {
 			console.warn('MeiliSearch client not initialized');
 			return [];
 		}
-		const index = meili.index('products');
+		const index = client.index('products');
 		const results = await index.search(query, {
 			limit,
 			attributesToRetrieve: ["*"],
@@ -126,11 +143,12 @@ export async function searchProducts(query: string, limit: number = 10) {
 
 export async function searchCategories(query: string, limit: number = 10) {
 	try {
-		if (!meili) {
+		const client = getMeiliClient();
+		if (!client) {
 			console.warn('MeiliSearch client not initialized');
 			return [];
 		}
-		const index = meili.index('categories');
+		const index = client.index('categories');
 		const results = await index.search(query, {
 			limit,
 			attributesToRetrieve: ["*"],

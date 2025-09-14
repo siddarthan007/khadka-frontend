@@ -14,11 +14,27 @@ export const adminMedusa = new Medusa({
 	apiKey: privateEnv.MEDUSA_ADMIN_API_KEY!
 });
 
-export const meilisearch = new MeiliSearch({
-	host: publicEnv.PUBLIC_MEILISEARCH_URL!,
-	apiKey: publicEnv.PUBLIC_MEILISEARCH_API_KEY!,
-	timeout: 10000,
-});
+let meilisearchClient: MeiliSearch | null = null;
+
+export function getMeilisearchClient(): MeiliSearch | null {
+	const host = publicEnv.PUBLIC_MEILISEARCH_URL;
+	if (typeof host !== 'string' || host.trim() === '' || !/^https?:\/\//.test(host)) {
+		return null;
+	}
+	if (!meilisearchClient) {
+		try {
+			meilisearchClient = new MeiliSearch({
+				host,
+				apiKey: publicEnv.PUBLIC_MEILISEARCH_API_KEY,
+				timeout: 10000,
+			});
+		} catch (err) {
+			console.warn('Failed to initialize MeiliSearch (server):', (err as any)?.message ?? err);
+			meilisearchClient = null;
+		}
+	}
+	return meilisearchClient;
+}
 
 export async function getStoreInfo(): Promise<HttpTypes.AdminStore | null> {
 	if (adminMedusa) {
@@ -61,13 +77,14 @@ export async function getHeroSlides(): Promise<any[] | null> {
 
 export async function searchProductsMeili(query: string, limit: number = 10) {
 	try {
-		if (!meilisearch) {
+		const client = getMeilisearchClient();
+		if (!client) {
 			console.warn(
 				"MeiliSearch not configured",
 			);
 			return [];
 		}
-		const index = meilisearch.index("products");
+		const index = client.index("products");
 		const res = await index.search(query, {
 			limit,
 			attributesToRetrieve: ["*"],
@@ -82,11 +99,12 @@ export async function searchProductsMeili(query: string, limit: number = 10) {
 
 export async function searchCategoriesMeili(query: string, limit: number = 10) {
 	try {
-		if (!meilisearch) {
+		const client = getMeilisearchClient();
+		if (!client) {
 			console.warn("MeiliSearch not configured");
 			return [];
 		}
-		const index = meilisearch.index("categories");
+		const index = client.index("categories");
 		const res = await index.search(query, {
 			limit,
 			attributesToRetrieve: ["*"],
