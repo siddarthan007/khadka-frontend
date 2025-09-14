@@ -1,0 +1,25 @@
+<script lang="ts">
+	import Pill from '$lib/components/Pill.svelte'
+	let { data }: { data?: { collections: Array<{ name: string; handle: string; thumbnail?: string | null; emoji?: string }> } } = $props();
+	const items = (data?.collections ?? []).slice().reverse()
+
+	$effect(() => {
+		if (typeof document !== 'undefined') {
+			document.title = 'Collections • KhadkaFoods'
+		}
+	})
+</script>
+
+<section class="w-full py-10">
+	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+		<header class="mb-8">
+			<h1 class="text-3xl font-bold tracking-tight">All collections</h1>
+			<p class="text-base-content/70 mt-1">Browse all collections.</p>
+		</header>
+		<div class="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
+			{#each items as c}
+				<Pill href={`/collections/${c.handle}`} label={c.name} emoji={c.emoji ?? '🌍'} class="w-full" />
+			{/each}
+		</div>
+	</div>
+</section>
