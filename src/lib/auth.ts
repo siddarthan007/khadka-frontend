@@ -60,10 +60,8 @@ export async function register(payload: RegisterPayload): Promise<HttpTypes.Stor
 	const sdk = getStoreClient();
 	if (!sdk) return null;
 	try {
-		const regToken = await (sdk as any).auth.register('customer', 'emailpass', { email, password });
-		if (typeof regToken === 'string' && regToken.length > 0) {
-			(sdk as any).client.setToken(regToken);
-		}
+		// 1) Register identity; SDK stores the token for subsequent requests
+		await (sdk as any).auth.register('customer', 'emailpass', { email, password });
 	} catch (error: any) {
 		// If identity exists, attempt login path
 		const statusText = error?.statusText ?? error?.response?.statusText;
@@ -77,8 +75,14 @@ export async function register(payload: RegisterPayload): Promise<HttpTypes.Stor
 		if (!tok || typeof tok !== 'string') return null;
 	}
 	try {
-		await sdk.store.customer.create({ email, first_name, last_name });
-		try { (sdk as any).client.setToken(undefined); } catch {}
+		await sdk.store.customer.create({ email, first_name, last_name }).catch((e: any) => {
+			const code = e?.response?.status;
+			if (code === 409 || code === 400) return;
+			try { console.debug('customer.create failed', { email, hasFirst: !!first_name, hasLast: !!last_name, status: code }); } catch {}
+			logApiError('store.customer.create', e);
+			throw e;
+		});
+		// 3) Login to establish cookie session for subsequent requests
 		await (sdk as any).auth.login('customer', 'emailpass', { email, password }).catch(() => {});
 		return await getCurrentCustomer();
 	} catch (error) {
