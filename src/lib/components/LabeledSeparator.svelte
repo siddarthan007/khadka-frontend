@@ -40,6 +40,6 @@
 					: 'bg-zinc-300 dark:bg-zinc-800',
 				className
 			)}
-		/>
+		></div>
 	</slot>
 {/if}

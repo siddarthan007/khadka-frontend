@@ -8,7 +8,7 @@
 	let count = $state(data?.count ?? 0)
 	let q = $state(data?.q ?? '')
 	const pageLimit = 24
-	let offset = $state(products.length)
+	let offset = $state(data?.products?.length ?? 0)
 
 	// filters
 	let selectedCategories: string[] = $state([])

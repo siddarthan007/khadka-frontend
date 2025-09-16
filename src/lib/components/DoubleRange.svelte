@@ -7,7 +7,7 @@
     export let max = 100;
     export let step = 1;
     export let value: [number, number] = [0, 100];
-    export let prefix = '$';
+    export const prefix = '$';
     export let minGap = 0;
     export let currency: string | undefined = undefined;
     export let locale: string | undefined = undefined;

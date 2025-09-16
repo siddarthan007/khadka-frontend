@@ -65,6 +65,8 @@
 <a {href} class={cn('inline-block focus:outline-none', className)}>
 	<div class="group relative flex w-full flex-col items-center">
 		<div
+			role="button"
+			tabindex="0"
 			on:mousemove={handleMouseMove}
 			on:mouseleave={handleMouseLeave}
 			class={cn(
