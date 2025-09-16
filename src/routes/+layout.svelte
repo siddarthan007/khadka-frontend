@@ -20,13 +20,63 @@
 	} from '$lib/components/ui/sheet';
 	import { Separator } from '$lib/components/ui/separator';
 	import logo from '$lib/assets/logo.png';
-	import { Menu, Search, ShoppingCart, Sun, Moon, Github, Twitter, Linkedin, ChevronRight, Globe, Trash } from '@lucide/svelte';
+	import { Menu, Search, ShoppingCart, Sun, Moon, Instagram, Facebook, Twitter, ChevronRight, Globe, Trash } from '@lucide/svelte';
 	import { Motion, useAnimation, useMotionValue, useMotionTemplate } from 'svelte-motion';
 	import { cn } from '$lib/utils.js';
 	import { cart } from '$lib/stores/cart';
+	import { customer } from '$lib/stores/customer';
 	import { ensureCart, removeLine } from '$lib/cart';
 	import { toasts } from '$lib/stores/toast';
 	import { page } from '$app/stores';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { User } from '@lucide/svelte';
+	import { getCurrentCustomer } from '$lib/auth';
+	import { get } from 'svelte/store';
+	import { LogIn, UserPlus, CheckCircle2, AlertTriangle, Info } from '@lucide/svelte';
+	import { login, register } from '$lib/auth';
+	import PasswordInput from '$lib/components/ui/password-input.svelte';
+
+	onMount(() => {
+		// fire and forget; keep customer store fresh when layout mounts
+		getCurrentCustomer().catch(() => {});
+	});
+
+	function onAccountClick() {
+		const me = get(customer);
+		goto(me ? '/account' : '/login');
+	}
+
+	let authOpen = $state(false);
+	let authMode: 'login' | 'register' = $state('login');
+	let authEmail = $state('');
+	let authPassword = $state('');
+	let authFirst = $state('');
+	let authLast = $state('');
+	let authLoading = $state(false);
+	let authError: string | null = $state(null);
+	const authContentVariants = {
+		enter: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 220, damping: 24 } },
+		exit: { opacity: 0, y: 12, transition: { duration: 0.15 } }
+	} as const;
+
+	async function submitAuth(e: Event) {
+		e.preventDefault();
+		authError = null;
+		authLoading = true;
+		try {
+			if (authMode === 'login') {
+				const me = await login(authEmail, authPassword);
+				if (me) { authOpen = false; }
+				else { authError = 'Invalid email or password'; }
+			} else {
+				const me = await register({ email: authEmail, password: authPassword, first_name: authFirst, last_name: authLast });
+				if (me) { authOpen = false; }
+				else { authError = 'Could not create account'; }
+			}
+		} finally {
+			authLoading = false;
+		}
+	}
 
 	type CollectionItem = { title: string; handle: string; emoji?: string };
 	let { children, data }: { children: any; data?: { collectionItems?: CollectionItem[] } } = $props();
@@ -34,14 +84,13 @@
 	let cartOpen = $state(false);
 
 	const navLinks = [
-		{ label: 'Shop', href: '/shop' },
-		{ label: 'Collections', href: '/collections' },
-		{ label: 'About', href: '/about' }
+		{ label: 'Products', href: '/products' },
+		{ label: 'Collections', href: '/collections' }
 	];
 
-	type Theme = 'light' | 'dark';
-	const themes: Theme[] = ['light', 'dark'];
-	let theme: Theme = $state('light');
+	type Theme = 'khadka' | 'khadka-dark';
+	const themes: Theme[] = ['khadka', 'khadka-dark'];
+	let theme: Theme = $state('khadka');
 	let scrolled = $state(false);
 	let isCountriesOpen = $state(false);
 	let countriesContainer: HTMLElement | null = $state(null);
@@ -75,24 +124,25 @@
 		const body = document.body;
 		root.setAttribute('data-theme', theme);
 		if (body) body.setAttribute('data-theme', theme);
-		if (theme === 'dark') root.classList.add('dark');
+		if (theme === 'khadka-dark') root.classList.add('dark');
 		else root.classList.remove('dark');
 		localStorage.setItem('theme', theme);
 	}
 
 	function toggleTheme() {
-		theme = theme === 'light' ? 'dark' : 'light';
+		theme = theme === 'khadka' ? 'khadka-dark' : 'khadka';
 		applyTheme();
 	}
 
 	function initTheme() {
-		const saved = typeof localStorage !== 'undefined' ? (localStorage.getItem('theme') as Theme | null) : null;
-		if (saved && themes.includes(saved)) {
-			theme = saved;
+		const saved = typeof localStorage !== 'undefined' ? (localStorage.getItem('theme') as string | null) : null;
+		const normalized = (saved === 'dark' ? 'khadka-dark' : saved) as Theme | null;
+		if (normalized && themes.includes(normalized)) {
+			theme = normalized;
 		} else if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-			theme = 'dark';
+			theme = 'khadka-dark';
 		} else {
-			theme = 'light';
+			theme = 'khadka';
 		}
 		applyTheme();
 	}
@@ -106,6 +156,7 @@
 		handleScroll();
 		let onDocClick: ((e: MouseEvent) => void) | null = null;
 		let onKey: ((e: KeyboardEvent) => void) | null = null;
+		let onCountriesClick: ((e: MouseEvent) => void) | null = null;
 		if (typeof window !== 'undefined') {
 			window.addEventListener('scroll', handleScroll, { passive: true });
 			onDocClick = (e: MouseEvent) => {
@@ -118,14 +169,29 @@
 			onKey = (e: KeyboardEvent) => {
 				if (e.key === 'Escape') isCountriesOpen = false;
 			};
+			onCountriesClick = async (e: MouseEvent) => {
+				const el = e.target as HTMLElement | null;
+				if (!el) return;
+				const anchor = el.closest('a[href^="/collections/"]') as HTMLAnchorElement | null;
+				if (anchor) {
+					e.preventDefault();
+					isCountriesOpen = false;
+					const href = anchor.getAttribute('href') || '/collections';
+					
+					// Use SvelteKit navigation with invalidateAll to ensure data reloads
+					await goto(href, { invalidateAll: true });
+				}
+			};
 			window.addEventListener('click', onDocClick, true);
 			window.addEventListener('keydown', onKey);
+			countriesContainer?.addEventListener('click', onCountriesClick as any, true);
 		}
 		return () => {
 			if (typeof window !== 'undefined') {
 				window.removeEventListener('scroll', handleScroll);
 				if (onDocClick) window.removeEventListener('click', onDocClick, true);
 				if (onKey) window.removeEventListener('keydown', onKey);
+				countriesContainer?.removeEventListener('click', onCountriesClick as any, true);
 			}
 		};
 	});
@@ -249,11 +315,25 @@
 			</div>
 
 			<div class="flex-none gap-1 md:gap-2">
+				<!-- Profile / Account Button -->
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label="Account"
+					class="btn btn-ghost"
+					onclick={onAccountClick}
+				>
+					<User class="size-5" />
+				</Button>
+				<!-- Quick auth modal trigger (mobile convenience) -->
+				<Button variant="ghost" size="icon" aria-label="Open auth" class="btn btn-ghost md:hidden" onclick={() => { authMode = 'login'; authOpen = true; }}>
+					<LogIn class="size-5" />
+				</Button>
 				<div class="dropdown dropdown-end" role="menu" tabindex="0">
-					<Button variant="ghost" size="icon" aria-label="Cart" class="btn btn-ghost relative" onclick={() => (cartOpen = !cartOpen)} onkeydown={(e) => { if (e.key === 'Escape') cartOpen = false; }}>
-						<ShoppingCart class="size-5" />
-						<span class="badge badge-primary badge-sm absolute -right-1 -top-1">{($cart?.items?.length) ?? 0}</span>
-					</Button>
+				<Button variant="ghost" size="icon" aria-label="Cart" class="btn btn-ghost relative" onclick={() => (cartOpen = !cartOpen)} onkeydown={(e) => { if (e.key === 'Escape') cartOpen = false; }}>
+					<ShoppingCart class="size-5" />
+					<span class="badge badge-primary badge-sm absolute -right-2 -top-2 min-w-[1.25rem] h-5 rounded-full text-xs font-semibold shadow-lg border-2 border-base-100 flex items-center justify-center">{($cart?.items?.length) ?? 0}</span>
+				</Button>
 					{#if cartOpen}
 					<div class="dropdown-content z-[55] mt-2 w-80 rounded-xl border border-base-300 bg-base-100 shadow-xl" role="dialog" tabindex="-1" onclick={(e)=>e.stopPropagation()} onkeydown={(e)=>{ if(e.key==='Escape'){ cartOpen=false; } }}>
 						<div class="p-3 max-h-96 overflow-auto space-y-2">
@@ -262,14 +342,19 @@
 							{:else}
 								{#each $cart?.items ?? [] as li}
 									<div class="flex items-center gap-3 rounded-lg border border-base-300 p-2">
-										<img src={li.thumbnail ?? ''} alt={li.title} class="h-12 w-12 rounded object-cover bg-base-200" />
+										<div class="relative h-12 w-12 shrink-0 rounded overflow-hidden bg-base-200">
+											<img src={(li as any)?.variant?.metadata?.thumbnail ?? li.thumbnail ?? ''} alt={li.title} class="h-full w-full object-cover" />
+											{#if (li as any)?.variant?.title}
+												<span class="absolute inset-x-0 bottom-0 truncate px-1.5 py-0.5 text-[10px] leading-none text-base-content/75 bg-base-100/60">{(li as any).variant.title}</span>
+											{/if}
+										</div>
 										<div class="min-w-0 flex-1">
-											<div class="font-medium truncate">{li.title}</div>
+											<div class="font-medium truncate">{li.title} {#if (li as any)?.variant?.title}<span class="opacity-60 text-xs">({(li as any).variant.title})</span>{/if}</div>
 											<div class="mt-1">
-												<div class="join join-xs">
-													<button class="btn btn-xs join-item" onclick={async (e) => { e.stopPropagation(); if ((li.quantity ?? 0) > 1) { const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) - 1); } else { const m = await import('$lib/cart'); await m.removeLine(li.id); } }}>-</button>
-													<span class="btn btn-xs join-item btn-ghost no-animation cursor-default">{li.quantity}</span>
-													<button class="btn btn-xs join-item" onclick={async (e) => { e.stopPropagation(); const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) + 1); }}>+</button>
+												<div class="join h-8 rounded-full overflow-hidden border border-base-300">
+													<Button variant="ghost" size="sm" class="join-item btn-xs" onclick={async (e) => { e.stopPropagation(); if ((li.quantity ?? 0) > 1) { const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) - 1); } else { const m = await import('$lib/cart'); await m.removeLine(li.id); } }} aria-label="Decrease quantity">-</Button>
+													<input class="join-item w-10 text-center bg-transparent border-0 pointer-events-none" value={li.quantity} readonly aria-live="polite" aria-label="Quantity" />
+													<Button variant="ghost" size="sm" class="join-item btn-xs" onclick={async (e) => { e.stopPropagation(); const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) + 1); }} aria-label="Increase quantity">+</Button>
 												</div>
 											</div>
 										</div>
@@ -288,7 +373,7 @@
 					{/if}
 				</div>
 				<Button variant="ghost" size="icon" aria-label="Toggle theme" class="btn btn-ghost" onclick={toggleTheme}>
-					{#if theme === 'light'}
+					{#if theme === 'khadka'}
 						<Sun class="size-5" />
 					{:else}
 						<Moon class="size-5" />
@@ -314,7 +399,17 @@
 							<div class="py-4 space-y-1">
 								<div class="px-3 py-2 text-xs uppercase opacity-60">Collections</div>
 								{#each collectionItems as item}
-									<a href={`/collections/${item.handle}`} class="flex items-center justify-between rounded-md px-3 py-2 hover:bg-base-200">
+									<a 
+										href={`/collections/${item.handle}`} 
+										class="flex items-center justify-between rounded-md px-3 py-2 hover:bg-base-200"
+										onclick={async (e) => {
+											e.preventDefault();
+											const href = `/collections/${item.handle}`;
+											
+											// Use SvelteKit navigation with invalidateAll to ensure data reloads
+											await goto(href, { invalidateAll: true });
+										}}
+									>
 										<span class="flex items-center gap-2">
 											<span class="opacity-80">{item.emoji ?? '🌍'}</span>
 											<span>{item.title}</span>
@@ -333,7 +428,7 @@
 								<div class="flex items-center justify-between">
 									<span class="text-sm opacity-70">Theme</span>
 									<Button variant="ghost" size="icon" aria-label="Toggle theme" class="btn btn-ghost" onclick={toggleTheme}>
-										{#if theme === 'light'}
+										{#if theme === 'khadka'}
 											<Sun class="size-5" />
 										{:else}
 											<Moon class="size-5" />
@@ -353,11 +448,22 @@
 	</header>
 
 	<main class="flex-1">
-		{@render children?.()}
+		{#key $page.url.pathname}
+			{@render children?.()}
+		{/key}
 		<!-- Toast host -->
 		<div class="fixed bottom-4 right-4 z-[70] space-y-2 w-80">
 			{#each $toasts as t (t.id)}
-				<div class="alert shadow-lg" class:alert-success={t.type==='success'} class:alert-error={t.type==='error'} class:alert-info={t.type==='info'}>
+				<div class="alert shadow-lg transition-all" class:alert-success={t.type==='success'} class:alert-error={t.type==='error'} class:alert-info={t.type==='info'}>
+					<div>
+						{#if t.type==='success'}
+							<CheckCircle2 class="size-4" />
+						{:else if t.type==='error'}
+							<AlertTriangle class="size-4" />
+						{:else}
+							<Info class="size-4" />
+						{/if}
+					</div>
 					<span>{t.message}</span>
 				</div>
 			{/each}
@@ -375,7 +481,7 @@
 					<div class="p-4">
 						<div class="relative">
 							<span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base-content/60"><Search class="size-4" /></span>
-							<input onmousemove={onSearchMouseMove} onfocus={onSearchFocus} onblur={onSearchBlur} onmouseenter={onSearchMouseEnter} onmouseleave={onSearchMouseLeave} oninput={onSearchInput} bind:this={searchInputRef} value={searchQuery} type="text" placeholder="Search products, categories..." class="input input-bordered w-full h-12 pl-9 pr-3 rounded-2xl" />
+							<input onmousemove={onSearchMouseMove} onfocus={onSearchFocus} onblur={onSearchBlur} onmouseenter={onSearchMouseEnter} onmouseleave={onSearchMouseLeave} oninput={onSearchInput} bind:this={searchInputRef} value={searchQuery} type="text" placeholder="Search products, categories..." class="input input-bordered input-primary w-full h-12 pl-9 pr-3 rounded-2xl" />
 							<input type="text" disabled style={`opacity:${overlayOpacity}; mask-image: ${$shineBorder};`} aria-hidden="true" class="pointer-events-none absolute left-0 top-0 z-10 h-12 w-full rounded-2xl border border-primary/60 bg-transparent p-0" />
 						</div>
 					</div>
@@ -431,6 +537,52 @@
 		</div>
 	{/if}
 
+	<!-- Auth modal -->
+	{#if authOpen}
+		<div class="fixed inset-0 z-[65]">
+			<button type="button" aria-label="Close" class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick={() => (authOpen = false)}></button>
+			<div class="absolute inset-x-0 top-20 mx-auto w-full max-w-md px-4">
+				<div class="card bg-base-100 shadow-2xl border border-base-300 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-4">
+					<div class="p-4 border-b border-base-300 flex items-center justify-between bg-gradient-to-r from-base-200/60 to-base-100/20">
+						<div class="tabs tabs-boxed">
+							<button class="tab transition" class:tab-active={authMode==='login'} onclick={() => { authMode='login' }}>Login</button>
+							<button class="tab transition" class:tab-active={authMode==='register'} onclick={() => { authMode='register' }}>Register</button>
+						</div>
+						<div class="flex items-center gap-2">
+							{#if authMode==='login'}<LogIn class="size-4" />{:else}<UserPlus class="size-4" />{/if}
+						</div>
+					</div>
+					{#key authMode}
+						<Motion variants={authContentVariants} initial="exit" animate="enter" let:motion>
+							<form class="p-4 space-y-3 transition-all" onsubmit={submitAuth} use:motion>
+							{#if authError}
+								<div class="alert alert-error"><span>{authError}</span></div>
+							{/if}
+							<label class="form-control w-full">
+								<div class="label"><span class="label-text">Email</span></div>
+								<input class="input input-bordered input-primary border-base-300 w-full" type="email" placeholder="you@example.com" bind:value={authEmail} required />
+							</label>
+							<label class="form-control w-full">
+								<div class="label"><span class="label-text">Password</span></div>
+								<PasswordInput bind:value={authPassword} placeholder="••••••••" />
+							</label>
+							{#if authMode==='register'}
+								<div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+									<input class="input input-bordered input-primary border-base-300" placeholder="First name" bind:value={authFirst} />
+									<input class="input input-bordered input-primary border-base-300" placeholder="Last name" bind:value={authLast} />
+								</div>
+							{/if}
+							<div class="pt-2">
+								<Button class={"btn btn-primary w-full "+(authLoading?'loading animate-pulse':'')} disabled={authLoading} type="submit">{authMode==='login'?'Sign in':'Create account'}</Button>
+							</div>
+						</form>
+						</Motion>
+					{/key}
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<footer class="border-t border-base-300 bg-base-100/70">
 		<div class="max-w-7xl mx-auto px-4 md:px-6 py-10 grid gap-8 md:grid-cols-3">
 			<div class="space-y-3">
@@ -439,9 +591,9 @@
 				</div>
 				<p class="text-sm opacity-70">Modern, thoughtful experiences for your storefront.</p>
 				<div class="flex gap-2">
-					<Button size="icon" class="btn btn-ghost"><Github class="size-4" /></Button>
+					<Button size="icon" class="btn btn-ghost"><Instagram class="size-4" /></Button>
+					<Button size="icon" class="btn btn-ghost"><Facebook class="size-4" /></Button>
 					<Button size="icon" class="btn btn-ghost"><Twitter class="size-4" /></Button>
-					<Button size="icon" class="btn btn-ghost"><Linkedin class="size-4" /></Button>
 				</div>
 			</div>
 			<div>

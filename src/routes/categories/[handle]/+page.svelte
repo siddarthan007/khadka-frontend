@@ -7,6 +7,7 @@
 	import { onMount } from 'svelte'
 	import { page } from '$app/stores'
 	import { goto } from '$app/navigation'
+	import { tick } from 'svelte'
 	let { data }: { data?: { category: any; subcategories: any[]; products: any[]; total: number; subCounts: Record<string, number> } } = $props();
 	const category = data?.category
 	const subcategories = data?.subcategories ?? []
@@ -77,12 +78,13 @@
 		}
 	}
 
-	function onSelect(id: string) {
+	async function onSelect(id: string) {
 		selected = id
 		const url = new URL($page.url)
 		if (id === 'all') url.searchParams.delete('sub')
 		else url.searchParams.set('sub', id)
-		goto(`${url.pathname}${url.search}`, { replaceState: true, noScroll: true })
+		await goto(`${url.pathname}${url.search}`, { replaceState: true, noScroll: true })
+		await tick()
 		loadFor(id)
 	}
 </script>
@@ -100,7 +102,7 @@
 			<ul>
 				<li><a href="/">Home</a></li>
 				<li><a href="/categories">Categories</a></li>
-				<li class="text-primary">{category?.name}</li>
+				<li class="text-base-content/70">{category?.name}</li>
 			</ul>
 		</nav>
 

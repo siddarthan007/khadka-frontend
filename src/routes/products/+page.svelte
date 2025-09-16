@@ -67,7 +67,7 @@
 				<p class="text-base-content/70 mt-1">{count} results</p>
 			</div>
 			<form onsubmit={() => applyFilters(true)} class="join">
-				<input type="text" name="q" placeholder="Search products" bind:value={q} class="input input-bordered join-item" />
+				<input type="text" name="q" placeholder="Search products" bind:value={q} class="input input-bordered input-primary join-item" />
 				<button class="btn btn-primary join-item" type="submit">Search</button>
 			</form>
 		</header>
@@ -125,7 +125,7 @@
 						<div class="text-sm font-medium mb-2">Collections</div>
 						<div class="flex flex-wrap gap-2 max-h-40 overflow-auto pr-1">
 							{#each collections as col}
-								<button type="button" class={cn('badge gap-1 cursor-pointer', selectedCollections.includes(col.id) ? 'badge-primary' : 'badge-outline')} onclick={() => toggleCollection(col.id)}>
+								<button type="button" class={cn('badge badge-sm gap-1 cursor-pointer left-2 top-2 px-2.5 py-0.5 rounded-full shadow', selectedCollections.includes(col.id) ? 'badge-primary' : 'badge-outline')} onclick={() => toggleCollection(col.id)}>
 									<span>{col.title}</span>
 								</button>
 							{/each}

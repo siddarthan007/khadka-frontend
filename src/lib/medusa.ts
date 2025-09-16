@@ -3,7 +3,7 @@ import type { HttpTypes } from '@medusajs/types';
 import { env as publicEnv } from '$env/dynamic/public';
 import { MeiliSearch } from "meilisearch";
 
-function logApiError(operation: string, error: any) {
+export function logApiError(operation: string, error: any) {
 	const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
 	console.error(`Medusa API Error (${operation}):`, errorMessage);
 }
@@ -27,7 +27,11 @@ export function getStoreClient(): Medusa | null {
 		try {
 			storeClient = new Medusa({
 				baseUrl,
-				publishableKey
+				publishableKey,
+				auth: {
+					type: 'session',
+					fetchCredentials: 'include'
+				}
 			});
 		} catch (err) {
 			console.warn('Failed to initialize Medusa store client:', (err as any)?.message ?? err);

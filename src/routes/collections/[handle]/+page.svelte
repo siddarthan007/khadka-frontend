@@ -1,6 +1,8 @@
 <script lang="ts">
 	import ProductCard from '$lib/components/ProductCard.svelte'
 	import { cn } from '$lib/utils'
+	import { page } from '$app/state'
+
 	let { data }: { data?: { collection: any; products: any[]; total: number } } = $props();
 	const collection = data?.collection
 	const products = data?.products ?? []
@@ -18,7 +20,8 @@
 
 	$effect(() => {
 		if (typeof document !== 'undefined') {
-			document.title = `${collection?.title ?? collection?.handle ?? 'Collection'} • KhadkaFoods`
+			const c = (collection as any);
+			document.title = `${c?.title ?? c?.handle ?? 'Collection'} • KhadkaFoods`
 		}
 	})
 </script>
@@ -30,13 +33,14 @@
 	<meta property="og:type" content="website" />
 </svelte:head>
 
+{#key collection?.id ?? collection?.handle ?? 'unknown'}
 <section class="w-full py-8">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 		<nav class="breadcrumbs text-sm mb-4">
 			<ul>
 				<li><a href="/">Home</a></li>
 				<li><a href="/collections">Collections</a></li>
-				<li class="text-primary">{collection?.title ?? collection?.handle}</li>
+				<li class="text-base-content/70">{collection?.title ?? collection?.handle}</li>
 			</ul>
 		</nav>
 
@@ -65,3 +69,4 @@
 		</div>
 	</div>
 </section>
+{/key}

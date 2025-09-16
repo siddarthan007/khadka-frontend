@@ -2,11 +2,53 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
-@plugin "daisyui" {
-	themes:
-		light --default,
-		dark --prefersdark,
-		cupcake;
+@plugin "daisyui" {}
+
+@plugin "daisyui/theme" {
+	name: "khadka";
+	default: true;
+	prefersdark: false;
+	color-scheme: light;
+
+	--color-base-100: var(--background);
+	--color-base-200: oklch(0.96 0.01 250);
+	--color-base-300: oklch(0.92 0.02 250);
+	--color-base-content: var(--foreground);
+	--color-primary: oklch(0.7 0.17 145);
+	--color-primary-content: var(--primary-foreground);
+	--color-secondary: oklch(0.65 0.2 29);
+	--color-secondary-content: var(--secondary-foreground);
+	--color-accent: var(--accent);
+	--color-accent-content: var(--accent-foreground);
+	--color-neutral: oklch(0.4 0.03 256);
+	--color-neutral-content: oklch(0.98 0.01 256);
+	--color-info: oklch(0.7 0.12 230);
+	--color-success: oklch(0.7 0.17 145);
+	--color-warning: oklch(0.86 0.18 90);
+	--color-error: oklch(0.65 0.2 29);
+}
+
+@plugin "daisyui/theme" {
+	name: "dark";
+	prefersdark: true;
+	color-scheme: dark;
+
+	--color-base-100: oklch(0.129 0.042 264.695);
+	--color-base-200: oklch(0.208 0.042 265.755);
+	--color-base-300: oklch(0.279 0.041 260.031);
+	--color-base-content: oklch(0.984 0.003 247.858);
+	--color-primary: oklch(0.75 0.17 145);
+	--color-primary-content: oklch(0.984 0.003 247.858);
+	--color-secondary: oklch(0.7 0.22 29);
+	--color-secondary-content: oklch(0.984 0.003 247.858);
+	--color-accent: oklch(0.279 0.041 260.031);
+	--color-accent-content: oklch(0.984 0.003 247.858);
+	--color-neutral: oklch(0.488 0.243 264.376);
+	--color-neutral-content: oklch(0.984 0.003 247.858);
+	--color-info: oklch(0.696 0.17 162.48);
+	--color-success: oklch(0.75 0.17 145);
+	--color-warning: oklch(0.769 0.188 70.08);
+	--color-error: oklch(0.704 0.191 22.216);
 }
 
 @import 'tw-animate-css';
@@ -21,10 +63,12 @@
 	--card-foreground: oklch(0.129 0.042 264.695);
 	--popover: oklch(1 0 0);
 	--popover-foreground: oklch(0.129 0.042 264.695);
-	--primary: oklch(0.208 0.042 265.755);
+	/* Primary: pleasant green */
+	--primary: oklch(0.7 0.17 145);
 	--primary-foreground: oklch(0.984 0.003 247.858);
-	--secondary: oklch(0.968 0.007 247.896);
-	--secondary-foreground: oklch(0.208 0.042 265.755);
+	/* Secondary: soft red */
+	--secondary: oklch(0.65 0.2 29);
+	--secondary-foreground: oklch(0.984 0.003 247.858);
 	--muted: oklch(0.968 0.007 247.896);
 	--muted-foreground: oklch(0.554 0.046 257.417);
 	--accent: oklch(0.968 0.007 247.896);
@@ -46,6 +90,7 @@
 	--sidebar-accent-foreground: oklch(0.208 0.042 265.755);
 	--sidebar-border: oklch(0.929 0.013 255.508);
 	--sidebar-ring: oklch(0.704 0.04 256.788);
+	--input-border: oklch(0.929 0.013 255.508);
 }
 
 .dark {
@@ -55,9 +100,10 @@
 	--card-foreground: oklch(0.984 0.003 247.858);
 	--popover: oklch(0.208 0.042 265.755);
 	--popover-foreground: oklch(0.984 0.003 247.858);
-	--primary: oklch(0.929 0.013 255.508);
-	--primary-foreground: oklch(0.208 0.042 265.755);
-	--secondary: oklch(0.279 0.041 260.031);
+	/* Keep brand colors readable on dark */
+	--primary: oklch(0.75 0.17 145);
+	--primary-foreground: oklch(0.984 0.003 247.858);
+	--secondary: oklch(0.7 0.22 29);
 	--secondary-foreground: oklch(0.984 0.003 247.858);
 	--muted: oklch(0.279 0.041 260.031);
 	--muted-foreground: oklch(0.704 0.04 256.788);
@@ -127,4 +173,26 @@
 	body {
 		@apply bg-background text-foreground;
 	}
+	/* Strong visible borders for all form inputs using DaisyUI classes too */
+	input,
+	select,
+	textarea,
+	.input,
+	.select,
+	.textarea {
+		border: 2px solid var(--input-border) !important;
+		outline: none;
+	}
+}
+
+/* Button hover tweaks in dark mode for better contrast */
+.dark [data-slot="button"].hover\:bg-accent:hover,
+.dark [data-slot="button"].hover\:bg-accent\/50:hover,
+.dark [data-slot="button"].hover\:bg-primary\/90:hover,
+.dark .btn:hover,
+.dark .btn-ghost:hover,
+.dark .btn-outline:hover,
+.dark .hover\:bg-base-200:hover {
+	background-color: color-mix(in oklab, var(--background) 88%, white 12%) !important;
+	color: var(--foreground) !important;
 }

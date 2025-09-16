@@ -254,16 +254,16 @@
 	}
 </script>
 
-<!-- Carousel with proper container constraints -->
-<section class="relative w-full">
-	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+<!-- Full-width carousel -->
+<section class="relative w-full overflow-hidden">
+	<div class="w-full">
 		<div
-			class="relative min-h-[340px] sm:min-h-[420px] md:min-h-[520px] lg:min-h-[680px]"
+			class="relative min-h-[400px] sm:min-h-[480px] md:min-h-[580px] lg:min-h-[720px]"
 		>
 			<!-- Ambient background elements removed to eliminate faint container -->
 
 			<div
-				class="relative h-full w-full overflow-visible"
+				class="relative h-full w-full overflow-hidden"
 				role="region"
 				aria-roledescription="carousel"
 				aria-label={'Hero carousel with ' + (activeSlides.length || 0) + ' slides'}
@@ -276,19 +276,19 @@
 				<!-- Background mask and floor glow removed -->
 				<!-- Loading state -->
 				{#if activeSlides.length === 0}
-					<div
-						class="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-green-50 to-green-100"
-					>
-						<div class="text-center">
-							<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-							<p class="font-medium text-green-600">Loading...</p>
-						</div>
+				<div
+					class="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-primary/10 to-primary/5"
+				>
+					<div class="text-center">
+						<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+						<p class="font-medium text-primary">Loading...</p>
 					</div>
+				</div>
 				{:else}
 					<!-- Slide container with perspective for 3D depth -->
 					<div
-						class="relative w-full h-[340px] sm:h-[420px] md:h-[520px] lg:h-[680px]"
-						style={`perspective: ${isMobile ? 1200 : 1800}px; transform-style: preserve-3d;`}
+						class="relative w-full h-[400px] sm:h-[480px] md:h-[580px] lg:h-[720px]"
+						style={`perspective: ${isMobile ? 1400 : 2000}px; transform-style: preserve-3d;`}
 					>
 						{#each activeSlides as slide, i (slide.image ?? i)}
 							{#if isRenderableSlide(i, current, activeSlides.length || 1, isMobile)}
@@ -296,9 +296,9 @@
 									class="absolute inset-0 flex items-center justify-center will-change-transform"
 									style={slideStyle(i, current, activeSlides.length || 1, isMobile, prefersReducedMotion)}
 								>
-								<!-- Card container with relative sizing -->
+								<!-- Card container with full responsive sizing -->
 								<div
-									class="relative w-[96%] sm:w-[94%] md:w-[90%] h-[82%] sm:h-[84%] md:h-[88%] rounded-2xl bg-base-100 shadow-2xl overflow-hidden"
+									class="relative w-[92%] sm:w-[88%] md:w-[85%] lg:w-[80%] xl:w-[75%] h-[85%] sm:h-[87%] md:h-[90%] rounded-3xl bg-base-100 shadow-2xl overflow-hidden border border-base-300/20"
 								>
 									<!-- Image with error handling -->
 									{#if shouldShowSlide(i)}
@@ -352,7 +352,7 @@
 													{slide.title}
 													{#if slide.accent}
 														<br />
-														<span class="text-green-400">{slide.accent}</span>
+														<span class="text-primary-content/90 drop-shadow-lg">{slide.accent}</span>
 													{/if}
 												</h1>
 
@@ -372,7 +372,7 @@
 													{#if slide.ctaPrimary}
 														<a
 															href={slide.ctaPrimary.href}
-															class="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-white text-green-600 font-semibold shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-gray-50"
+															class="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-primary text-primary-content font-semibold shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-primary/90"
 															tabindex={i === current ? 0 : -1}
 														>
 															{slide.ctaPrimary.label}

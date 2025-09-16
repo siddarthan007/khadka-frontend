@@ -3,6 +3,8 @@
 	import { cn, formatCalculatedPrice } from '$lib/utils';
 	import { addLine, updateLine, removeLine, getCart } from '$lib/cart';
 	import { cart } from '$lib/stores/cart';
+	import { ShoppingCart } from '@lucide/svelte';
+	import { Button } from '$lib/components/ui/button';
 
 	type CalculatedPrice = { calculated_amount?: number; amount?: number; currency_code?: string } | null;
 
@@ -135,7 +137,7 @@
 	<a href={href} class="block relative aspect-[4/3] overflow-hidden">
 		<img src={image} alt={displayTitle} loading="lazy" decoding="async" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
 		{#if (badge ?? isNew())}
-			<span class="badge badge-primary absolute left-3 top-3">NEW</span>
+			<span class="badge badge-primary badge-sm text-primary-content absolute left-2 top-2 px-2.5 py-0.5 rounded-full shadow">NEW</span>
 		{/if}
 	</a>
 	<div class="p-4 space-y-2">
@@ -143,13 +145,16 @@
 		<div class="flex items-center justify-between">
 			<span class="font-bold text-lg">{formatPrice(price)}</span>
 			{#if currentQty() > 0}
-				<div class="join">
-					<button class="btn btn-sm join-item" onclick={onDec}>-</button>
-					<span class="btn btn-sm join-item btn-ghost no-animation cursor-default">{currentQty()}</span>
-					<button class="btn btn-sm join-item" onclick={onInc}>+</button>
+				<div class="join h-8 rounded-full overflow-hidden border border-base-300">
+					<Button variant="ghost" size="sm" class="join-item" onclick={onDec} aria-label="Decrease quantity">-</Button>
+					<input class="join-item w-12 text-center bg-transparent border-0 pointer-events-none" value={currentQty()} readonly aria-live="polite" aria-label="Quantity" />
+					<Button variant="ghost" size="sm" class="join-item" onclick={onInc} aria-label="Increase quantity">+</Button>
 				</div>
 			{:else}
-				<button class="btn btn-sm btn-primary rounded-full shadow-md hover:shadow-lg" onclick={onAddToCart} disabled={!variantId}>Add to cart</button>
+				<button class="btn btn-sm btn-primary rounded-full shadow-md hover:shadow-lg" onclick={onAddToCart} disabled={!variantId}>
+					<ShoppingCart class="size-4" />
+					Add to cart
+				</button>
 			{/if}
 		</div>
 	</div>

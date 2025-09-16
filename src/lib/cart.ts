@@ -34,6 +34,18 @@ export async function addLine(variantId: string, quantity = 1): Promise<HttpType
 	const cartId = await ensureCart();
 	const store = getStoreClient();
 	if (!store) throw new Error('Store client not configured');
+
+	// Merge same-variant lines by incrementing quantity if present
+	const existing = get(cart);
+	const existingItem = (existing as any)?.items?.find((li: any) => li?.variant_id === variantId);
+	if (existingItem) {
+		const { cart: updatedCart } = await store.store.cart.updateLineItem(cartId, existingItem.id, {
+			quantity: (existingItem.quantity ?? 0) + quantity
+		});
+		cart.set(updatedCart);
+		return updatedCart;
+	}
+
 	const { cart: updatedCart } = await store.store.cart.createLineItem(cartId, {
 		variant_id: variantId,
 		quantity
@@ -75,4 +87,48 @@ export async function clearCart(): Promise<HttpTypes.StoreCart | null> {
 		})
 	);
 	return await getCart();
+}
+
+// Coupons / Promotions
+export async function applyCoupon(code: string): Promise<HttpTypes.StoreCart | null> {
+	const coupon = (code || '').trim();
+	if (!coupon) return await getCart();
+	const existing = get(cart);
+	const cartId = existing?.id ?? (await ensureCart());
+	const store = getStoreClient();
+	if (!store) return await getCart();
+	try {
+		await (store as any).client.fetch(`/store/carts/${cartId}/promotions`, {
+			method: 'POST',
+			body: { promo_codes: [coupon] }
+		});
+		const updated = await getCart();
+		try { const m = await import('$lib/stores/toast'); m.showToast('Coupon applied', { type: 'success' }); } catch { }
+		return updated;
+	} catch (err) {
+		console.warn('Failed to apply coupon', err);
+		try { const m = await import('$lib/stores/toast'); m.showToast('Coupon not found', { type: 'error' }); } catch { }
+		return await getCart();
+	}
+}
+
+export async function removeCoupon(code: string): Promise<HttpTypes.StoreCart | null> {
+	const coupon = (code || '').trim();
+	if (!coupon) return await getCart();
+	const existing = get(cart);
+	const cartId = existing?.id ?? (await ensureCart());
+	const store = getStoreClient();
+	if (!store) return await getCart();
+	try {
+		await (store as any).client.fetch(`/store/carts/${cartId}/promotions`, {
+			method: 'DELETE',
+			body: { promo_codes: [coupon] }
+		});
+		const updated = await getCart();
+		try { const m = await import('$lib/stores/toast'); m.showToast('Coupon removed', { type: 'success' }); } catch { }
+		return updated;
+	} catch (err) {
+		console.warn('Failed to remove coupon', err);
+		return await getCart();
+	}
 }

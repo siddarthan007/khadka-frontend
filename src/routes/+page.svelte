@@ -17,13 +17,9 @@
 	})
 </script>
 
-<!-- Center the carousel on the homepage -->
+<!-- Full-width carousel on the homepage -->
 <section class="w-full py-4 sm:py-6">
-	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
-		<div class="flex items-center justify-center">
-			<HeroCarousel {slides} />
-		</div>
-	</div>
+	<HeroCarousel {slides} />
 </section>
 
 <LabeledSeparator gradient class="my-10" />
@@ -34,7 +30,7 @@
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 		<header class="mb-6 flex items-end justify-between">
 			<h2 id="countries-heading" class="text-2xl font-bold tracking-tight">Shop by countries</h2>
-			<a class="btn btn-sm btn-outline" href="/collections">View all →</a>
+			<a class="btn btn-sm btn-outline btn-primary" href="/collections">View all →</a>
 		</header>
 		<div class="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 			{#each collections as c}
@@ -58,7 +54,7 @@
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 		<header class="mb-6 flex items-end justify-between">
 			<h2 id="categories-heading" class="text-2xl font-bold tracking-tight">Shop by categories</h2>
-			<a class="btn btn-sm btn-outline" href="/categories">View all →</a>
+			<a class="btn btn-sm btn-outline btn-primary" href="/categories">View all →</a>
 		</header>
 		<div class="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4">
 			{#each categories as c}
@@ -82,7 +78,7 @@
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 		<header class="mb-6 flex items-end justify-between">
 			<h2 class="text-2xl font-bold tracking-tight">Just for you</h2>
-			<a class="btn btn-sm btn-outline" href="/products">View all →</a>
+			<a class="btn btn-sm btn-outline btn-primary" href="/products">View all →</a>
 		</header>
 		<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
 			{#each products as p}
