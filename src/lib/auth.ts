@@ -39,9 +39,7 @@ export async function login(email: string, password: string): Promise<HttpTypes.
 		if (typeof res !== 'string') {
 			return null;
 		}
-		// For session auth, SDK sets cookie automatically.
 		const me = await getCurrentCustomer();
-		// Transfer guest cart to customer if exists
 		try {
 			const c = get(cart);
 			if (c?.id) {
@@ -62,7 +60,10 @@ export async function register(payload: RegisterPayload): Promise<HttpTypes.Stor
 	const sdk = getStoreClient();
 	if (!sdk) return null;
 	try {
-		await (sdk as any).auth.register('customer', 'emailpass', { email, password });
+		const regToken = await (sdk as any).auth.register('customer', 'emailpass', { email, password });
+		if (typeof regToken === 'string' && regToken.length > 0) {
+			(sdk as any).client.setToken(regToken);
+		}
 	} catch (error: any) {
 		// If identity exists, attempt login path
 		const statusText = error?.statusText ?? error?.response?.statusText;
@@ -77,7 +78,7 @@ export async function register(payload: RegisterPayload): Promise<HttpTypes.Stor
 	}
 	try {
 		await sdk.store.customer.create({ email, first_name, last_name });
-		// ensure authenticated by logging in again; cookie will be set by SDK in session mode
+		try { (sdk as any).client.setToken(undefined); } catch {}
 		await (sdk as any).auth.login('customer', 'emailpass', { email, password }).catch(() => {});
 		return await getCurrentCustomer();
 	} catch (error) {
