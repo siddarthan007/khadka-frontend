@@ -3,10 +3,13 @@
   import { goto } from '$app/navigation'
   import { Button } from '$lib/components/ui/button'
   import { getCurrentCustomer, logout, updateProfile } from '$lib/auth'
+  import { US_STATES, normalizeUSPhone } from '$lib/us'
+  import { addAddress as apiAddAddress, updateAddress as apiUpdateAddress, deleteAddress as apiDeleteAddress, listAddresses } from '$lib/customer-api'
   import { customer as customerStore } from '$lib/stores/customer'
   import type { HttpTypes } from '@medusajs/types'
   import { getStoreClient } from '$lib/medusa'
   import { showToast } from '$lib/stores/toast'
+  import AddressRow from './AddressRow.svelte'
 
   let me: HttpTypes.StoreCustomer | null = $state(null)
   let loading: boolean = $state(true)
@@ -19,8 +22,20 @@
     country_code: 'US', province: '', postal_code: '', phone: ''
   })
 
+  async function refreshAddresses() {
+    const sdkMe = await getCurrentCustomer()
+    me = sdkMe
+    try {
+      const list = await listAddresses().catch(() => null)
+      const addresses = (list as any)?.addresses
+      if (me && Array.isArray(addresses)) {
+        (me as any).shipping_addresses = addresses
+      }
+    } catch {}
+  }
+
   onMount(async () => {
-    me = await getCurrentCustomer()
+    await refreshAddresses()
     loading = false
     if (!me) {
       await goto('/login')
@@ -32,12 +47,10 @@
     if (!me) return
     saving = true
     try {
-      const sdk = getStoreClient() as any
-      await sdk.client.fetch(`/store/customers/me/addresses`, {
-        method: 'POST',
-        body: { address }
-      })
-      me = await getCurrentCustomer()
+      const resp = await apiAddAddress({ ...address, country_code: 'US' })
+      if ((resp as any)?.customer) me = (resp as any).customer
+      await refreshAddresses()
+      address = { first_name: '', last_name: '', address_1: '', address_2: '', city: '', country_code: 'US', province: '', postal_code: '', phone: '' }
       showToast('Address added', { type: 'success' })
     } catch (e) {
       errorMsg = 'Failed to save address'
@@ -48,8 +61,7 @@
   }
 
   async function removeAddress(id: string) {
-    const sdk = getStoreClient() as any
-    await sdk.client.fetch(`/store/customers/me/addresses/${id}`, { method: 'DELETE' }).catch(()=>{})
+    await apiDeleteAddress(id).catch(()=>{})
     me = await getCurrentCustomer()
     showToast('Address removed', { type: 'success' })
   }
@@ -62,7 +74,7 @@
   async function saveProfile() {
     if (!me) return
     profileSaving = true
-    const updated = await updateProfile({ first_name: me.first_name ?? undefined, last_name: me.last_name ?? undefined })
+    const updated = await updateProfile({ first_name: me.first_name ?? undefined, last_name: me.last_name ?? undefined, phone: normalizeUSPhone(me.phone || '') })
     profileSaving = false
     if (updated) {
       me = updated
@@ -76,7 +88,9 @@
 <section class="w-full py-10">
   <div class="container mx-auto px-4 sm:px-6 lg:px-8">
     {#if loading}
-      <div class="p-10 text-center">Loading…</div>
+      <div class="py-16 flex items-center justify-center">
+        <div class="loading loading-spinner loading-lg text-primary"></div>
+      </div>
     {:else if !me}
       <div class="p-10 text-center">Redirecting…</div>
     {:else}
@@ -86,7 +100,7 @@
             <div class="card-body space-y-3">
               <div class="flex items-center justify-between">
                 <h2 class="card-title">Profile</h2>
-                <Button class="btn btn-error btn-sm" onclick={onLogout}>Logout</Button>
+                <Button class="btn btn-primary btn-sm" onclick={onLogout}>Logout</Button>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label class="form-control">
@@ -103,7 +117,10 @@
                   <div class="label"><span class="label-text">Email</span></div>
                   <input class="input input-bordered" value={me.email} readonly />
                 </label>
-                <div></div>
+                <label class="form-control">
+                  <div class="label"><span class="label-text">Mobile</span></div>
+                  <input class="input input-bordered input-primary" bind:value={me.phone} placeholder="(555) 555-5555" />
+                </label>
               </div>
               <div>
                 <Button class={"btn btn-primary " + (profileSaving ? 'loading' : '')} disabled={profileSaving} onclick={saveProfile}>Save profile</Button>
@@ -115,18 +132,8 @@
             <div class="card-body space-y-3">
               <h2 class="card-title">Saved addresses</h2>
               <div class="grid gap-3">
-                {#each ((me as any).shipping_addresses ?? []) as a}
-                  <div class="rounded-xl border border-base-300 p-3 flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                      <div class="font-medium truncate">{a.first_name} {a.last_name}</div>
-                      <div class="text-sm opacity-70 truncate">{a.address_1}{#if a.address_2}, {a.address_2}{/if}, {a.city}</div>
-                      <div class="text-sm opacity-70 truncate">{a.province}, {a.postal_code}, {a.country_code}</div>
-                      {#if a.phone}
-                        <div class="text-sm opacity-70 truncate">{a.phone}</div>
-                      {/if}
-                    </div>
-                    <Button class="btn btn-ghost btn-sm" onclick={() => removeAddress(a.id!)}>Remove</Button>
-                  </div>
+                {#each ((me as any).shipping_addresses ?? []) as a (a.id)}
+                  <AddressRow bind:me {a} on:updated={refreshAddresses} on:deleted={refreshAddresses} />
                 {/each}
                 {#if ((me as any).shipping_addresses ?? []).length === 0}
                   <div class="opacity-70 text-sm">No saved addresses yet.</div>
@@ -151,11 +158,16 @@
               <input class="input input-bordered input-primary w-full" placeholder="Address 2" bind:value={address.address_2} />
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <input class="input input-bordered input-primary" placeholder="City" bind:value={address.city} />
-                <input class="input input-bordered input-primary" placeholder="Province/State" bind:value={address.province} />
+                <select class="select select-bordered" bind:value={address.province}>
+                  <option value="" disabled>Select state</option>
+                  {#each US_STATES as s}
+                    <option value={s.code}>{s.name}</option>
+                  {/each}
+                </select>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <input class="input input-bordered input-primary" placeholder="Postal code" bind:value={address.postal_code} />
-                <input class="input input-bordered input-primary" placeholder="Country code (e.g., US)" bind:value={address.country_code} />
+                <input class="input input-bordered input-primary opacity-100 bg-base-200/60 dark:bg-base-300/20 dark:text-base-content/80" placeholder="US" bind:value={address.country_code} disabled />
               </div>
               <input class="input input-bordered input-primary w-full" placeholder="Phone" bind:value={address.phone} />
               <Button class={"btn btn-primary " + (saving ? 'loading' : '')} disabled={saving} type="submit">Save address</Button>

@@ -14,6 +14,11 @@ const config = {
 		alias: {
 			'@/*': './src/lib/*'
 		}
-	}
+	},
+	compilerOptions: {
+		experimental: {
+			async: true
+		}
+	},
 };
 export default config;

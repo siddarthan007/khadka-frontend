@@ -5,8 +5,11 @@
   import { Button } from '$lib/components/ui/button'
   import { get } from 'svelte/store'
   import { getCurrentCustomer } from '$lib/auth'
+  import { listAddresses } from '$lib/customer-api'
   import { getStoreClient } from '$lib/medusa'
   import { showToast } from '$lib/stores/toast'
+  import { US_STATES } from '$lib/us'
+  import type { HttpTypes } from '@medusajs/types'
 
   let email: string = $state('')
   let shipping = $state({
@@ -23,18 +26,50 @@
   let errorMsg: string | null = $state(null)
   let overlay: boolean = $state(false)
 
+  // Saved addresses for logged-in customers
+  let savedAddresses: HttpTypes.StoreCustomerAddress[] = $state([])
+  let selectedAddressId: string | 'new' = $state('new')
+
+  function applyAddressToShipping(a: Partial<HttpTypes.StoreCustomerAddress> | undefined | null) {
+    if (!a) return
+    shipping = {
+      first_name: a.first_name ?? '',
+      last_name: a.last_name ?? '',
+      address_1: a.address_1 ?? '',
+      address_2: a.address_2 ?? '',
+      city: a.city ?? '',
+      country_code: a.country_code ?? 'US',
+      province: a.province ?? '',
+      postal_code: a.postal_code ?? '',
+      phone: (a as any).phone ?? ''
+    }
+  }
+
+  function onSelectAddress(id: string | 'new') {
+    selectedAddressId = id
+    if (id === 'new') return
+    const sel = savedAddresses.find((x) => x.id === id)
+    applyAddressToShipping(sel)
+    const isDefaultSelected = !!(sel as any)?.metadata?.is_primary
+    saveAddress = !isDefaultSelected
+  }
+
   onMount(async () => {
     await ensureCart()
     await getCart()
     const me = await getCurrentCustomer()
     if (me) {
       email = me.email ?? ''
-      const a = (me as any).shipping_addresses?.[0]
-      if (a) {
-        shipping = {
-          first_name: a.first_name ?? '', last_name: a.last_name ?? '', address_1: a.address_1 ?? '', address_2: a.address_2 ?? '',
-          city: a.city ?? '', country_code: a.country_code ?? 'US', province: a.province ?? '', postal_code: a.postal_code ?? '', phone: a.phone ?? ''
-        }
+      // Prefer listAddress for robustness
+      const resp = await listAddresses().catch(() => null)
+      savedAddresses = ((resp as any)?.addresses ?? (me as any).shipping_addresses ?? []) as HttpTypes.StoreCustomerAddress[]
+      if (savedAddresses.length > 0) {
+        const def = savedAddresses.find((addr: any) => addr?.metadata?.is_primary) ?? savedAddresses[0]
+        selectedAddressId = def?.id ?? 'new'
+        applyAddressToShipping(def)
+        // If default is selected, no need to show save-to-account toggle
+        const isDefaultSelected = !!(def as any)?.metadata?.is_primary
+        saveAddress = !isDefaultSelected
       }
     }
   })
@@ -81,13 +116,9 @@
         showToast('Payment ready', { type: 'success' })
       }
 
-      // Save address to account if logged in, opted in
       const meResp = await sdk.store.customer.retrieve().catch(() => null)
       if (saveAddress && meResp?.customer) {
-        await sdk.client.fetch(`/store/customers/me/addresses`, {
-          method: 'POST',
-          body: { address: shipping }
-        }).catch(()=>{})
+        await sdk.store.customer.createAddress(shipping).catch(()=>{})
         showToast('Address saved to account', { type: 'success' })
       }
 
@@ -135,6 +166,34 @@
           <input class="input input-bordered input-primary border-base-300 w-full" type="email" bind:value={email} placeholder="you@example.com" />
         </label>
 
+        {#if savedAddresses.length > 0}
+          <h2 class="card-title mt-2">Select a saved address</h2>
+          <div class="grid gap-2">
+            {#each savedAddresses as a (a.id)}
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-base-300 hover:border-primary/50 cursor-pointer">
+                <input type="radio" class="radio radio-primary mt-1" name="address-select" checked={selectedAddressId === a.id} onchange={() => onSelectAddress(a.id!)} />
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <div class="font-medium truncate">{a.first_name} {a.last_name}</div>
+                    {#if (a as any).metadata?.is_primary}
+                    <span class="badge badge-primary badge-sm text-primary-content left-2 top-2 px-2.5 py-0.5 rounded-full shadow">Default</span>
+                    {/if}
+                  </div>
+                  <div class="text-sm opacity-70 truncate">{a.address_1}{#if a.address_2}, {a.address_2}{/if}, {a.city}</div>
+                  <div class="text-sm opacity-70 truncate">{a.province}, {a.postal_code}, {a.country_code}</div>
+                  {#if (a as any).phone}
+                    <div class="text-sm opacity-70 truncate">{(a as any).phone}</div>
+                  {/if}
+                </div>
+              </label>
+            {/each}
+            <label class="flex items-center gap-3 p-3 rounded-lg border border-dashed border-base-300 hover:border-primary/50 cursor-pointer">
+              <input type="radio" class="radio radio-primary" name="address-select" checked={selectedAddressId === 'new'} onchange={() => onSelectAddress('new')} />
+              <div class="opacity-80">Use a new address</div>
+            </label>
+          </div>
+        {/if}
+
         <h2 class="card-title mt-2">Shipping address</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input class="input input-bordered input-primary border-base-300" placeholder="First name" bind:value={shipping.first_name} />
@@ -144,11 +203,16 @@
         <input class="input input-bordered input-primary border-base-300 w-full" placeholder="Address 2" bind:value={shipping.address_2} />
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input class="input input-bordered input-primary border-base-300" placeholder="City" bind:value={shipping.city} />
-          <input class="input input-bordered input-primary border-base-300" placeholder="Province/State" bind:value={shipping.province} />
+          <select class="select select-bordered" bind:value={shipping.province}>
+            <option value="" disabled>Select state</option>
+            {#each US_STATES as s}
+              <option value={s.code}>{s.name}</option>
+            {/each}
+          </select>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <input class="input input-bordered input-primary border-base-300" placeholder="Postal code" bind:value={shipping.postal_code} />
-          <input class="input input-bordered input-primary border-base-300" placeholder="Country code (e.g., US)" bind:value={shipping.country_code} />
+          <input class="input input-bordered input-primary opacity-100 bg-base-200/60 dark:bg-base-300/20 dark:text-base-content/80" placeholder="US" bind:value={shipping.country_code} disabled />
           <input class="input input-bordered input-primary border-base-300" placeholder="Phone" bind:value={shipping.phone} />
         </div>
 
@@ -159,12 +223,14 @@
           </label>
         </div>
 
-        <div class="form-control">
-          <label class="label cursor-pointer justify-start gap-3">
-            <input type="checkbox" class="checkbox checkbox-primary" bind:checked={saveAddress} />
-            <span class="label-text">Save this address to my account</span>
-          </label>
-        </div>
+        {#if !(selectedAddressId !== 'new' && (savedAddresses.find((x)=>x.id===selectedAddressId) as any)?.metadata?.is_primary)}
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox" class="checkbox checkbox-primary" bind:checked={saveAddress} />
+              <span class="label-text">Save this address to my account</span>
+            </label>
+          </div>
+        {/if}
 
         {#if !billingSameAsShipping}
           <h2 class="card-title mt-2">Billing address</h2>
@@ -176,11 +242,16 @@
           <input class="input input-bordered input-primary border-base-300 w-full" placeholder="Address 2" bind:value={billing.address_2} />
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input class="input input-bordered input-primary border-base-300" placeholder="City" bind:value={billing.city} />
-            <input class="input input-bordered input-primary border-base-300" placeholder="Province/State" bind:value={billing.province} />
+            <select class="select select-bordered" bind:value={billing.province}>
+              <option value="" disabled>Select state</option>
+              {#each US_STATES as s}
+                <option value={s.code}>{s.name}</option>
+              {/each}
+            </select>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input class="input input-bordered input-primary border-base-300" placeholder="Postal code" bind:value={billing.postal_code} />
-            <input class="input input-bordered input-primary border-base-300" placeholder="Country code (e.g., US)" bind:value={billing.country_code} />
+            <input class="input input-bordered input-primary opacity-100 bg-base-200/60 dark:bg-base-300/20 dark:text-base-content/80" placeholder="US" bind:value={billing.country_code} disabled />
             <input class="input input-bordered input-primary border-base-300" placeholder="Phone" bind:value={billing.phone} />
           </div>
         {/if}

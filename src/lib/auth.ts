@@ -4,12 +4,14 @@ import { customer } from '$lib/stores/customer';
 import { cart } from '$lib/stores/cart';
 import { get } from 'svelte/store';
 import { showToast } from '$lib/stores/toast';
+import { normalizeUSPhone } from '$lib/us';
 
 export type RegisterPayload = {
 	first_name?: string;
 	last_name?: string;
 	email: string;
 	password: string;
+  	phone?: string;
 };
 
 export async function getCurrentCustomer(): Promise<HttpTypes.StoreCustomer | null> {
@@ -57,13 +59,18 @@ export async function login(email: string, password: string): Promise<HttpTypes.
 
 export async function register(payload: RegisterPayload): Promise<HttpTypes.StoreCustomer | null> {
 	const { email, password, first_name, last_name } = payload;
+	const phone = normalizeUSPhone(payload.phone || '');
 	const sdk = getStoreClient();
 	if (!sdk) return null;
+
+	let token: string | null = null;
 	try {
-		// 1) Register identity; SDK stores the token for subsequent requests
-		await (sdk as any).auth.register('customer', 'emailpass', { email, password });
+		// 1) Register identity and get registration token; SDK often stores it, but keep it for safety
+		token = await (sdk as any).auth.register('customer', 'emailpass', { email, password });
+		if (typeof token === 'string' && token) {
+			try { (sdk as any).client.setToken(token); } catch {}
+		}
 	} catch (error: any) {
-		// If identity exists, attempt login path
 		const statusText = error?.statusText ?? error?.response?.statusText;
 		const message = error?.message ?? error?.response?.data?.message;
 		if (!(statusText === 'Unauthorized' && message === 'Identity with email already exists')) {
@@ -71,18 +78,23 @@ export async function register(payload: RegisterPayload): Promise<HttpTypes.Stor
 			showToast('Registration failed', { type: 'error' });
 			return null;
 		}
-		const tok = await (sdk as any).auth.login('customer', 'emailpass', { email, password }).catch(() => null);
-		if (!tok || typeof tok !== 'string') return null;
+		// Identity exists → login to obtain a token
+		const loginTok = await (sdk as any).auth.login('customer', 'emailpass', { email, password }).catch(() => null);
+		if (!loginTok || typeof loginTok !== 'string') return null;
+		token = loginTok;
+		try { (sdk as any).client.setToken(token); } catch {}
 	}
+
 	try {
-		await sdk.store.customer.create({ email, first_name, last_name }).catch((e: any) => {
+		// 2) Create customer using current token (no manual headers)
+		await sdk.store.customer.create({ email, first_name, last_name, phone }).catch((e: any) => {
 			const code = e?.response?.status;
 			if (code === 409 || code === 400) return;
-			try { console.debug('customer.create failed', { email, hasFirst: !!first_name, hasLast: !!last_name, status: code }); } catch {}
+			try { console.debug('customer.create failed', { email, hasFirst: !!first_name, hasLast: !!last_name, hasPhone: !!phone, status: code }); } catch {}
 			logApiError('store.customer.create', e);
 			throw e;
 		});
-		// 3) Login to establish cookie session for subsequent requests
+		try { (sdk as any).client.setToken(undefined); } catch {}
 		await (sdk as any).auth.login('customer', 'emailpass', { email, password }).catch(() => {});
 		return await getCurrentCustomer();
 	} catch (error) {
