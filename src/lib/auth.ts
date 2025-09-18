@@ -254,23 +254,14 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
     }
 
     // 2. Decode token
-    type Decoded = {
-      actor_id?: string;
-      email?: string;
-      given_name?: string;
-      family_name?: string;
-      name?: string;
-    };
+    type Decoded = { actor_id?: string; email?: string; given_name?: string; family_name?: string; name?: string };
     let decoded: Decoded | null = null;
     try {
       decoded = jwtDecode<Decoded>(token);
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     // 3. Ensure customer exists
-    const needsCustomer = !decoded?.actor_id;
-    if (needsCustomer) {
+    if (!decoded?.actor_id) {
       const email = decoded?.email?.toLowerCase()?.trim();
       const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
       const last_name =
@@ -299,13 +290,24 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
       }
     }
 
-    // 4. Always refresh token to get one with actor_id
+    // 4. Refresh token OR retry login
+    let refreshed = false;
     try {
       await sdk.auth.refresh();
+      refreshed = true;
     } catch (refreshErr) {
       logApiError('googleOAuthRefresh', refreshErr);
-      showToast('Failed to refresh session', { type: 'error' });
-      return false;
+    }
+
+    // If refresh still useless, force login again to rebuild session
+    if (!refreshed || !decoded?.actor_id) {
+      try {
+        await sdk.auth.login('customer', 'google', { callbackUrl: window.location.origin + '/oauth/google/callback' });
+      } catch (loginErr) {
+        logApiError('googleOAuthReLogin', loginErr);
+        showToast('Session could not be established', { type: 'error' });
+        return false;
+      }
     }
 
     // 5. Hydrate customer + cart
@@ -416,6 +418,8 @@ export async function checkAuthStatus(): Promise<{
 		errors.push('Medusa SDK not initialized - check environment variables');
 	} else {
 		try {
+			await sdk.auth.refresh();
+			
 			const { customer: me } = await sdk.store.customer.retrieve();
 			if (me) {
 				isAuthenticated = true;
