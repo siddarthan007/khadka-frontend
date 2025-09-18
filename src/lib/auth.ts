@@ -223,110 +223,115 @@ export async function startGoogleOAuth(returnTo: string = '/account'): Promise<v
 
 // Handle callback page: exchange code for token, optionally create customer, refresh token, hydrate store.
 export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): Promise<boolean> {
-    const sdk = getStoreClient() as any;
-    if (!sdk) return false;
-    try {
-        const query: Record<string, string> = {};
-        for (const [k, v] of searchParams.entries()) query[k] = v;
+  const sdk = getStoreClient() as any;
+  if (!sdk) return false;
 
-        if (query.error) {
-            showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
-            return false;
-        }
-        if (!query.code) {
-            showToast('Authentication failed: Missing authorization code', { type: 'error' });
-            return false;
-        }
+  try {
+    const query: Record<string, string> = {};
+    for (const [k, v] of searchParams.entries()) query[k] = v;
 
-        let token: string = '';
-        try {
-            token = await sdk.auth.callback('customer', 'google', query);
-        } catch (err) {
-            logApiError('googleOAuthCallback', err);
-            showToast('Authentication failed while exchanging code', { type: 'error' });
-            return false;
-        }
-
-        if (typeof token !== 'string') {
-            showToast('Authentication failed: Invalid token response', { type: 'error' });
-            return false;
-        }
-
-		// Attempt to decode token for additional claims (email, name, etc.)
-		type Decoded = {
-			actor_id?: string;
-			email?: string;
-			sub?: string;
-			given_name?: string;
-			family_name?: string;
-			name?: string;
-		};
-		let decoded: Decoded | null = null;
-		try {
-			decoded = jwtDecode<Decoded>(token);
-		} catch {
-			// continue without decoded data
-		}
-
-		const needsCustomer = !decoded?.actor_id;
-		if (needsCustomer) {
-			// Derive best-effort customer payload
-			const email = decoded?.email?.toLowerCase()?.trim();
-			const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
-			const last_name = decoded?.family_name || (() => {
-				if (decoded?.name) {
-					const parts = decoded.name.split(' ');
-					if (parts.length > 1) return parts.slice(1).join(' ');
-				}
-				return undefined;
-			})();
-
-			if (!email) {
-				showToast('Authentication failed: Provider did not return an email', { type: 'error' });
-				return false;
-			}
-
-			try {
-				await sdk.store.customer.create(
-					{ email, first_name, last_name },
-					{},
-					{ Authorization: `Bearer ${token}` }
-				);
-				await sdk.auth.refresh();
-			} catch (createErr: any) {
-				// If identity already exists, attempt a refresh & continue
-				const msg = createErr?.response?.data?.message || createErr?.message;
-				if (msg && /already exists/i.test(msg)) {
-					try { await sdk.auth.refresh(); } catch {}
-				} else {
-					logApiError('googleOAuthCreateCustomer', createErr);
-					showToast('Failed to finalize account creation', { type: 'error' });
-					return false;
-				}
-			}
-		}
-
-        await getCurrentCustomer();
-
-        // Attempt cart transfer if guest cart exists
-        try {
-            const c = get(cart);
-            if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => {});
-        } catch {}
-
-        showToast('Signed in with Google', { type: 'success' });
-		const intendedPath = (typeof window !== 'undefined' ? localStorage.getItem('oauth_intended_path') : null) || '/account';
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('oauth_intended_path');
-        }
-        window.location.href = intendedPath;
-        return true;
-    } catch (error) {
-        logApiError('handleGoogleOAuthCallback', error);
-        showToast('Google sign-in failed', { type: 'error' });
-        return false;
+    if (query.error) {
+      showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
+      return false;
     }
+    if (!query.code) {
+      showToast('Authentication failed: Missing authorization code', { type: 'error' });
+      return false;
+    }
+
+    // 1. Exchange code for token
+    let token: string = '';
+    try {
+      token = await sdk.auth.callback('customer', 'google', query);
+    } catch (err) {
+      logApiError('googleOAuthCallback', err);
+      showToast('Authentication failed while exchanging code', { type: 'error' });
+      return false;
+    }
+    if (typeof token !== 'string') {
+      showToast('Authentication failed: Invalid token response', { type: 'error' });
+      return false;
+    }
+
+    // 2. Decode token
+    type Decoded = {
+      actor_id?: string;
+      email?: string;
+      given_name?: string;
+      family_name?: string;
+      name?: string;
+    };
+    let decoded: Decoded | null = null;
+    try {
+      decoded = jwtDecode<Decoded>(token);
+    } catch {
+      // ignore
+    }
+
+    // 3. Ensure customer exists
+    const needsCustomer = !decoded?.actor_id;
+    if (needsCustomer) {
+      const email = decoded?.email?.toLowerCase()?.trim();
+      const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
+      const last_name =
+        decoded?.family_name ||
+        (decoded?.name && decoded.name.split(' ').slice(1).join(' ')) ||
+        undefined;
+
+      if (!email) {
+        showToast('Authentication failed: Provider did not return an email', { type: 'error' });
+        return false;
+      }
+
+      try {
+        await sdk.store.customer.create(
+          { email, first_name, last_name },
+          {},
+          { Authorization: `Bearer ${token}` }
+        );
+      } catch (createErr: any) {
+        const msg = createErr?.response?.data?.message || createErr?.message;
+        if (!msg || !/already exists/i.test(msg)) {
+          logApiError('googleOAuthCreateCustomer', createErr);
+          showToast('Failed to finalize account creation', { type: 'error' });
+          return false;
+        }
+      }
+    }
+
+    // 4. Always refresh token to get one with actor_id
+    try {
+      await sdk.auth.refresh();
+    } catch (refreshErr) {
+      logApiError('googleOAuthRefresh', refreshErr);
+      showToast('Failed to refresh session', { type: 'error' });
+      return false;
+    }
+
+    // 5. Hydrate customer + cart
+    await getCurrentCustomer();
+    try {
+      const c = get(cart);
+      if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => {});
+    } catch {}
+
+    // 6. Redirect
+    showToast('Signed in with Google', { type: 'success' });
+    const intendedPath =
+      (typeof window !== 'undefined' ? localStorage.getItem('oauth_intended_path') : null) ||
+      '/account';
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('oauth_intended_path');
+      window.location.href = intendedPath;
+    }
+    return true;
+  } catch (error) {
+    logApiError('handleGoogleOAuthCallback', error);
+    showToast('Google sign-in failed', { type: 'error' });
+    return false;
+  }
 }
+
 
 // Attempts to claim recent guest orders by display_id guesses for a given email.
 // Strategy: probe a small range of recent display ids around a passed hint (optional).
