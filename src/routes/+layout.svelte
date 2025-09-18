@@ -408,7 +408,7 @@
 								<NavigationMenuLink href={link.href} class="rounded-md px-3 py-2 hover:bg-base-200"
 									><span class="flex items-center gap-2">
 										{#if link.icon}
-											<svelte:component this={link.icon} class="size-4" />
+											<link.icon class="size-4" />
 										{/if}
 										{link.label}
 									</span></NavigationMenuLink
