@@ -311,18 +311,38 @@ export async function completeGoogleOAuth(searchParams: URLSearchParams): Promis
 			return false;
 		}
 
-		console.log('Calling sdk.auth.callback with params:', {
-			actorType: 'customer',
-			provider: 'google',
-			hasCode: true,
-			hasState: !!query.state
-		});
+		// Since the callback is coming directly from Google to frontend,
+		// we need to exchange the authorization code for a session on the backend
+		// Instead of calling sdk.auth.callback (which is for backend use),
+		// we'll make a request to our server-side callback endpoint
+		console.log('Exchanging authorization code for session...');
 
-		const res = await sdk.auth.callback('customer', 'google', query);
-		console.log('OAuth callback result:', res);
+		try {
+			// Call our server-side callback endpoint to complete OAuth
+			const callbackUrl = new URL('/oauth/google/callback', window.location.origin);
+			for (const [key, value] of Object.entries(query)) {
+				callbackUrl.searchParams.set(key, value);
+			}
 
-		if (res) {
-			console.log('OAuth callback successful, fetching customer data...');
+			const response = await fetch(callbackUrl.toString(), {
+				method: 'GET',
+				credentials: 'include' // Include cookies for session handling
+			});
+
+			if (!response.ok) {
+				throw new Error(`Server callback failed: ${response.status} ${response.statusText}`);
+			}
+
+			// The server-side callback should redirect to the destination
+			// But since we're calling it via fetch, we need to handle the redirect manually
+			const redirectUrl = response.headers.get('location');
+			if (redirectUrl) {
+				console.log('Server callback successful, redirecting to:', redirectUrl);
+				window.location.href = redirectUrl;
+				return true;
+			}
+
+			console.log('Server callback successful, fetching customer data...');
 			await getCurrentCustomer();
 
 			// After login, try to claim recent guest orders for this email
@@ -355,6 +375,26 @@ export async function completeGoogleOAuth(searchParams: URLSearchParams): Promis
 
 			showToast('Successfully signed in with Google', { type: 'success' });
 			return true;
+
+		} catch (serverError: any) {
+			console.error('Server callback error:', serverError);
+
+			// If server callback fails, try the original approach as fallback
+			console.log('Falling back to direct SDK callback...');
+			try {
+				const res = await sdk.auth.callback('customer', 'google', query);
+				console.log('Direct SDK callback result:', res);
+
+				if (res) {
+					console.log('Direct SDK callback successful, fetching customer data...');
+					await getCurrentCustomer();
+					showToast('Successfully signed in with Google', { type: 'success' });
+					return true;
+				}
+			} catch (directError: any) {
+				console.error('Direct SDK callback also failed:', directError);
+				throw serverError; // Throw the original error
+			}
 		}
 
 		console.error('OAuth callback returned falsy result');
