@@ -110,6 +110,19 @@ async function loadOrders() {
 onMount(async () => {
 	const initial = $page.url.searchParams.get('page');
 	if (initial && ['account','orders'].includes(initial)) activeTab = initial;
+
+	// Handle OAuth success message
+	const auth = $page.url.searchParams.get('auth');
+	const provider = $page.url.searchParams.get('provider');
+	if (auth === 'success' && provider === 'google') {
+		showToast('Successfully signed in with Google!', { type: 'success' });
+		// Clean up URL
+		const url = new URL($page.url);
+		url.searchParams.delete('auth');
+		url.searchParams.delete('provider');
+		goto(url.pathname + url.search, { replaceState: true });
+	}
+
 	await refreshAddresses();
 	await loadOrders();
 	loading = false;

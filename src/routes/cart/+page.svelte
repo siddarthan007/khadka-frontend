@@ -23,6 +23,7 @@
 	import { goto } from '$app/navigation';
 	import { SiGoogle } from '@icons-pack/svelte-simple-icons';
 	import { startGoogleOAuth } from '$lib/auth';
+	import { createDialog, melt } from '@melt-ui/svelte';
 
 	onMount(() => {
 		ensureCart();
@@ -42,14 +43,21 @@
 		}
 	});
 
-	let showChoice: boolean = $state(false);
+	// Melt UI Dialog setup
+	const {
+		elements: { trigger, portalled, overlay, content, title, description, close },
+		states: { open }
+	} = createDialog({
+		preventScroll: true
+	});
 
 	async function onCheckoutClick() {
 		if ($customer as any) {
 			await goto('/checkout');
 			return;
 		}
-		showChoice = true;
+		// Open the Melt UI dialog
+		open.set(true);
 	}
 
 	async function loadRecommendationsFromCart() {
@@ -465,46 +473,88 @@
 								>
 							</div>
 
-							{#if showChoice}
-								<dialog class="modal-open modal">
-									<div class="modal-box max-w-lg">
-										<h3 class="text-lg font-bold">How do you want to check out?</h3>
-										<p class="py-2 text-sm opacity-70">
-											Choose to continue as a guest or sign in to save your order and track it
-											easily.
+							{#if $open}
+								<div use:melt={$portalled}>
+									<!-- Backdrop -->
+									<div
+										use:melt={$overlay}
+										class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+									></div>
+
+									<!-- Dialog Content -->
+									<div
+										use:melt={$content}
+										class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-base-300 bg-base-100 p-4 shadow-2xl animate-in zoom-in-95 fade-in duration-200 mx-4 sm:max-w-lg sm:p-6"
+									>
+										<!-- Header -->
+										<div class="flex items-center justify-between mb-3 sm:mb-4">
+											<h3 use:melt={$title} class="text-lg sm:text-xl font-bold text-base-content">
+												How do you want to check out?
+											</h3>
+											<button
+												use:melt={$close}
+												class="btn btn-ghost btn-sm btn-circle"
+												aria-label="Close dialog"
+											>
+												<X class="w-4 h-4" />
+											</button>
+										</div>
+
+										<!-- Description -->
+										<p use:melt={$description} class="text-sm text-base-content/70 mb-4 sm:mb-6">
+											Choose to continue as a guest or sign in to save your order and track it easily.
 										</p>
-										<div class="mt-4 grid gap-2">
-											<button class="btn w-full btn-primary" onclick={() => goto('/checkout')}
-												>Continue as guest</button
-											>
+
+										<!-- Action Buttons -->
+										<div class="space-y-2 sm:space-y-3">
 											<button
-												class="btn w-full"
-												onclick={() => goto('/login?return_to=%2Fcheckout')}
-												>Sign in & continue</button
+												class="btn btn-primary w-full h-11 sm:h-12 text-sm sm:text-base font-medium"
+												onclick={() => {
+													open.set(false);
+													goto('/checkout');
+												}}
 											>
+												Continue as guest
+											</button>
+
 											<button
-												class="btn w-full"
+												class="btn btn-outline w-full h-11 sm:h-12 text-sm sm:text-base font-medium"
+												onclick={() => {
+													open.set(false);
+													goto('/login?return_to=%2Fcheckout');
+												}}
+											>
+												Sign in & continue
+											</button>
+
+											<button
+												class="btn btn-outline w-full h-11 sm:h-12 text-sm sm:text-base font-medium"
 												onclick={async () => {
+													open.set(false);
 													await startGoogleOAuth('/checkout');
 												}}
 											>
-												<span class="mr-1"><SiGoogle size={18} /></span>
-												Continue with Google
+												<div class="flex items-center justify-center gap-2">
+													<div class="w-4 h-4 sm:w-[18px] sm:h-[18px] flex items-center justify-center">
+														<SiGoogle size={16} />
+													</div>
+													<span>Continue with Google</span>
+												</div>
 											</button>
 										</div>
-										<div class="modal-action">
-											<button class="btn" onclick={() => (showChoice = false)}>Close</button>
-										</div>
-										<div class="mt-3 text-center text-sm">
-											<a class="link" href="/orders/lookup">Track an order</a>
+
+										<!-- Footer Link -->
+										<div class="mt-4 sm:mt-6 text-center">
+											<a
+												href="/orders/lookup"
+												class="text-sm text-primary hover:text-primary-focus transition-colors"
+												onclick={() => open.set(false)}
+											>
+												Track an existing order
+											</a>
 										</div>
 									</div>
-									<div class="modal-backdrop">
-										<button type="button" class="hidden" onclick={() => (showChoice = false)}
-											>close</button
-										>
-									</div>
-								</dialog>
+								</div>
 							{/if}
 							<a href="/products" class="btn btn-ghost">Continue shopping</a>
 						</div>

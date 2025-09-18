@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { login, getCurrentCustomer } from '$lib/auth';
 	import { Button } from '$lib/components/ui/button';
@@ -18,6 +19,21 @@
 		const me = await getCurrentCustomer();
 		if (me) {
 			await goto('/account');
+		}
+
+		// Handle OAuth error messages from URL parameters
+		const url = $page.url;
+		const auth = url.searchParams.get('auth');
+		const message = url.searchParams.get('message');
+
+		if (auth === 'oauth_error' && message) {
+			try {
+				errorMsg = decodeURIComponent(message);
+			} catch {
+				errorMsg = 'OAuth authentication failed';
+			}
+		} else if (auth === 'state_mismatch') {
+			errorMsg = 'Authentication state mismatch. Please try again.';
 		}
 	});
 

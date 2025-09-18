@@ -10,12 +10,24 @@
 	onMount(async () => {
 		const url = $page.url;
 		const returnTo = url.searchParams.get('return_to') || '/account';
+
+		// Check for OAuth provider errors in URL
+		const error = url.searchParams.get('error');
+		const errorDescription = url.searchParams.get('error_description');
+
+		if (error) {
+			loading = false;
+			errorMsg = errorDescription || `Authentication failed: ${error}`;
+			console.error('OAuth provider error:', { error, errorDescription });
+			return;
+		}
+
 		const ok = await completeGoogleOAuth(url.searchParams);
 		loading = false;
 		if (ok) {
 			await goto(returnTo);
 		} else {
-			errorMsg = 'Google sign-in failed.';
+			errorMsg = 'Google sign-in failed. Please try again.';
 		}
 	});
 </script>

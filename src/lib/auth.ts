@@ -278,16 +278,58 @@ export async function startGoogleOAuth(returnTo: string = '/account'): Promise<v
 export async function completeGoogleOAuth(searchParams: URLSearchParams): Promise<boolean> {
 	try {
 		const sdk = getStoreClient() as any;
-		if (!sdk) return false;
+		if (!sdk) {
+			console.error('Medusa SDK not available for OAuth callback');
+			return false;
+		}
+
+		// Extract query parameters
 		const query: Record<string, string> = {};
-		for (const [k, v] of searchParams.entries()) query[k] = v;
+		for (const [k, v] of searchParams.entries()) {
+			query[k] = v;
+		}
+
+		console.log('OAuth callback params:', {
+			hasCode: !!query.code,
+			hasState: !!query.state,
+			hasError: !!query.error,
+			error: query.error,
+			scope: query.scope
+		});
+
+		// Check for OAuth errors
+		if (query.error) {
+			console.error('OAuth provider error:', query.error, query.error_description);
+			showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
+			return false;
+		}
+
+		// Validate required parameters
+		if (!query.code) {
+			console.error('Missing authorization code in OAuth callback');
+			showToast('Authentication failed: Missing authorization code', { type: 'error' });
+			return false;
+		}
+
+		console.log('Calling sdk.auth.callback with params:', {
+			actorType: 'customer',
+			provider: 'google',
+			hasCode: true,
+			hasState: !!query.state
+		});
+
 		const res = await sdk.auth.callback('customer', 'google', query);
+		console.log('OAuth callback result:', res);
+
 		if (res) {
+			console.log('OAuth callback successful, fetching customer data...');
 			await getCurrentCustomer();
+
 			// After login, try to claim recent guest orders for this email
 			try {
 				const me = get(customer);
 				if (me?.email && me?.id) {
+					console.log('Attempting to claim guest orders for:', me.email);
 					const claimed = await sweepClaimGuestOrders(me.email, me.id);
 					if (claimed > 0) {
 						showToast(`Attached ${claimed} order${claimed > 1 ? 's' : ''} to your account`, {
@@ -295,17 +337,43 @@ export async function completeGoogleOAuth(searchParams: URLSearchParams): Promis
 						});
 					}
 				}
-			} catch {}
+			} catch (claimError) {
+				console.warn('Failed to claim guest orders:', claimError);
+			}
+
 			try {
 				const c = get(cart);
 				if (c?.id) {
-					await (sdk as any).store.cart.transferCart(c.id).catch(() => {});
+					console.log('Transferring cart for authenticated user');
+					await (sdk as any).store.cart.transferCart(c.id).catch((cartError: any) => {
+						console.warn('Failed to transfer cart:', cartError);
+					});
 				}
-			} catch {}
+			} catch (cartError) {
+				console.warn('Cart transfer error:', cartError);
+			}
+
+			showToast('Successfully signed in with Google', { type: 'success' });
 			return true;
 		}
+
+		console.error('OAuth callback returned falsy result');
+		showToast('Authentication failed: Invalid response from server', { type: 'error' });
 		return false;
-	} catch (error) {
+	} catch (error: any) {
+		console.error('OAuth callback error:', error);
+
+		// Handle specific error types
+		if (error?.response?.status === 401) {
+			showToast('Authentication failed: Invalid or expired authorization code', { type: 'error' });
+		} else if (error?.response?.status === 400) {
+			showToast('Authentication failed: Invalid request parameters', { type: 'error' });
+		} else if (error?.message) {
+			showToast(`Authentication failed: ${error.message}`, { type: 'error' });
+		} else {
+			showToast('Authentication failed: Please try again', { type: 'error' });
+		}
+
 		logApiError('completeGoogleOAuth', error);
 		return false;
 	}

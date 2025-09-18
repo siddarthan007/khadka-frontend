@@ -1009,5 +1009,17 @@
 				</div>
 			</div>
 		</div>
+		<!-- Mobile Track Order Button -->
+		<div class="border-t border-base-300 md:hidden">
+			<div class="mx-auto max-w-7xl px-4 py-4">
+				<a
+					href="/orders/lookup"
+					class="btn btn-primary btn-block flex items-center justify-center gap-2"
+				>
+					<Search class="w-4 h-4" />
+					Track Your Order
+				</a>
+			</div>
+		</div>
 	</footer>
 </div>
