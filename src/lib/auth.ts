@@ -193,13 +193,17 @@ export async function resetPassword(
 // --- Google OAuth (simplified) ---
 // Starts Google OAuth and redirects user to provider if needed.
 export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
-    const sdk = getStoreClient() as any;
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('oauth_intended_path', returnTo);
+    }
+	
+	const sdk = getStoreClient() as any;
     if (!sdk || typeof window === 'undefined') return;
     try {
         const origin = window.location.origin;
-        const callback = new URL('/oauth/google/callback', origin);
-        callback.searchParams.set('return_to', returnTo);
-        const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback.toString() });
+
+        const callback = new URL('/oauth/google/callback', origin).toString();
+        const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback });
         if (res && typeof res === 'object' && 'location' in res && res.location) {
             window.location.href = res.location as string; // Redirect to Google
             return;
@@ -311,6 +315,11 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
         } catch {}
 
         showToast('Signed in with Google', { type: 'success' });
+		const intendedPath = (typeof window !== 'undefined' ? localStorage.getItem('oauth_intended_path') : null) || '/account';
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('oauth_intended_path');
+        }
+        window.location.href = intendedPath;
         return true;
     } catch (error) {
         logApiError('handleGoogleOAuthCallback', error);
