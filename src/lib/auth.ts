@@ -5,6 +5,7 @@ import { cart } from '$lib/stores/cart';
 import { get } from 'svelte/store';
 import { showToast } from '$lib/stores/toast';
 import { normalizeUSPhone } from '$lib/us';
+import { jwtDecode } from 'jwt-decode';
 
 /**
  * Auth module notes:
@@ -18,15 +19,13 @@ import { normalizeUSPhone } from '$lib/us';
  *   - /password-reset requests a reset email.
  *   - /reset-password reads ?token=...&email=... from the URL to submit the new password.
  *
- * OAuth (Google) overview:
- * - Start endpoint: GET /oauth/google/start – builds the Medusa authorize URL and sets CSRF state cookie.
- * - Callback endpoint: GET /oauth/google/callback – validates state and redirects to the intended page.
- * - Session is managed by the Medusa store session cookie (session auth); after redirect you can call getCurrentCustomer().
- *
- * Placeholders:
- * - If we later want client helpers in this module, prefer thin wrappers around those routes, e.g.:
- *   startGoogleOAuth(returnTo = '/account') → window.location = `/oauth/google/start?return_to=${encodeURIComponent(returnTo)}`
- *   After callback, call getCurrentCustomer() to sync the customer store.
+ * OAuth (Google) simplified overview:
+ * We leverage Medusa JS SDK auth endpoints directly from the browser:
+ * startGoogleOAuth(): sdk.auth.login('customer','google', { callbackUrl }) returns either a redirect location
+ * (object with location) or a token string if the user is already authenticated with the provider.
+ * handleGoogleOAuthCallback(): sdk.auth.callback('customer','google', queryParams) returns a JWT. We decode
+ * it with jwt-decode (lightweight) to check if actor/customer needs creation (actor_id === ''). If so we create
+ * the customer then refresh the token via sdk.auth.refresh(). Finally we call getCurrentCustomer().
  */
 export type RegisterPayload = {
 	first_name?: string;
@@ -191,232 +190,133 @@ export async function resetPassword(
 	}
 }
 
-export async function loginWithGoogle(): Promise<{
-	success: boolean;
-	location?: string;
-	customer?: HttpTypes.StoreCustomer;
-}> {
-	try {
-		const sdk = getStoreClient();
-		if (!sdk) return { success: false };
-
-		const result = await (sdk as any).auth.login('customer', 'google', {});
-
-		if (typeof result === 'object' && result.location) {
-			// redirect to Google for authentication
-			return { success: true, location: result.location };
-		}
-
-		if (typeof result !== 'string') {
-			// result failed
-			return { success: false };
-		}
-
-		// all subsequent requests are authenticated
-		const { customer } = await sdk.store.customer.retrieve();
-		return { success: true, customer };
-	} catch (error) {
-		logApiError('loginWithGoogle', error);
-		return { success: false };
-	}
-}
-
-export async function registerWithGoogle(): Promise<{
-	success: boolean;
-	location?: string;
-	customer?: HttpTypes.StoreCustomer;
-}> {
-	try {
-		const sdk = getStoreClient();
-		if (!sdk) return { success: false };
-
-		const result = await (sdk as any).auth.login('customer', 'google', {});
-
-		if (typeof result === 'object' && result.location) {
-			// redirect to Google for authentication
-			return { success: true, location: result.location };
-		}
-
-		if (typeof result !== 'string') {
-			// result failed
-			return { success: false };
-		}
-
-		// all subsequent requests are authenticated
-		const { customer } = await sdk.store.customer.retrieve();
-		return { success: true, customer };
-	} catch (error) {
-		logApiError('registerWithGoogle', error);
-		return { success: false };
-	}
-}
-
-// Starts Google OAuth using official SDK and redirects the browser.
+// --- Google OAuth (simplified) ---
+// Starts Google OAuth and redirects user to provider if needed.
 export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
-	const sdk = getStoreClient() as any;
-	if (!sdk || typeof window === 'undefined') return;
-	try {
-		const origin = window.location.origin;
-		const callback = new URL('/oauth/google/callback', origin);
-		callback.searchParams.set('return_to', returnTo);
-		const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback.toString() });
-		if (res && typeof res === 'object' && 'location' in res && res.location) {
-			window.location.href = res.location as string;
-			return;
-		}
-		if (typeof res === 'string' && res) {
-			await getCurrentCustomer();
-			window.location.href = returnTo;
-			return;
-		}
-	} catch (error) {
-		logApiError('startGoogleOAuth', error);
-	}
+    const sdk = getStoreClient() as any;
+    if (!sdk || typeof window === 'undefined') return;
+    try {
+        const origin = window.location.origin;
+        const callback = new URL('/oauth/google/callback', origin);
+        callback.searchParams.set('return_to', returnTo);
+        const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback.toString() });
+        if (res && typeof res === 'object' && 'location' in res && res.location) {
+            window.location.href = res.location as string; // Redirect to Google
+            return;
+        }
+        if (typeof res === 'string') {
+            // Already have a token (user previously authorized) -> just hydrate customer
+            await getCurrentCustomer();
+            window.location.href = returnTo;
+            return;
+        }
+        showToast('Unable to start Google authentication', { type: 'error' });
+    } catch (error) {
+        logApiError('startGoogleOAuth', error);
+        showToast('Failed to start Google sign-in', { type: 'error' });
+    }
 }
 
-// Completes Google OAuth on the callback page.
-export async function completeGoogleOAuth(searchParams: URLSearchParams): Promise<boolean> {
-	try {
-		const sdk = getStoreClient() as any;
-		if (!sdk) {
-			console.error('Medusa SDK not available for OAuth callback');
-			return false;
-		}
+// Handle callback page: exchange code for token, optionally create customer, refresh token, hydrate store.
+export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): Promise<boolean> {
+    const sdk = getStoreClient() as any;
+    if (!sdk) return false;
+    try {
+        const query: Record<string, string> = {};
+        for (const [k, v] of searchParams.entries()) query[k] = v;
 
-		// Extract query parameters
-		const query: Record<string, string> = {};
-		for (const [k, v] of searchParams.entries()) {
-			query[k] = v;
-		}
+        if (query.error) {
+            showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
+            return false;
+        }
+        if (!query.code) {
+            showToast('Authentication failed: Missing authorization code', { type: 'error' });
+            return false;
+        }
 
-		console.log('OAuth callback params:', {
-			hasCode: !!query.code,
-			hasState: !!query.state,
-			hasError: !!query.error,
-			error: query.error,
-			scope: query.scope
-		});
+        let token: string = '';
+        try {
+            token = await sdk.auth.callback('customer', 'google', query);
+        } catch (err) {
+            logApiError('googleOAuthCallback', err);
+            showToast('Authentication failed while exchanging code', { type: 'error' });
+            return false;
+        }
 
-		// Check for OAuth errors
-		if (query.error) {
-			console.error('OAuth provider error:', query.error, query.error_description);
-			showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
-			return false;
-		}
+        if (typeof token !== 'string') {
+            showToast('Authentication failed: Invalid token response', { type: 'error' });
+            return false;
+        }
 
-		// Validate required parameters
-		if (!query.code) {
-			console.error('Missing authorization code in OAuth callback');
-			showToast('Authentication failed: Missing authorization code', { type: 'error' });
-			return false;
-		}
-
-		// Since the callback is coming directly from Google to frontend,
-		// we need to exchange the authorization code for a session on the backend
-		// Instead of calling sdk.auth.callback (which is for backend use),
-		// we'll make a request to our server-side callback endpoint
-		console.log('Exchanging authorization code for session...');
-
+		// Attempt to decode token for additional claims (email, name, etc.)
+		type Decoded = {
+			actor_id?: string;
+			email?: string;
+			sub?: string;
+			given_name?: string;
+			family_name?: string;
+			name?: string;
+		};
+		let decoded: Decoded | null = null;
 		try {
-			// Call our server-side callback endpoint to complete OAuth
-			const callbackUrl = new URL('/oauth/google/callback', window.location.origin);
-			for (const [key, value] of Object.entries(query)) {
-				callbackUrl.searchParams.set(key, value);
-			}
+			decoded = jwtDecode<Decoded>(token);
+		} catch {
+			// continue without decoded data
+		}
 
-			const response = await fetch(callbackUrl.toString(), {
-				method: 'GET',
-				credentials: 'include' // Include cookies for session handling
-			});
-
-			if (!response.ok) {
-				throw new Error(`Server callback failed: ${response.status} ${response.statusText}`);
-			}
-
-			// The server-side callback should redirect to the destination
-			// But since we're calling it via fetch, we need to handle the redirect manually
-			const redirectUrl = response.headers.get('location');
-			if (redirectUrl) {
-				console.log('Server callback successful, redirecting to:', redirectUrl);
-				window.location.href = redirectUrl;
-				return true;
-			}
-
-			console.log('Server callback successful, fetching customer data...');
-			await getCurrentCustomer();
-
-			// After login, try to claim recent guest orders for this email
-			try {
-				const me = get(customer);
-				if (me?.email && me?.id) {
-					console.log('Attempting to claim guest orders for:', me.email);
-					const claimed = await sweepClaimGuestOrders(me.email, me.id);
-					if (claimed > 0) {
-						showToast(`Attached ${claimed} order${claimed > 1 ? 's' : ''} to your account`, {
-							type: 'success'
-						});
-					}
+		const needsCustomer = !decoded?.actor_id;
+		if (needsCustomer) {
+			// Derive best-effort customer payload
+			const email = decoded?.email?.toLowerCase()?.trim();
+			const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
+			const last_name = decoded?.family_name || (() => {
+				if (decoded?.name) {
+					const parts = decoded.name.split(' ');
+					if (parts.length > 1) return parts.slice(1).join(' ');
 				}
-			} catch (claimError) {
-				console.warn('Failed to claim guest orders:', claimError);
+				return undefined;
+			})();
+
+			if (!email) {
+				showToast('Authentication failed: Provider did not return an email', { type: 'error' });
+				return false;
 			}
 
 			try {
-				const c = get(cart);
-				if (c?.id) {
-					console.log('Transferring cart for authenticated user');
-					await (sdk as any).store.cart.transferCart(c.id).catch((cartError: any) => {
-						console.warn('Failed to transfer cart:', cartError);
-					});
+				await sdk.store.customer.create(
+					{ email, first_name, last_name },
+					{},
+					{ Authorization: `Bearer ${token}` }
+				);
+				await sdk.auth.refresh();
+			} catch (createErr: any) {
+				// If identity already exists, attempt a refresh & continue
+				const msg = createErr?.response?.data?.message || createErr?.message;
+				if (msg && /already exists/i.test(msg)) {
+					try { await sdk.auth.refresh(); } catch {}
+				} else {
+					logApiError('googleOAuthCreateCustomer', createErr);
+					showToast('Failed to finalize account creation', { type: 'error' });
+					return false;
 				}
-			} catch (cartError) {
-				console.warn('Cart transfer error:', cartError);
-			}
-
-			showToast('Successfully signed in with Google', { type: 'success' });
-			return true;
-
-		} catch (serverError: any) {
-			console.error('Server callback error:', serverError);
-
-			// If server callback fails, try the original approach as fallback
-			console.log('Falling back to direct SDK callback...');
-			try {
-				const res = await sdk.auth.callback('customer', 'google', query);
-				console.log('Direct SDK callback result:', res);
-
-				if (res) {
-					console.log('Direct SDK callback successful, fetching customer data...');
-					await getCurrentCustomer();
-					showToast('Successfully signed in with Google', { type: 'success' });
-					return true;
-				}
-			} catch (directError: any) {
-				console.error('Direct SDK callback also failed:', directError);
-				throw serverError; // Throw the original error
 			}
 		}
 
-		console.error('OAuth callback returned falsy result');
-		showToast('Authentication failed: Invalid response from server', { type: 'error' });
-		return false;
-	} catch (error: any) {
-		console.error('OAuth callback error:', error);
+        await getCurrentCustomer();
 
-		// Handle specific error types
-		if (error?.response?.status === 401) {
-			showToast('Authentication failed: Invalid or expired authorization code', { type: 'error' });
-		} else if (error?.response?.status === 400) {
-			showToast('Authentication failed: Invalid request parameters', { type: 'error' });
-		} else if (error?.message) {
-			showToast(`Authentication failed: ${error.message}`, { type: 'error' });
-		} else {
-			showToast('Authentication failed: Please try again', { type: 'error' });
-		}
+        // Attempt cart transfer if guest cart exists
+        try {
+            const c = get(cart);
+            if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => {});
+        } catch {}
 
-		logApiError('completeGoogleOAuth', error);
-		return false;
-	}
+        showToast('Signed in with Google', { type: 'success' });
+        return true;
+    } catch (error) {
+        logApiError('handleGoogleOAuthCallback', error);
+        showToast('Google sign-in failed', { type: 'error' });
+        return false;
+    }
 }
 
 // Attempts to claim recent guest orders by display_id guesses for a given email.

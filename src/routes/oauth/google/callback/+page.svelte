@@ -1,44 +1,23 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { getCurrentCustomer } from '$lib/auth';
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { handleGoogleOAuthCallback } from '$lib/auth';
 
-	let loading: boolean = $state(true);
-	let errorMsg: string | null = $state(null);
+  let loading: boolean = $state(true);
+  let errorMsg: string | null = $state(null);
 
-	onMount(async () => {
-		const url = $page.url;
-		const returnTo = url.searchParams.get('return_to') || '/account';
-
-		// Check for OAuth provider errors in URL
-		const error = url.searchParams.get('error');
-		const errorDescription = url.searchParams.get('error_description');
-
-		if (error) {
-			loading = false;
-			errorMsg = errorDescription || `Authentication failed: ${error}`;
-			console.error('OAuth provider error:', { error, errorDescription });
-			return;
-		}
-
-		// Check if user is already authenticated (server-side callback should have handled OAuth)
-		try {
-			const customer = await getCurrentCustomer();
-			if (customer) {
-				console.log('OAuth successful, user authenticated:', customer.email);
-				await goto(returnTo);
-				return;
-			}
-		} catch (authError) {
-			console.warn('Failed to get current customer:', authError);
-		}
-
-		// If we get here, authentication failed
-		loading = false;
-		errorMsg = 'Authentication failed. Please try again.';
-		console.error('OAuth callback: User not authenticated after callback');
-	});
+  onMount(async () => {
+    const url = $page.url;
+    const returnTo = url.searchParams.get('return_to') || '/account';
+    const ok = await handleGoogleOAuthCallback(url.searchParams);
+    if (ok) {
+      await goto(returnTo);
+      return;
+    }
+    loading = false;
+    errorMsg = 'Authentication failed. Please try again.';
+  });
 </script>
 
 <section class="w-full py-10">
