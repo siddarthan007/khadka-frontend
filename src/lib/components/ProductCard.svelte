@@ -6,7 +6,11 @@
 	import { ShoppingCart } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 
-	type CalculatedPrice = { calculated_amount?: number; amount?: number; currency_code?: string } | null;
+	type CalculatedPrice = {
+		calculated_amount?: number;
+		amount?: number;
+		currency_code?: string;
+	} | null;
 
 	let {
 		title = null,
@@ -69,14 +73,14 @@
 		if (!$cart?.items || !variantId) return 0;
 		const item = $cart.items.find((i: any) => i?.variant_id === variantId);
 		return item?.quantity ?? 0;
-	})
+	});
 
 	// Loading state for better UX and preventing double-clicks
 	let isUpdating = $state(false);
 
 	async function onAddToCart() {
 		if (!variantId || isUpdating) return;
-		
+
 		isUpdating = true;
 		try {
 			await addLine(variantId, 1);
@@ -94,7 +98,7 @@
 
 	async function onInc() {
 		if (!variantId || !$cart?.items || isUpdating) return;
-		
+
 		const item = $cart.items.find((i: any) => i?.variant_id === variantId);
 		if (!item) return;
 
@@ -111,7 +115,7 @@
 
 	async function onDec() {
 		if (!variantId || !$cart?.items || isUpdating) return;
-		
+
 		const item = $cart.items.find((i: any) => i?.variant_id === variantId);
 		if (!item) return;
 
@@ -133,25 +137,66 @@
 	const displayTitle = title ?? 'Untitled';
 </script>
 
-<div role="group" onmousemove={handleMouseMove} onmouseleave={handleMouseLeave} class={cn('relative card group bg-base-100 border border-base-300/60 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 ring-1 ring-black/5 hover:border-primary/40', className)}>
-	<a href={href} class="block relative aspect-[4/3] overflow-hidden">
-		<img src={image} alt={displayTitle} loading="lazy" decoding="async" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-		{#if (badge ?? isNew())}
-			<span class="badge badge-primary badge-sm text-primary-content absolute left-2 top-2 px-2.5 py-0.5 rounded-full shadow">NEW</span>
+<div
+	role="group"
+	onmousemove={handleMouseMove}
+	onmouseleave={handleMouseLeave}
+	class={cn(
+		'group card relative overflow-hidden rounded-2xl border border-base-300/60 bg-base-100 shadow-xl ring-1 ring-black/5 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl',
+		className
+	)}
+>
+	<a {href} class="relative block aspect-[4/3] overflow-hidden">
+		<img
+			src={image}
+			alt={displayTitle}
+			loading="lazy"
+			decoding="async"
+			class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+		/>
+		{#if badge ?? isNew()}
+			<span
+				class="absolute top-2 left-2 badge rounded-full badge-sm px-2.5 py-0.5 text-primary-content shadow badge-primary"
+			>NEW</span
+			>
 		{/if}
 	</a>
-	<div class="p-4 space-y-2">
-		<a href={href} class="block font-semibold leading-tight hover:underline line-clamp-2">{displayTitle}</a>
-		<div class="flex items-center justify-between">
-			<span class="font-bold text-lg">{formatPrice(price)}</span>
+	<div class="space-y-3 p-3 sm:space-y-2 sm:p-4">
+		<a {href} class="line-clamp-2 block leading-tight font-semibold hover:underline text-sm sm:text-base"
+			>{displayTitle}</a
+		>
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+			<span class="text-base font-bold sm:text-lg">{formatPrice(price)}</span>
 			{#if currentQty() > 0}
-				<div class="join h-8 rounded-full overflow-hidden border border-base-300">
-					<Button variant="ghost" size="sm" class="join-item" onclick={onDec} aria-label="Decrease quantity">-</Button>
-					<input class="join-item w-12 text-center bg-transparent border-0 pointer-events-none" value={currentQty()} readonly aria-live="polite" aria-label="Quantity" />
-					<Button variant="ghost" size="sm" class="join-item" onclick={onInc} aria-label="Increase quantity">+</Button>
+				<div class="join h-9 overflow-hidden rounded-full border border-base-300 sm:h-8">
+					<Button
+						variant="ghost"
+						size="sm"
+						class="join-item btn-sm"
+						onclick={onDec}
+						aria-label="Decrease quantity">-</Button
+					>
+					<input
+						class="pointer-events-none join-item w-10 border-0 bg-transparent text-center sm:w-12"
+						value={currentQty()}
+						readonly
+						aria-live="polite"
+						aria-label="Quantity"
+					/>
+					<Button
+						variant="ghost"
+						size="sm"
+						class="join-item btn-sm"
+						onclick={onInc}
+						aria-label="Increase quantity">+</Button
+					>
 				</div>
 			{:else}
-				<button class="btn btn-sm btn-primary rounded-full shadow-md hover:shadow-lg" onclick={onAddToCart} disabled={!variantId}>
+				<button
+					class="btn rounded-full shadow-md btn-sm btn-primary hover:shadow-lg w-full sm:w-auto sm:btn-md"
+					onclick={onAddToCart}
+					disabled={!variantId}
+				>
 					<ShoppingCart class="size-4" />
 					Add to cart
 				</button>
@@ -160,6 +205,9 @@
 	</div>
 	<!-- MagicCard-style radial glow overlay -->
 	<Motion style={{ background: bg, opacity: gradientOpacity }} let:motion>
-		<div use:motion class="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-[opacity,box-shadow] duration-300 group-hover:opacity-100 shadow-[0_0_0_rgba(0,0,0,0)] group-hover:shadow-[0_0_60px_rgba(134,120,249,0.35)]"></div>
+		<div
+			use:motion
+			class="pointer-events-none absolute -inset-px rounded-2xl opacity-0 shadow-[0_0_0_rgba(0,0,0,0)] transition-[opacity,box-shadow] duration-300 group-hover:opacity-100 group-hover:shadow-[0_0_60px_rgba(134,120,249,0.35)]"
+		></div>
 	</Motion>
 </div>

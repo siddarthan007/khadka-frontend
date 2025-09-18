@@ -25,7 +25,26 @@ export async function getCart(): Promise<HttpTypes.StoreCart | null> {
 	if (!existingCart?.id) return null;
 	const store = getStoreClient();
 	if (!store) return null;
-	const { cart: freshCart } = await store.store.cart.retrieve(existingCart.id);
+	// Use official SDK method only
+	const resp = await (store as any).store.cart.retrieve(existingCart.id);
+	const freshCart: any = (resp as any)?.cart ?? resp;
+
+	// Ensure each line item has a variant object with at least title and metadata
+	try {
+		const items: any[] = (freshCart?.items ?? []) as any[];
+		for (const li of items) {
+			if (!li.variant) {
+				li.variant = {
+					id: li.variant_id,
+					title: li.variant_title,
+					product_id: li.product_id,
+					metadata: { ...(li?.variant?.metadata ?? {}), thumbnail: li.thumbnail }
+				};
+			} else if (!li.variant?.metadata) {
+				li.variant.metadata = { ...(li?.variant?.metadata ?? {}), thumbnail: li.thumbnail };
+			}
+		}
+	} catch {}
 	cart.set(freshCart);
 	return freshCart;
 }
@@ -78,14 +97,54 @@ export async function clearCart(): Promise<HttpTypes.StoreCart | null> {
 	const existing = get(cart);
 	if (!existing?.id) return null;
 	const cartId = existing.id;
-	const items = (existing as any).items ?? [];
-	await Promise.all(
-		items.map((li: any) => {
-			const store = getStoreClient();
-			if (!store) return Promise.resolve(null);
-			return store.store.cart.deleteLineItem(cartId, li.id).catch(() => null);
-		})
-	);
+	const store = getStoreClient();
+	if (!store) return await getCart();
+
+	const hasPayments = !!(existing as any)?.payment_collection?.payment_sessions?.length;
+	const items: any[] = (existing as any).items ?? [];
+
+	// If payment sessions exist, safer to start a fresh cart than deleting lines (backend may block due to sessions)
+	if (hasPayments) {
+		try {
+			const regionId = (existing as any).region_id;
+			const { cart: newCart } = await (store as any).store.cart.create(
+				regionId ? { region_id: regionId } : {}
+			);
+			cart.set(newCart);
+			return newCart;
+		} catch (e) {
+			console.error('[cart] failed to create new cart for clearCart with payments', e);
+		}
+	}
+
+	let anyFailure = false;
+	for (const li of items) {
+		try {
+			await (store as any).store.cart.deleteLineItem(cartId, li.id);
+		} catch (e) {
+			anyFailure = true;
+			console.warn(
+				'[cart] deleteLineItem failed, will fallback to new cart',
+				li.id,
+				(e as any)?.message
+			);
+			break;
+		}
+	}
+
+	if (anyFailure) {
+		try {
+			const regionId = (existing as any).region_id;
+			const { cart: newCart } = await (store as any).store.cart.create(
+				regionId ? { region_id: regionId } : {}
+			);
+			cart.set(newCart);
+			return newCart;
+		} catch (e) {
+			console.error('[cart] fallback new cart creation failed', e);
+		}
+	}
+
 	return await getCart();
 }
 
@@ -98,16 +157,23 @@ export async function applyCoupon(code: string): Promise<HttpTypes.StoreCart | n
 	const store = getStoreClient();
 	if (!store) return await getCart();
 	try {
-		await (store as any).client.fetch(`/store/carts/${cartId}/promotions`, {
+		const res = await fetch(`/api/cart/promotions?cart_id=${encodeURIComponent(cartId)}`, {
 			method: 'POST',
-			body: { promo_codes: [coupon] }
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ promo_codes: [coupon] })
 		});
+		if (!res.ok) throw new Error(await res.text());
 		const updated = await getCart();
-		try { const m = await import('$lib/stores/toast'); m.showToast('Coupon applied', { type: 'success' }); } catch { }
+		try {
+			const m = await import('$lib/stores/toast');
+			m.showToast('Coupon applied', { type: 'success' });
+		} catch {}
 		return updated;
 	} catch (err) {
-		console.warn('Failed to apply coupon', err);
-		try { const m = await import('$lib/stores/toast'); m.showToast('Coupon not found', { type: 'error' }); } catch { }
+		try {
+			const m = await import('$lib/stores/toast');
+			m.showToast('Coupon not valid', { type: 'error' });
+		} catch {}
 		return await getCart();
 	}
 }
@@ -120,15 +186,23 @@ export async function removeCoupon(code: string): Promise<HttpTypes.StoreCart | 
 	const store = getStoreClient();
 	if (!store) return await getCart();
 	try {
-		await (store as any).client.fetch(`/store/carts/${cartId}/promotions`, {
+		const res = await fetch(`/api/cart/promotions?cart_id=${encodeURIComponent(cartId)}`, {
 			method: 'DELETE',
-			body: { promo_codes: [coupon] }
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ promo_codes: [coupon] })
 		});
+		if (!res.ok) throw new Error(await res.text());
 		const updated = await getCart();
-		try { const m = await import('$lib/stores/toast'); m.showToast('Coupon removed', { type: 'success' }); } catch { }
+		try {
+			const m = await import('$lib/stores/toast');
+			m.showToast('Coupon removed', { type: 'success' });
+		} catch {}
 		return updated;
 	} catch (err) {
-		console.warn('Failed to remove coupon', err);
+		try {
+			const m = await import('$lib/stores/toast');
+			m.showToast('Failed to remove coupon', { type: 'error' });
+		} catch {}
 		return await getCart();
 	}
 }

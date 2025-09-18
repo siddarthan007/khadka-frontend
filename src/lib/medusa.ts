@@ -1,5 +1,6 @@
 import Medusa from '@medusajs/js-sdk';
 import type { HttpTypes } from '@medusajs/types';
+import { ORDER_LOOKUP_FIELDS, ORDER_DETAIL_FIELDS } from './order-fields';
 import { env as publicEnv } from '$env/dynamic/public';
 import { MeiliSearch } from "meilisearch";
 
@@ -204,22 +205,16 @@ export async function listAllProductCategories(): Promise<HttpTypes.StoreProduct
 	const limit = 50;
 
 	try {
+		const store = getStoreClient();
+		if (!store) return all;
 		while (true) {
-			const store = getStoreClient();
-			if (!store) return all;
-			const resp = await (store as any).client.fetch(`/store/product-categories`, {
-				method: 'GET',
-				query: { offset, limit, fields: '+metadata' }
+			const { product_categories = [], count = 0 } = await (store as any).store.category.list({
+				offset,
+				limit,
+				fields: '+metadata'
 			});
-			const categories: HttpTypes.StoreProductCategory[] = (resp as any).product_categories
-				?? (resp as any).productCategories
-				?? (resp as any).categories
-				?? [];
-			const count: number | undefined = (resp as any).count;
-			if (!categories.length) break;
-			all.push(...categories);
-			if (typeof count === 'number' && all.length >= count) break;
-			if (categories.length < limit) break;
+			if (product_categories.length) all.push(...product_categories);
+			if (!product_categories.length || all.length >= count) break;
 			offset += limit;
 		}
 		return all;
@@ -233,12 +228,12 @@ export async function getProductCategoryByHandle(handle: string): Promise<HttpTy
 	try {
 		const store = getStoreClient();
 		if (!store) return null;
-		const resp = await (store as any).client.fetch(`/store/product-categories`, {
-			method: 'GET',
-			query: { handle, limit: 1, fields: '+metadata' }
+		const { product_categories = [] } = await (store as any).store.category.list({
+			handle,
+			limit: 1,
+			fields: '+metadata'
 		});
-		const categories: HttpTypes.StoreProductCategory[] = (resp as any).product_categories ?? [];
-		if (categories[0]) return categories[0];
+		if (product_categories[0]) return product_categories[0];
 		const all = await listAllProductCategories();
 		return all.find((c) => c.handle === handle) ?? null;
 	} catch (error: any) {
@@ -299,17 +294,6 @@ export async function getProductByHandle(handle: string, fields: string = DEFAUL
 		const { products } = await store.store.product.list(query as any);
 		if (products?.[0]) return products[0];
 	} catch (error: any) {
-		try {
-			const store = getStoreClient();
-			if (!store) return null;
-			const resp = await (store as any).client.fetch(`/store/products`, { method: 'GET', query });
-			const products: HttpTypes.StoreProduct[] = (resp as any).products ?? [];
-			if (products[0]) return products[0];
-		} catch (fallbackErr) {
-			if ((fallbackErr as any)?.response?.status === 404) return null;
-			logApiError('getProductByHandle', fallbackErr);
-			return null;
-		}
 		if (error?.response?.status === 404) return null;
 		logApiError('getProductByHandle', error);
 		return null;
@@ -416,5 +400,72 @@ export async function listProductsByCollectionAndCategories(
 	const collectionFilter = Array.isArray(collectionId) ? collectionId : [collectionId];
 	const categoryFilter = Array.isArray(categoryIds) ? categoryIds : [categoryIds];
 	return listProducts({ collection_id: collectionFilter, category_id: categoryFilter, ...opts });
+}
+
+// Orders (guest lookup helpers)
+// The JS SDK no longer exposes store.order.lookup in our environment. We emulate a lookup by:
+// 1. If token is provided and looks like an order id (order_*) try direct retrieve.
+// 2. If display_id + email provided: list first 50 orders filtered by email then match display_id.
+// 3. Fallback: try retrieve(display_id) if it resembles an id.
+export async function lookupOrder(params: { token?: string; display_id?: string | number; email?: string }): Promise<HttpTypes.StoreOrder | null> {
+	try {
+		const store = getStoreClient() as any;
+		if (!store) return null;
+		const { token, display_id, email } = params;
+
+		const fullFields = ORDER_LOOKUP_FIELDS;
+
+		// Direct retrieve if token looks like order id
+		if (token && /^order_/.test(token)) {
+			try {
+				const full = await store.store.order.retrieve(token, { fields: fullFields });
+				return (full as any)?.order ?? null;
+			} catch {}
+		}
+
+		// Display ID + email path: list orders for email then match display_id
+				if (display_id && email) {
+					try {
+						const listResp = await store.store.order.list({ fields: 'id,display_id,email,status,payment_status,fulfillment_status,total,currency_code,created_at', limit: 50 });
+						const match = (listResp as any)?.orders?.find((o: any) => String(o.display_id) === String(display_id) && o.email?.toLowerCase() === email.toLowerCase());
+						if (match) {
+							try {
+								const full = await store.store.order.retrieve(match.id, { fields: fullFields });
+								return (full as any)?.order ?? match;
+							} catch { return match; }
+						}
+					} catch (e) {
+						logApiError('lookupOrder.list', e);
+					}
+				}
+
+		// Last resort: try treating display_id as id
+			if (display_id && /^order_/.test(String(display_id))) {
+				try {
+					const full = await store.store.order.retrieve(String(display_id), { fields: fullFields });
+					return (full as any)?.order ?? null;
+				} catch {}
+			}
+	} catch (error) {
+		logApiError('lookupOrder', error);
+	}
+	return null;
+}
+
+// Query system order fetch using Medusa SDK REST API
+export async function queryOrderById(orderId: string) {
+	try {
+		const store = getStoreClient();
+		if (!store) return null;
+
+		const { order } = await store.store.order.retrieve(orderId, {
+			fields: ORDER_DETAIL_FIELDS
+		});
+
+		return order ?? null;
+	} catch (e) {
+		logApiError('queryOrderById', e);
+		return null;
+	}
 }
 

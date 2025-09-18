@@ -18,6 +18,7 @@
 		"@lucide/svelte": "^0.515.0",
 		"@melt-ui/pp": "^0.3.2",
 		"@melt-ui/svelte": "^0.86.6",
+		"@stripe/stripe-js": "^4.10.0",
 		"@sveltejs/adapter-auto": "^6.0.0",
 		"@sveltejs/adapter-node": "^5.3.2",
 		"@sveltejs/kit": "^2.22.0",
@@ -31,8 +32,10 @@
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
 		"prettier-plugin-tailwindcss": "^0.6.11",
+		"stripe": "^18.5.0",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
+		"svelte-stripe": "^1.4.0",
 		"tailwind-merge": "^3.3.1",
 		"tailwind-variants": "^1.0.0",
 		"tailwindcss": "^4.0.0",
@@ -54,6 +57,7 @@
 		]
 	},
 	"dependencies": {
+		"@icons-pack/svelte-simple-icons": "^6.4.0",
 		"@medusajs/js-sdk": "^2.10.1",
 		"@medusajs/medusa": "^2.10.1",
 		"@medusajs/medusa-js": "^6.1.10",

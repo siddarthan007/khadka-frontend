@@ -20,7 +20,20 @@
 	} from '$lib/components/ui/sheet';
 	import { Separator } from '$lib/components/ui/separator';
 	import logo from '$lib/assets/logo.png';
-	import { Menu, Search, ShoppingCart, Sun, Moon, Instagram, Facebook, Twitter, ChevronRight, Globe, Trash } from '@lucide/svelte';
+	import {
+		Menu,
+		Search,
+		ShoppingCart,
+		Sun,
+		Moon,
+		ChevronRight,
+		Globe,
+		Trash,
+		Phone,
+		Mail,
+		MapPin
+	} from '@lucide/svelte';
+	import { SiInstagram, SiFacebook, SiX } from '@icons-pack/svelte-simple-icons';
 	import { Motion, useAnimation, useMotionValue, useMotionTemplate } from 'svelte-motion';
 	import { cn } from '$lib/utils.js';
 	import { cart } from '$lib/stores/cart';
@@ -66,12 +79,23 @@
 		try {
 			if (authMode === 'login') {
 				const me = await login(authEmail, authPassword);
-				if (me) { authOpen = false; }
-				else { authError = 'Invalid email or password'; }
+				if (me) {
+					authOpen = false;
+				} else {
+					authError = 'Invalid email or password';
+				}
 			} else {
-				const me = await register({ email: authEmail, password: authPassword, first_name: authFirst, last_name: authLast });
-				if (me) { authOpen = false; }
-				else { authError = 'Could not create account'; }
+				const me = await register({
+					email: authEmail,
+					password: authPassword,
+					first_name: authFirst,
+					last_name: authLast
+				});
+				if (me) {
+					authOpen = false;
+				} else {
+					authError = 'Could not create account';
+				}
 			}
 		} finally {
 			authLoading = false;
@@ -79,13 +103,17 @@
 	}
 
 	type CollectionItem = { title: string; handle: string; emoji?: string };
-	let { children, data }: { children: any; data?: { collectionItems?: CollectionItem[] } } = $props();
+	let { children, data }: { children: any; data?: { collectionItems?: CollectionItem[]; categoryItems?: any[]; storeMetadata?: Record<string, any> } } =
+		$props();
 	let collectionItems: CollectionItem[] = $state(data?.collectionItems ?? []);
+	let categoryItems: any[] = $state(data?.categoryItems ?? []);
+	let storeMetadata: Record<string, any> = $state(data?.storeMetadata ?? {});
 	let cartOpen = $state(false);
 
 	const navLinks = [
 		{ label: 'Products', href: '/products' },
-		{ label: 'Collections', href: '/collections' }
+		{ label: 'Collections', href: '/collections' },
+		{ label: 'Track Order', href: '/orders/lookup', icon: Search }
 	];
 
 	type Theme = 'khadka' | 'khadka-dark';
@@ -95,7 +123,6 @@
 	let isCountriesOpen = $state(false);
 	let countriesContainer: HTMLElement | null = $state(null);
 	let svgControls = useAnimation();
-
 
 	const listVariants = {
 		visible: {
@@ -135,11 +162,15 @@
 	}
 
 	function initTheme() {
-		const saved = typeof localStorage !== 'undefined' ? (localStorage.getItem('theme') as string | null) : null;
+		const saved =
+			typeof localStorage !== 'undefined' ? (localStorage.getItem('theme') as string | null) : null;
 		const normalized = (saved === 'dark' ? 'khadka-dark' : saved) as Theme | null;
 		if (normalized && themes.includes(normalized)) {
 			theme = normalized;
-		} else if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+		} else if (
+			typeof window !== 'undefined' &&
+			window.matchMedia('(prefers-color-scheme: dark)').matches
+		) {
 			theme = 'khadka-dark';
 		} else {
 			theme = 'khadka';
@@ -177,7 +208,7 @@
 					e.preventDefault();
 					isCountriesOpen = false;
 					const href = anchor.getAttribute('href') || '/collections';
-					
+
 					// Use SvelteKit navigation with invalidateAll to ensure data reloads
 					await goto(href, { invalidateAll: true });
 				}
@@ -206,82 +237,127 @@
 	let shineBorder = useMotionTemplate`radial-gradient(30% 30px at ${posX}px ${posY}px, rgba(134,120,249,1) 45%, transparent)`;
 
 	function onSearchMouseMove(e: MouseEvent) {
-	    if (!searchInputRef) return;
-	    const rect = searchInputRef.getBoundingClientRect();
-	    posX.set(e.clientX - rect.left);
-	    posY.set(e.clientY - rect.top);
+		if (!searchInputRef) return;
+		const rect = searchInputRef.getBoundingClientRect();
+		posX.set(e.clientX - rect.left);
+		posY.set(e.clientY - rect.top);
 	}
 
 	function onSearchFocus() {
-	    overlayOpacity = 1;
+		overlayOpacity = 1;
 	}
 
 	function onSearchBlur() {
-	    if (!isSearchOpen) overlayOpacity = 0;
+		if (!isSearchOpen) overlayOpacity = 0;
 	}
 
-	function onSearchMouseEnter() { overlayOpacity = 1; }
-	function onSearchMouseLeave() { if (!isSearchOpen) overlayOpacity = 0; }
+	function onSearchMouseEnter() {
+		overlayOpacity = 1;
+	}
+	function onSearchMouseLeave() {
+		if (!isSearchOpen) overlayOpacity = 0;
+	}
 
 	let typingTimer: ReturnType<typeof setTimeout> | null = null;
-	let searchResults: { products: { id: string; title: string; handle: string; thumbnail: string | null }[]; categories: { id: string; name: string; handle: string; thumbnail: string | null }[] } = $state({ products: [], categories: [] });
+	let searchResults: {
+		products: { id: string; title: string; handle: string; thumbnail: string | null }[];
+		categories: { id: string; name: string; handle: string; thumbnail: string | null }[];
+	} = $state({ products: [], categories: [] });
 	async function onSearchInput(e: Event) {
-	    const value = (e.target as HTMLInputElement).value;
-	    searchQuery = value;
-	    if (typingTimer) clearTimeout(typingTimer);
-	    if (value.trim().length > 0) {
-	        isSearchOpen = true;
-	        overlayOpacity = 1;
-	        typingTimer = setTimeout(async () => {
-	            try {
-	                const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=6`);
-	                const data = await res.json();
-	                searchResults = { products: data.products ?? [], categories: data.categories ?? [] };
-	            } catch (err) {
-	                console.error('Search failed', err);
-	                searchResults = { products: [], categories: [] };
-	            }
-	        }, 200);
-	    } else {
-	        typingTimer = setTimeout(() => {
-	            if (searchQuery.trim().length === 0) { isSearchOpen = false; overlayOpacity = 0; searchResults = { products: [], categories: [] }; }
-	        }, 250);
-	    }
+		const value = (e.target as HTMLInputElement).value;
+		searchQuery = value;
+		if (typingTimer) clearTimeout(typingTimer);
+		if (value.trim().length > 0) {
+			isSearchOpen = true;
+			overlayOpacity = 1;
+			typingTimer = setTimeout(async () => {
+				try {
+					const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=6`);
+					const data = await res.json();
+					searchResults = { products: data.products ?? [], categories: data.categories ?? [] };
+				} catch (err) {
+					console.error('Search failed', err);
+					searchResults = { products: [], categories: [] };
+				}
+			}, 200);
+		} else {
+			typingTimer = setTimeout(() => {
+				if (searchQuery.trim().length === 0) {
+					isSearchOpen = false;
+					overlayOpacity = 0;
+					searchResults = { products: [], categories: [] };
+				}
+			}, 250);
+		}
 	}
 
-	function closeSearch() { isSearchOpen = false; overlayOpacity = 0; }
+	function closeSearch() {
+		isSearchOpen = false;
+		overlayOpacity = 0;
+	}
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="min-h-svh flex flex-col">
-	<header class="sticky top-0 z-50 backdrop-blur transition-colors duration-300" class:bg-base-100={scrolled} class:shadow-md={scrolled} class:border-b={scrolled} class:border-base-300={scrolled}>
-		<div class="navbar max-w-7xl mx-auto px-3">
+<div class="flex min-h-svh flex-col">
+	<header
+		class="sticky top-0 z-50 backdrop-blur transition-colors duration-300"
+		class:bg-base-100={scrolled}
+		class:shadow-md={scrolled}
+		class:border-b={scrolled}
+		class:border-base-300={scrolled}
+	>
+		<div class="mx-auto navbar max-w-7xl px-3">
 			<!-- Left: logo + dropdown -->
-			<div class="flex items-center gap-2 flex-1">
-				<a href="/" class="btn btn-ghost px-2 gap-3">
+			<div class="flex flex-1 items-center gap-2">
+				<a href="/" class="btn gap-3 px-2 btn-ghost">
 					<img src={logo} alt="KhadkaFoods" class="h-30 w-auto" />
 				</a>
 				<div class="relative hidden md:block" bind:this={countriesContainer}>
-					<button class="px-3 py-2 rounded-md hover:bg-base-200 inline-flex items-center gap-2" onclick={() => (isCountriesOpen = !isCountriesOpen)} aria-expanded={isCountriesOpen}>
+					<button
+						class="inline-flex items-center gap-2 rounded-md px-3 py-2 hover:bg-base-200"
+						onclick={() => (isCountriesOpen = !isCountriesOpen)}
+						aria-expanded={isCountriesOpen}
+					>
 						<Globe class="size-4" />
 						<span>Shop by countries</span>
 					</button>
 					{#if isCountriesOpen}
-						<Motion animate={isCountriesOpen ? 'visible' : 'hidden'} variants={listVariants} initial="hidden" let:motion>
-							<ul use:motion class={cn("absolute mt-2 min-w-64 max-h-[70vh] overflow-auto z-50 p-2 rounded-xl border bg-base-100 border-base-300 shadow-xl", isCountriesOpen ? "pointer-events-auto" : "pointer-events-none")}
+						<Motion
+							animate={isCountriesOpen ? 'visible' : 'hidden'}
+							variants={listVariants}
+							initial="hidden"
+							let:motion
+						>
+							<ul
+								use:motion
+								class={cn(
+									'absolute z-50 mt-2 max-h-[70vh] min-w-64 overflow-auto rounded-xl border border-base-300 bg-base-100 p-2 shadow-xl',
+									isCountriesOpen ? 'pointer-events-auto' : 'pointer-events-none'
+								)}
 							>
 								{#each collectionItems as item, i}
-									<Motion custom={i + 1} variants={itemVariants} initial="hidden" animate={isCountriesOpen ? 'visible' : 'hidden'} let:motion>
+									<Motion
+										custom={i + 1}
+										variants={itemVariants}
+										initial="hidden"
+										animate={isCountriesOpen ? 'visible' : 'hidden'}
+										let:motion
+									>
 										<li use:motion>
-											<a href={`/collections/${item.handle}`} class="group flex items-center justify-between gap-3 px-3 py-2 rounded-md hover:bg-base-200">
+											<a
+												href={`/collections/${item.handle}`}
+												class="group flex items-center justify-between gap-3 rounded-md px-3 py-2 hover:bg-base-200"
+											>
 												<span class="flex items-center gap-2">
 													<span class="opacity-80">{item.emoji ?? '🌍'}</span>
 													<span>{item.title}</span>
 												</span>
-												<ChevronRight class="size-3 opacity-60 -translate-x-1 scale-0 opacity-0 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-x-0 transition-all" />
+												<ChevronRight
+													class="size-3 -translate-x-1 scale-0 opacity-0 opacity-60 transition-all group-hover:translate-x-0 group-hover:scale-100 group-hover:opacity-100"
+												/>
 											</a>
 										</li>
 									</Motion>
@@ -293,11 +369,33 @@
 			</div>
 
 			<!-- Center search (desktop) -->
-			<div class="hidden md:flex md:flex-[1.3] justify-center px-4">
+			<div class="hidden justify-center px-4 md:flex md:flex-[1.3]">
 				<div class="relative w-full max-w-xl">
-					<span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base-content/60"><Search class="size-4" /></span>
-					<input onmousemove={onSearchMouseMove} onfocus={onSearchFocus} onblur={onSearchBlur} onmouseenter={onSearchMouseEnter} onmouseleave={onSearchMouseLeave} oninput={onSearchInput} bind:this={searchInputRef} value={searchQuery} type="text" placeholder="Search products, categories..." class="h-10 w-full cursor-default rounded-full border border-base-300 bg-base-100 px-3.5 pl-9 text-base-content transition-colors duration-500 placeholder:select-none placeholder:text-base-content/60 focus:outline-none" />
-					<input type="text" bind:this={overlayRef} disabled style={`opacity:${overlayOpacity}; -webkit-mask-image: ${$shineBorder}; mask-image: ${$shineBorder}; border: 1px solid #8678F9;`} aria-hidden="true" class="pointer-events-none absolute left-0 top-0 z-10 h-10 w-full cursor-default rounded-full bg-transparent p-0 opacity-0 transition-opacity duration-500" />
+					<span
+						class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-base-content/60"
+						><Search class="size-4" /></span
+					>
+					<input
+						onmousemove={onSearchMouseMove}
+						onfocus={onSearchFocus}
+						onblur={onSearchBlur}
+						onmouseenter={onSearchMouseEnter}
+						onmouseleave={onSearchMouseLeave}
+						oninput={onSearchInput}
+						bind:this={searchInputRef}
+						value={searchQuery}
+						type="text"
+						placeholder="Search products, categories..."
+						class="h-10 w-full cursor-default rounded-full border border-base-300 bg-base-100 px-3.5 pl-9 text-base-content transition-colors duration-500 placeholder:text-base-content/60 placeholder:select-none focus:outline-none"
+					/>
+					<input
+						type="text"
+						bind:this={overlayRef}
+						disabled
+						style={`opacity:${overlayOpacity}; -webkit-mask-image: ${$shineBorder}; mask-image: ${$shineBorder}; border: 1px solid #8678F9;`}
+						aria-hidden="true"
+						class="pointer-events-none absolute top-0 left-0 z-10 h-10 w-full cursor-default rounded-full bg-transparent p-0 opacity-0 transition-opacity duration-500"
+					/>
 				</div>
 			</div>
 
@@ -307,7 +405,14 @@
 					<NavigationMenuList>
 						{#each navLinks as link}
 							<NavigationMenuItem>
-								<NavigationMenuLink href={link.href} class="px-3 py-2 rounded-md hover:bg-base-200">{link.label}</NavigationMenuLink>
+								<NavigationMenuLink href={link.href} class="rounded-md px-3 py-2 hover:bg-base-200"
+									><span class="flex items-center gap-2">
+										{#if link.icon}
+											<svelte:component this={link.icon} class="size-4" />
+										{/if}
+										{link.label}
+									</span></NavigationMenuLink
+								>
 							</NavigationMenuItem>
 						{/each}
 					</NavigationMenuList>
@@ -326,53 +431,148 @@
 					<User class="size-5" />
 				</Button>
 				<!-- Quick auth modal trigger (mobile convenience) -->
-				<Button variant="ghost" size="icon" aria-label="Open auth" class="btn btn-ghost md:hidden" onclick={() => { authMode = 'login'; authOpen = true; }}>
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label="Open auth"
+					class="btn btn-ghost md:hidden"
+					onclick={() => {
+						authMode = 'login';
+						authOpen = true;
+					}}
+				>
 					<LogIn class="size-5" />
 				</Button>
-				<div class="dropdown dropdown-end" role="menu" tabindex="0">
-				<Button variant="ghost" size="icon" aria-label="Cart" class="btn btn-ghost relative" onclick={() => (cartOpen = !cartOpen)} onkeydown={(e) => { if (e.key === 'Escape') cartOpen = false; }}>
-					<ShoppingCart class="size-5" />
-					<span class="badge badge-primary badge-sm absolute -right-2 -top-2 min-w-[1.25rem] h-5 rounded-full text-xs font-semibold shadow-lg border-2 border-base-100 flex items-center justify-center">{($cart?.items?.length) ?? 0}</span>
+				<!-- Mobile search trigger -->
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label="Search"
+					class="btn btn-ghost md:hidden"
+					onclick={() => {
+						isSearchOpen = true;
+						overlayOpacity = 1;
+						if (searchInputRef) {
+							searchInputRef.focus();
+						}
+					}}
+				>
+					<Search class="size-5" />
 				</Button>
+				<div class="dropdown dropdown-end" role="menu" tabindex="0">
+					<Button
+						variant="ghost"
+						size="icon"
+						aria-label="Cart"
+						class="btn relative btn-ghost"
+						onclick={() => (cartOpen = !cartOpen)}
+						onkeydown={(e) => {
+							if (e.key === 'Escape') cartOpen = false;
+						}}
+					>
+						<ShoppingCart class="size-5" />
+						<span
+							class="absolute -top-1.5 -right-1.5 badge flex h-4 min-w-[1rem] items-center justify-center rounded-full border border-base-100 badge-sm text-[10px] font-semibold shadow-lg badge-primary sm:h-5 sm:min-w-[1.25rem] sm:text-xs"
+							>{$cart?.items?.length ?? 0}</span
+						>
+					</Button>
 					{#if cartOpen}
-					<div class="dropdown-content z-[55] mt-2 w-80 rounded-xl border border-base-300 bg-base-100 shadow-xl" role="dialog" tabindex="-1" onclick={(e)=>e.stopPropagation()} onkeydown={(e)=>{ if(e.key==='Escape'){ cartOpen=false; } }}>
-						<div class="p-3 max-h-96 overflow-auto space-y-2">
-							{#if (($cart?.items?.length) ?? 0) === 0}
-								<div class="p-6 text-center opacity-70">Your cart is empty</div>
-							{:else}
-								{#each $cart?.items ?? [] as li}
-									<div class="flex items-center gap-3 rounded-lg border border-base-300 p-2">
-										<div class="relative h-12 w-12 shrink-0 rounded overflow-hidden bg-base-200">
-											<img src={(li as any)?.variant?.metadata?.thumbnail ?? li.thumbnail ?? ''} alt={li.title} class="h-full w-full object-cover" />
-											{#if (li as any)?.variant?.title}
-												<span class="absolute inset-x-0 bottom-0 truncate px-1.5 py-0.5 text-[10px] leading-none text-base-content/75 bg-base-100/60">{(li as any).variant.title}</span>
-											{/if}
-										</div>
-										<div class="min-w-0 flex-1">
-											<div class="font-medium truncate">{li.title} {#if (li as any)?.variant?.title}<span class="opacity-60 text-xs">({(li as any).variant.title})</span>{/if}</div>
-											<div class="mt-1">
-												<div class="join h-8 rounded-full overflow-hidden border border-base-300">
-													<Button variant="ghost" size="sm" class="join-item btn-xs" onclick={async (e) => { e.stopPropagation(); if ((li.quantity ?? 0) > 1) { const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) - 1); } else { const m = await import('$lib/cart'); await m.removeLine(li.id); } }} aria-label="Decrease quantity">-</Button>
-													<input class="join-item w-10 text-center bg-transparent border-0 pointer-events-none" value={li.quantity} readonly aria-live="polite" aria-label="Quantity" />
-													<Button variant="ghost" size="sm" class="join-item btn-xs" onclick={async (e) => { e.stopPropagation(); const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) + 1); }} aria-label="Increase quantity">+</Button>
+						<div
+							class="dropdown-content z-[55] mt-2 w-80 rounded-xl border border-base-300 bg-base-100 shadow-xl"
+							role="dialog"
+							tabindex="-1"
+							onclick={(e) => e.stopPropagation()}
+							onkeydown={(e) => {
+								if (e.key === 'Escape') {
+									cartOpen = false;
+								}
+							}}
+						>
+							<div class="max-h-96 space-y-2 overflow-auto p-3">
+								{#if ($cart?.items?.length ?? 0) === 0}
+									<div class="p-6 text-center opacity-70">Your cart is empty</div>
+								{:else}
+									{#each $cart?.items ?? [] as li}
+										<div class="flex items-center gap-3 rounded-lg border border-base-300 p-2">
+											<div class="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-base-200">
+												<img
+													src={(li as any)?.variant?.metadata?.thumbnail ??
+														(li as any)?.variant?.product?.thumbnail ??
+														li.thumbnail ??
+														''}
+													alt={li.title}
+													class="h-full w-full object-cover"
+												/>
+												{#if (li as any)?.variant?.title}
+													<span
+														class="absolute inset-x-0 bottom-0 truncate bg-base-100/70 px-1.5 py-0.5 text-[10px] leading-none text-base-content/75"
+														>{(li as any).variant.title}</span
+													>
+												{/if}
+											</div>
+											<div class="min-w-0 flex-1">
+												<div class="truncate font-medium">
+													{li.title}
+													{#if (li as any)?.variant?.title || (li as any)?.variant_title}<span
+															class="text-xs opacity-60"
+															>({(li as any)?.variant?.title ?? (li as any).variant_title})</span
+														>{/if}
+												</div>
+												<div class="mt-1">
+													<div class="join h-8 overflow-hidden rounded-full border border-base-300">
+														<Button
+															variant="ghost"
+															size="sm"
+															class="join-item btn-xs"
+															onclick={async (e) => { e.stopPropagation(); if ((li.quantity ?? 0) > 1) { const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) - 1); } else { const m = await import('$lib/cart'); await m.removeLine(li.id); } }}
+															aria-label="Decrease quantity">-</Button
+														>
+														<input
+															class="pointer-events-none join-item w-10 border-0 bg-transparent text-center"
+															value={li.quantity}
+															readonly
+															aria-live="polite"
+															aria-label="Quantity"
+														/>
+														<Button
+															variant="ghost"
+															size="sm"
+															class="join-item btn-xs"
+															onclick={async (e) => { e.stopPropagation(); const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) + 1); }}
+															aria-label="Increase quantity">+</Button
+														>
+													</div>
 												</div>
 											</div>
+											<button
+												class="btn btn-ghost btn-xs"
+												title="Remove"
+												onclick={() => removeLine(li.id)}
+											>
+												<Trash class="size-3" />
+											</button>
 										</div>
-										<button class="btn btn-ghost btn-xs" title="Remove" onclick={() => removeLine(li.id)}>
-											<Trash class="size-3" />
-										</button>
-									</div>
-								{/each}
-							{/if}
+									{/each}
+								{/if}
+							</div>
+							<div class="flex items-center justify-between border-t border-base-300 p-3">
+								<a href="/cart" class="btn btn-sm btn-primary">View cart</a>
+								<button
+									class="btn btn-sm btn-error"
+									onclick={async () => { const m = await import('$lib/cart'); await m.clearCart(); }}
+									>Clear all</button
+								>
+							</div>
 						</div>
-						<div class="border-t border-base-300 p-3 flex items-center justify-between">
-							<a href="/cart" class="btn btn-sm btn-primary">View cart</a>
-							<button class="btn btn-sm btn-error" onclick={async () => { const m = await import('$lib/cart'); await m.clearCart(); }}>Clear all</button>
-						</div>
-					</div>
 					{/if}
 				</div>
-				<Button variant="ghost" size="icon" aria-label="Toggle theme" class="btn btn-ghost" onclick={toggleTheme}>
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label="Toggle theme"
+					class="btn btn-ghost"
+					onclick={toggleTheme}
+				>
 					{#if theme === 'khadka'}
 						<Sun class="size-5" />
 					{:else}
@@ -396,16 +596,16 @@
 									</div>
 								</SheetTitle>
 							</SheetHeader>
-							<div class="py-4 space-y-1">
+							<div class="space-y-1 py-4">
 								<div class="px-3 py-2 text-xs uppercase opacity-60">Collections</div>
 								{#each collectionItems as item}
-									<a 
-										href={`/collections/${item.handle}`} 
+									<a
+										href={`/collections/${item.handle}`}
 										class="flex items-center justify-between rounded-md px-3 py-2 hover:bg-base-200"
 										onclick={async (e) => {
 											e.preventDefault();
 											const href = `/collections/${item.handle}`;
-											
+
 											// Use SvelteKit navigation with invalidateAll to ensure data reloads
 											await goto(href, { invalidateAll: true });
 										}}
@@ -419,15 +619,35 @@
 								{/each}
 								<Separator class="my-3" />
 								{#each navLinks as link}
-									<a href={link.href} class="flex items-center justify-between rounded-md px-3 py-2 hover:bg-base-200">
+									<a
+										href={link.href}
+										class="flex items-center justify-between rounded-md px-3 py-2 hover:bg-base-200"
+									>
 										<span>{link.label}</span>
 										<ChevronRight class="size-4 opacity-60" />
 									</a>
 								{/each}
 								<Separator class="my-3" />
+								<a
+									href="/orders/lookup"
+									class="flex items-center justify-between rounded-md px-3 py-2 hover:bg-base-200"
+								>
+									<span class="flex items-center gap-2">
+										<Search class="size-4 opacity-60" />
+										Track Order
+									</span>
+									<ChevronRight class="size-4 opacity-60" />
+								</a>
+								<Separator class="my-3" />
 								<div class="flex items-center justify-between">
 									<span class="text-sm opacity-70">Theme</span>
-									<Button variant="ghost" size="icon" aria-label="Toggle theme" class="btn btn-ghost" onclick={toggleTheme}>
+									<Button
+										variant="ghost"
+										size="icon"
+										aria-label="Toggle theme"
+										class="btn btn-ghost"
+										onclick={toggleTheme}
+									>
 										{#if theme === 'khadka'}
 											<Sun class="size-5" />
 										{:else}
@@ -438,7 +658,7 @@
 							</div>
 							<div class="mt-auto"></div>
 							<SheetClose>
-								<Button class="btn btn-primary w-full mt-4">Close</Button>
+								<Button class="btn mt-4 w-full btn-primary">Close</Button>
 							</SheetClose>
 						</SheetContent>
 					</Sheet>
@@ -452,13 +672,18 @@
 			{@render children?.()}
 		{/key}
 		<!-- Toast host -->
-		<div class="fixed bottom-4 right-4 z-[70] space-y-2 w-80">
+		<div class="fixed right-4 bottom-4 z-[70] w-80 space-y-2">
 			{#each $toasts as t (t.id)}
-				<div class="alert shadow-lg transition-all" class:alert-success={t.type==='success'} class:alert-error={t.type==='error'} class:alert-info={t.type==='info'}>
+				<div
+					class="alert shadow-lg transition-all"
+					class:alert-success={t.type === 'success'}
+					class:alert-error={t.type === 'error'}
+					class:alert-info={t.type === 'info'}
+				>
 					<div>
-						{#if t.type==='success'}
+						{#if t.type === 'success'}
 							<CheckCircle2 class="size-4" />
-						{:else if t.type==='error'}
+						{:else if t.type === 'error'}
 							<AlertTriangle class="size-4" />
 						{:else}
 							<Info class="size-4" />
@@ -474,19 +699,52 @@
 	{#if isSearchOpen}
 		<div class="fixed inset-0 z-[60]">
 			<!-- Backdrop -->
-			<div class="absolute inset-0 bg-black/40 backdrop-blur-sm" role="button" tabindex="0" onclick={closeSearch} onkeydown={(e)=>{ if(e.key==='Escape' || e.key==='Enter' || e.key===' '){ closeSearch(); } }}></div>
+			<div
+				class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+				role="button"
+				tabindex="0"
+				onclick={closeSearch}
+				onkeydown={(e) => {
+					if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+						closeSearch();
+					}
+				}}
+			></div>
 			<!-- Dialog -->
 			<div class="absolute inset-x-0 top-16 mx-auto w-full max-w-2xl px-4">
-				<div class="card bg-base-100 shadow-2xl border border-base-300 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-4">
+				<div
+					class="card animate-in overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl fade-in slide-in-from-top-4"
+				>
 					<div class="p-4">
 						<div class="relative">
-							<span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base-content/60"><Search class="size-4" /></span>
-							<input onmousemove={onSearchMouseMove} onfocus={onSearchFocus} onblur={onSearchBlur} onmouseenter={onSearchMouseEnter} onmouseleave={onSearchMouseLeave} oninput={onSearchInput} bind:this={searchInputRef} value={searchQuery} type="text" placeholder="Search products, categories..." class="input input-bordered input-primary w-full h-12 pl-9 pr-3 rounded-2xl" />
-							<input type="text" disabled style={`opacity:${overlayOpacity}; mask-image: ${$shineBorder};`} aria-hidden="true" class="pointer-events-none absolute left-0 top-0 z-10 h-12 w-full rounded-2xl border border-primary/60 bg-transparent p-0" />
+							<span
+								class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-base-content/60"
+								><Search class="size-4" /></span
+							>
+							<input
+								onmousemove={onSearchMouseMove}
+								onfocus={onSearchFocus}
+								onblur={onSearchBlur}
+								onmouseenter={onSearchMouseEnter}
+								onmouseleave={onSearchMouseLeave}
+								oninput={onSearchInput}
+								bind:this={searchInputRef}
+								value={searchQuery}
+								type="text"
+								placeholder="Search products, categories..."
+								class="input-bordered input h-12 w-full rounded-2xl pr-3 pl-9 input-primary"
+							/>
+							<input
+								type="text"
+								disabled
+								style={`opacity:${overlayOpacity}; mask-image: ${$shineBorder};`}
+								aria-hidden="true"
+								class="pointer-events-none absolute top-0 left-0 z-10 h-12 w-full rounded-2xl border border-primary/60 bg-transparent p-0"
+							/>
 						</div>
 					</div>
 					<div class="border-t border-base-300">
-						<div class="max-h-[60vh] overflow-auto p-2 space-y-3">
+						<div class="max-h-[60vh] space-y-3 overflow-auto p-2">
 							{#if searchQuery.trim().length > 0}
 								{#if searchResults.products.length > 0}
 									<div>
@@ -494,11 +752,18 @@
 										<ul class="grid gap-2">
 											{#each searchResults.products as p}
 												<li>
-													<a href={`/products/${p.handle}`} class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-base-200 transition-colors">
-														<img src={p.thumbnail ?? ''} alt={p.title} class="h-10 w-10 rounded object-cover bg-base-200" />
+													<a
+														href={`/products/${p.handle}`}
+														class="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-base-200"
+													>
+														<img
+															src={p.thumbnail ?? ''}
+															alt={p.title}
+															class="h-10 w-10 rounded bg-base-200 object-cover"
+														/>
 														<div class="min-w-0">
-															<p class="font-medium truncate">{p.title}</p>
-															<p class="text-xs opacity-70 truncate">/{p.handle}</p>
+															<p class="truncate font-medium">{p.title}</p>
+															<p class="truncate text-xs opacity-70">/{p.handle}</p>
 														</div>
 													</a>
 												</li>
@@ -512,11 +777,13 @@
 										<ul class="grid gap-2">
 											{#each searchResults.categories as c}
 												<li>
-													<a href={`/collections/${c.handle}`} class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-base-200 transition-colors">
-														<img src={c.thumbnail ?? ''} alt={c.name} class="h-10 w-10 rounded object-cover bg-base-200" />
+													<a
+														href={`/categories/${c.handle}`}
+														class="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-base-200"
+													>
 														<div class="min-w-0">
-															<p class="font-medium truncate">{c.name}</p>
-															<p class="text-xs opacity-70 truncate">/{c.handle}</p>
+															<p class="truncate font-medium">{c.name}</p>
+															<p class="truncate text-xs opacity-70">/{c.handle}</p>
 														</div>
 													</a>
 												</li>
@@ -540,42 +807,92 @@
 	<!-- Auth modal -->
 	{#if authOpen}
 		<div class="fixed inset-0 z-[65]">
-			<button type="button" aria-label="Close" class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick={() => (authOpen = false)}></button>
-			<div class="absolute inset-x-0 top-20 mx-auto w-full max-w-md px-4">
-				<div class="card bg-base-100 shadow-2xl border border-base-300 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-4">
-					<div class="p-4 border-b border-base-300 flex items-center justify-between bg-gradient-to-r from-base-200/60 to-base-100/20">
-						<div class="tabs tabs-boxed">
-							<button class="tab transition" class:tab-active={authMode==='login'} onclick={() => { authMode='login' }}>Login</button>
-							<button class="tab transition" class:tab-active={authMode==='register'} onclick={() => { authMode='register' }}>Register</button>
+			<button
+				type="button"
+				aria-label="Close"
+				class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+				onclick={() => (authOpen = false)}
+			></button>
+			<div class="absolute inset-x-0 top-16 mx-auto w-full max-w-sm px-4 sm:max-w-md">
+				<div
+					class="card animate-in overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl fade-in slide-in-from-top-4"
+				>
+					<div
+						class="flex items-center justify-between border-b border-base-300 bg-gradient-to-r from-base-200/60 to-base-100/20 p-3 sm:p-4"
+					>
+						<div class="tabs-boxed tabs tabs-sm sm:tabs">
+							<button
+								class="tab text-xs sm:text-sm transition"
+								class:tab-active={authMode === 'login'}
+								onclick={() => {
+									authMode = 'login';
+								}}>Login</button
+							>
+							<button
+								class="tab text-xs sm:text-sm transition"
+								class:tab-active={authMode === 'register'}
+								onclick={() => {
+									authMode = 'register';
+								}}>Register</button
+							>
 						</div>
 						<div class="flex items-center gap-2">
-							{#if authMode==='login'}<LogIn class="size-4" />{:else}<UserPlus class="size-4" />{/if}
+							{#if authMode === 'login'}<LogIn class="size-4" />{:else}<UserPlus
+									class="size-4"
+								/>{/if}
 						</div>
 					</div>
 					{#key authMode}
 						<Motion variants={authContentVariants} initial="exit" animate="enter" let:motion>
-							<form class="p-4 space-y-3 transition-all" onsubmit={submitAuth} use:motion>
-							{#if authError}
-								<div class="alert alert-error"><span>{authError}</span></div>
-							{/if}
-							<label class="form-control w-full">
-								<div class="label"><span class="label-text">Email</span></div>
-								<input class="input input-bordered input-primary border-base-300 w-full" type="email" placeholder="you@example.com" bind:value={authEmail} required />
-							</label>
-							<label class="form-control w-full">
-								<div class="label"><span class="label-text">Password</span></div>
-								<PasswordInput bind:value={authPassword} placeholder="••••••••" />
-							</label>
-							{#if authMode==='register'}
-								<div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-									<input class="input input-bordered input-primary border-base-300" placeholder="First name" bind:value={authFirst} />
-									<input class="input input-bordered input-primary border-base-300" placeholder="Last name" bind:value={authLast} />
+							<form class="space-y-3 p-3 sm:space-y-4 sm:p-4 transition-all" onsubmit={submitAuth} use:motion>
+								{#if authError}
+									<div class="alert alert-error text-sm"><span>{authError}</span></div>
+								{/if}
+								<label class="form-control w-full">
+									<div class="label"><span class="label-text text-sm">Email</span></div>
+									<input
+										class="input-bordered input w-full border-base-300 input-primary h-10 sm:h-12 text-sm sm:text-base"
+										type="email"
+										placeholder="you@example.com"
+										bind:value={authEmail}
+										required
+									/>
+								</label>
+								<label class="form-control w-full">
+									<div class="label"><span class="label-text text-sm">Password</span></div>
+									<div class="h-10 sm:h-12">
+										<PasswordInput bind:value={authPassword} placeholder="••••••••" />
+									</div>
+								</label>
+								{#if authMode === 'register'}
+									<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+										<input
+											class="input-bordered input border-base-300 input-primary h-10 sm:h-12 text-sm sm:text-base"
+											placeholder="First name"
+											bind:value={authFirst}
+										/>
+										<input
+											class="input-bordered input border-base-300 input-primary h-10 sm:h-12 text-sm sm:text-base"
+											placeholder="Last name"
+											bind:value={authLast}
+										/>
+									</div>
+								{/if}
+								<div class="pt-2">
+									<Button
+										class={'btn w-full btn-primary h-10 sm:h-12 text-sm sm:text-base ' + (authLoading ? 'loading animate-pulse' : '')}
+										disabled={authLoading}
+										type="submit">{authMode === 'login' ? 'Sign in' : 'Create account'}</Button
+									>
 								</div>
-							{/if}
-							<div class="pt-2">
-								<Button class={"btn btn-primary w-full "+(authLoading?'loading animate-pulse':'')} disabled={authLoading} type="submit">{authMode==='login'?'Sign in':'Create account'}</Button>
-							</div>
-						</form>
+								{#if authMode === 'login'}
+									<div class="text-center">
+										<a href="/orders/lookup" class="link link-primary text-sm" onclick={() => (authOpen = false)}>
+											Track your order
+										</a>
+									</div>
+								{/if}
+							</form>
 						</Motion>
 					{/key}
 				</div>
@@ -584,43 +901,111 @@
 	{/if}
 
 	<footer class="border-t border-base-300 bg-base-100/70">
-		<div class="max-w-7xl mx-auto px-4 md:px-6 py-10 grid gap-8 md:grid-cols-3">
-			<div class="space-y-3">
-				<div class="flex items-center gap-3">
-					<span class="font-semibold">KhadkaFoods</span>
+		<div class="mx-auto max-w-7xl px-4 py-10 md:px-6">
+			<div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+				<!-- Brand Section -->
+				<div class="space-y-4">
+					<div class="flex items-center gap-3">
+						<img src={logo} alt="KhadkaFoods" class="h-8 w-8" />
+						<span class="font-semibold text-lg">KhadkaFoods</span>
+					</div>
+					<p class="text-sm opacity-70">{storeMetadata.tagline || "Modern, thoughtful experiences for your storefront."}</p>
+					<div class="flex gap-2">
+						{#if storeMetadata.instagram}
+							<a
+								href={`https://instagram.com/${storeMetadata.instagram}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="btn btn-primary btn-circle"
+								aria-label="Instagram"
+							>
+								<SiInstagram />
+							</a>
+						{/if}
+						{#if storeMetadata.facebook}
+							<a
+								href={`https://facebook.com/${storeMetadata.facebook}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="btn btn-primary btn-circle"
+								aria-label="Facebook"
+							>
+								<SiFacebook />
+							</a>
+						{/if}
+						{#if storeMetadata.x}
+							<a
+								href={`https://x.com/${storeMetadata.x}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="btn btn-primary btn-circle"
+								aria-label="X (Twitter)"
+							>
+								<SiX />
+							</a>
+						{/if}
+					</div>
 				</div>
-				<p class="text-sm opacity-70">Modern, thoughtful experiences for your storefront.</p>
-				<div class="flex gap-2">
-					<Button size="icon" class="btn btn-ghost"><Instagram class="size-4" /></Button>
-					<Button size="icon" class="btn btn-ghost"><Facebook class="size-4" /></Button>
-					<Button size="icon" class="btn btn-ghost"><Twitter class="size-4" /></Button>
+
+				<!-- Shop Links -->
+				<div>
+					<h3 class="footer-title mb-3 text-base font-semibold">Shop</h3>
+					<ul class="space-y-2 text-sm">
+						<li><a class="link link-hover" href="/products">All Products</a></li>
+						<li><a class="link link-hover" href="/collections">Collections</a></li>
+					</ul>
 				</div>
-			</div>
-			<div>
-				<h3 class="footer-title text-base font-semibold mb-3">Shop</h3>
-				<ul class="space-y-2 text-sm">
-					<li><a class="link link-hover" href="/shop">All Products</a></li>
-					<li><a class="link link-hover" href="/collections">Collections</a></li>
-					<li><a class="link link-hover" href="/deals">Deals</a></li>
-					<li><a class="link link-hover" href="/gift-cards">Gift Cards</a></li>
-				</ul>
-			</div>
-			<div>
-				<h3 class="footer-title text-base font-semibold mb-3">Company</h3>
-				<ul class="space-y-2 text-sm">
-					<li><a class="link link-hover" href="/about">About</a></li>
-					<li><a class="link link-hover" href="/contact">Contact</a></li>
-					<li><a class="link link-hover" href="/careers">Careers</a></li>
-					<li><a class="link link-hover" href="/support">Support</a></li>
-				</ul>
+
+				<!-- Company Links -->
+				<div>
+					<h3 class="footer-title mb-3 text-base font-semibold">Company</h3>
+					<ul class="space-y-2 text-sm">
+						<li><a class="link link-hover" href="/about">About</a></li>
+					</ul>
+				</div>
+
+				<!-- Contact Info -->
+				<div>
+					<h3 class="footer-title mb-3 text-base font-semibold">Contact</h3>
+					<div class="space-y-2 text-sm">
+						{#if storeMetadata.phone}
+							<p class="flex items-center gap-2">
+								<Phone class="w-4 h-4 opacity-70" />
+								<a href={`tel:${storeMetadata.phone}`} class="link link-hover">{storeMetadata.phone}</a>
+							</p>
+						{/if}
+						{#if storeMetadata.email}
+							<p class="flex items-center gap-2">
+								<Mail class="w-4 h-4 opacity-70" />
+								<a href={`mailto:${storeMetadata.email}`} class="link link-hover">{storeMetadata.email}</a>
+							</p>
+						{/if}
+						{#if storeMetadata.address}
+							<p class="flex items-start gap-2">
+								<MapPin class="w-4 h-4 opacity-70 mt-0.5" />
+								<a
+									href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeMetadata.address)}`}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="link link-hover opacity-80 hover:opacity-100 transition-opacity"
+									aria-label="Open location in Google Maps"
+								>
+									{storeMetadata.address}
+								</a>
+							</p>
+						{/if}
+					</div>
+				</div>
 			</div>
 		</div>
 		<div class="border-t border-base-300">
-			<div class="max-w-7xl mx-auto px-4 md:px-6 py-4 text-xs opacity-70 flex items-center justify-between">
+			<div
+				class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 text-xs opacity-70 md:px-6"
+			>
 				<span>© {new Date().getFullYear()} KhadkaFoods. All rights reserved.</span>
 				<div class="space-x-4">
 					<a href="/privacy" class="link link-hover">Privacy</a>
-					<a href="/terms" class="link link-hover">Terms</a>
+					<a href="/tos" class="link link-hover">Terms</a>
 				</div>
 			</div>
 		</div>

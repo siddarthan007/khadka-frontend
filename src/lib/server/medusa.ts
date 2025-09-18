@@ -2,7 +2,7 @@ import Medusa from '@medusajs/js-sdk';
 import { env as privateEnv } from '$env/dynamic/private';
 import { env as publicEnv } from '$env/dynamic/public';
 import type { HttpTypes } from '@medusajs/types';
-import { MeiliSearch } from "meilisearch";
+import { MeiliSearch } from 'meilisearch';
 
 function logApiError(operation: string, error: any) {
 	const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
@@ -15,8 +15,11 @@ export function getAdminClient(): Medusa | null {
 	const baseUrl = publicEnv.PUBLIC_MEDUSA_BACKEND_URL;
 	const apiKey = privateEnv.MEDUSA_ADMIN_API_KEY;
 	if (
-		typeof baseUrl !== 'string' || baseUrl.trim() === '' || !/^https?:\/\//.test(baseUrl) ||
-		typeof apiKey !== 'string' || apiKey.trim() === ''
+		typeof baseUrl !== 'string' ||
+		baseUrl.trim() === '' ||
+		!/^https?:\/\//.test(baseUrl) ||
+		typeof apiKey !== 'string' ||
+		apiKey.trim() === ''
 	) {
 		return null;
 	}
@@ -31,6 +34,38 @@ export function getAdminClient(): Medusa | null {
 	return adminClient;
 }
 
+let serverStoreClient: Medusa | null = null;
+
+export function getServerStoreClient(): Medusa | null {
+	const baseUrl = publicEnv.PUBLIC_MEDUSA_BACKEND_URL;
+	const publishableKey = publicEnv.PUBLIC_MEDUSA_PUBLISHABLE_KEY;
+	if (
+		typeof baseUrl !== 'string' ||
+		baseUrl.trim() === '' ||
+		!/^https?:\/\//.test(baseUrl) ||
+		typeof publishableKey !== 'string' ||
+		publishableKey.trim() === ''
+	) {
+		return null;
+	}
+	if (!serverStoreClient) {
+		try {
+			serverStoreClient = new Medusa({
+				baseUrl,
+				publishableKey,
+				auth: { type: 'session', fetchCredentials: 'include' }
+			});
+		} catch (err) {
+			console.warn(
+				'Failed to initialize Medusa server store client:',
+				(err as any)?.message ?? err
+			);
+			serverStoreClient = null;
+		}
+	}
+	return serverStoreClient;
+}
+
 let meilisearchClient: MeiliSearch | null = null;
 
 export function getMeilisearchClient(): MeiliSearch | null {
@@ -43,7 +78,7 @@ export function getMeilisearchClient(): MeiliSearch | null {
 			meilisearchClient = new MeiliSearch({
 				host,
 				apiKey: publicEnv.PUBLIC_MEILISEARCH_API_KEY,
-				timeout: 10000,
+				timeout: 10000
 			});
 		} catch (err) {
 			console.warn('Failed to initialize MeiliSearch (server):', (err as any)?.message ?? err);
@@ -70,8 +105,8 @@ export async function getHeroSlides(): Promise<any[] | null> {
 	try {
 		const admin = getAdminClient();
 		if (!admin) return [];
-		const raw: Response = await admin.client.fetch("/admin/slides", { method: "GET" });
-		const data = raw && typeof raw.json === "function" ? await raw.json() : raw;
+		const raw: Response = await admin.client.fetch('/admin/slides', { method: 'GET' });
+		const data = raw && typeof raw.json === 'function' ? await raw.json() : raw;
 		const slides = Array.isArray(data) ? data : (data?.slides ?? []);
 		return slides.map((s: any) => ({
 			image: s.image,
@@ -86,7 +121,7 @@ export async function getHeroSlides(): Promise<any[] | null> {
 				? { label: s.cta_secondary_label, href: s.cta_secondary_href }
 				: undefined,
 			contentPosition: s.content_position,
-			textAlign: s.text_align,
+			textAlign: s.text_align
 		}));
 	} catch (error) {
 		logApiError('getHeroSlides', error);
@@ -98,20 +133,18 @@ export async function searchProductsMeili(query: string, limit: number = 10) {
 	try {
 		const client = getMeilisearchClient();
 		if (!client) {
-			console.warn(
-				"MeiliSearch not configured",
-			);
+			console.warn('MeiliSearch not configured');
 			return [];
 		}
-		const index = client.index("products");
+		const index = client.index('products');
 		const res = await index.search(query, {
 			limit,
-			attributesToRetrieve: ["*"],
-			attributesToHighlight: ["title", "description", "thumbnail"],
+			attributesToRetrieve: ['*'],
+			attributesToHighlight: ['title', 'description', 'thumbnail']
 		});
 		return res.hits ?? [];
 	} catch (error) {
-		logApiError("MeiliSearch error", error);
+		logApiError('MeiliSearch error', error);
 		return [];
 	}
 }
@@ -120,18 +153,18 @@ export async function searchCategoriesMeili(query: string, limit: number = 10) {
 	try {
 		const client = getMeilisearchClient();
 		if (!client) {
-			console.warn("MeiliSearch not configured");
+			console.warn('MeiliSearch not configured');
 			return [];
 		}
-		const index = client.index("categories");
+		const index = client.index('categories');
 		const res = await index.search(query, {
 			limit,
-			attributesToRetrieve: ["*"],
-			attributesToHighlight: ["name", "description", "metadata"],
+			attributesToRetrieve: ['*'],
+			attributesToHighlight: ['name', 'description', 'metadata']
 		});
 		return res.hits ?? [];
 	} catch (error) {
-		logApiError("MeiliSearch error", error);
+		logApiError('MeiliSearch error', error);
 		return [];
 	}
 }

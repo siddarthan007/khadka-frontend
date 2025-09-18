@@ -1,6 +1,7 @@
 import { getAdminClient } from '$lib/server/medusa';
 import type { HttpTypes } from '@medusajs/types';
 import { getHierarchicalProductCategories } from '$lib/medusa';
+import { env as privateEnv } from '$env/dynamic/private';
 
 async function listAllCollectionsWithMetadata(): Promise<HttpTypes.AdminCollection[]> {
 	const all: HttpTypes.AdminCollection[] = [];
@@ -26,16 +27,15 @@ async function listAllCollectionsWithMetadata(): Promise<HttpTypes.AdminCollecti
 		console.error('Failed to fetch collections with metadata:', error);
 		return [];
 	}
-}
+}	
 
 export async function load() {
 	const collections = await listAllCollectionsWithMetadata();
-	const collectionItems = collections
-		.map((c) => ({
-			title: c.title ?? c.handle,
-			handle: c.handle,
-			emoji: c.metadata?.emoji
-		}));
+	const collectionItems = collections.map((c) => ({
+		title: c.title ?? c.handle,
+		handle: c.handle,
+		emoji: c.metadata?.emoji
+	}));
 
 	// categories for homepage section (top-level only)
 	let categoryItems: Array<{ name: string; handle: string; thumbnail?: string | null }> = [];
@@ -48,8 +48,21 @@ export async function load() {
 		}));
 	} catch {}
 
+	// Fetch store metadata
+	let storeMetadata: Record<string, any> = {};
+	try {
+		const admin = getAdminClient();
+		if (admin) {
+			const { store } = await admin.admin.store.retrieve(privateEnv.MEDUSA_STORE_ID!, { fields: "id,metadata" });
+			storeMetadata = store.metadata || {};
+		}
+	} catch (error) {
+		console.error('Failed to fetch store metadata:', error);
+	}
+
 	return {
 		collectionItems,
-		categoryItems
+		categoryItems,
+		storeMetadata
 	};
 }

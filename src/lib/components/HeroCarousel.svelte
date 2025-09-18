@@ -38,6 +38,8 @@
 	let timer: ReturnType<typeof setInterval> | null = null;
 	let touchStartX: number | null = null;
 	let touchDeltaX = 0;
+	let containerWidth = 0;
+	let containerRef: HTMLDivElement;
 
 	// --- COMPUTED STATE ---
 	$: activeSlides = (slides || []).filter((s) => s && s.image && s.title);
@@ -53,8 +55,20 @@
 	// --- LIFECYCLE & EVENT HANDLING ---
 	function updateMediaFlags() {
 		if (!browser) return;
-		isMobile = window.matchMedia('(max-width: 639px)').matches;
+		const wasMobile = isMobile;
+		isMobile = window.matchMedia('(max-width: 768px)').matches;
 		prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		// Update container width for responsive calculations
+		if (containerRef) {
+			containerWidth = containerRef.offsetWidth;
+		}
+
+		// Restart timer if mobile state changed
+		if (wasMobile !== isMobile) {
+			stop();
+			start();
+		}
 	}
 
 	onMount(() => {
@@ -127,6 +141,7 @@
 	function onTouchStart(e: TouchEvent) {
 		if (!e.touches || e.touches.length === 0) return;
 		hovering = true;
+		stop(); // Stop autoplay on touch
 		touchStartX = e.touches[0].clientX;
 		touchDeltaX = 0;
 	}
@@ -134,17 +149,19 @@
 	function onTouchMove(e: TouchEvent) {
 		if (touchStartX == null || !e.touches || e.touches.length === 0) return;
 		touchDeltaX = e.touches[0].clientX - touchStartX;
+		e.preventDefault(); // Prevent scrolling while swiping
 	}
 
 	function onTouchEnd() {
 		hovering = false;
-		const threshold = 40;
+		const threshold = isMobile ? 50 : 40; // Larger threshold on mobile for easier swiping
 		if (Math.abs(touchDeltaX) > threshold) {
 			if (touchDeltaX < 0) next();
 			else prev();
 		}
 		touchStartX = null;
 		touchDeltaX = 0;
+		start(); // Restart autoplay after touch interaction
 	}
 
 	// --- STYLING FUNCTIONS ---
@@ -218,23 +235,23 @@
 		const d = circularDelta(i, cur, n);
 		const abs_d = Math.abs(d);
 
-		// Keep some motion even when reduced-motion is preferred (use gentler movement)
-		const intensity = prefersReducedMotionFlag ? 0.6 : 1;
-		const mobileFactor = isMobileFlag ? 0.6 : 1;
+		// More aggressive motion reduction on mobile for better performance
+		const intensity = prefersReducedMotionFlag ? 0.4 : isMobileFlag ? 0.7 : 1;
+		const mobileFactor = isMobileFlag ? 0.5 : 1; // Reduce movement on mobile
 
-		const tx = d * 30 * mobileFactor * intensity;
-		const ty = abs_d * 2 * mobileFactor * intensity;
-		const tz = -abs_d * 150 * mobileFactor * intensity;
-		const rotateY = -d * 12 * mobileFactor * intensity;
-		const rotateX = d * 2 * mobileFactor * intensity;
-		const scale = 1 - Math.min(abs_d * (isMobile ? 0.08 : 0.1), 0.22);
+		const tx = d * 25 * mobileFactor * intensity; // Reduced from 30
+		const ty = abs_d * 1.5 * mobileFactor * intensity; // Reduced from 2
+		const tz = -abs_d * 100 * mobileFactor * intensity; // Reduced from 150
+		const rotateY = -d * 8 * mobileFactor * intensity; // Reduced from 12
+		const rotateX = d * 1.5 * mobileFactor * intensity; // Reduced from 2
+		const scale = 1 - Math.min(abs_d * (isMobile ? 0.05 : 0.08), 0.15); // Reduced scaling
 		const zIndex = 100 - abs_d * 10;
-		const opacity = Math.max(0.15, 1 - abs_d * 0.28);
-		const blurPx = prefersReducedMotion ? 0 : (abs_d === 0 ? 0 : abs_d === 1 ? 1 : 2);
+		const opacity = Math.max(0.2, 1 - abs_d * 0.25); // Adjusted opacity
+		const blurPx = prefersReducedMotion ? 0 : abs_d === 0 ? 0 : abs_d === 1 ? 0.5 : 1; // Reduced blur
 
 		const transition = prefersReducedMotionFlag
-			? 'transform 450ms ease-out, opacity 300ms ease, filter 300ms ease'
-			: 'transform 900ms cubic-bezier(0.16,1,0.3,1), opacity 520ms ease, filter 520ms ease';
+			? 'transform 350ms ease-out, opacity 250ms ease, filter 250ms ease'
+			: 'transform 700ms cubic-bezier(0.16,1,0.3,1), opacity 400ms ease, filter 400ms ease';
 
 		return `
 			transform: translate3d(${tx}%, ${ty}%, ${tz}px) rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale(${scale});
@@ -257,12 +274,11 @@
 <!-- Full-width carousel -->
 <section class="relative w-full overflow-hidden">
 	<div class="w-full">
-		<div
-			class="relative min-h-[400px] sm:min-h-[480px] md:min-h-[580px] lg:min-h-[720px]"
-		>
+		<div class="relative min-h-[350px] sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px]">
 			<!-- Ambient background elements removed to eliminate faint container -->
 
 			<div
+				bind:this={containerRef}
 				class="relative h-full w-full overflow-hidden"
 				role="region"
 				aria-roledescription="carousel"
@@ -276,123 +292,133 @@
 				<!-- Background mask and floor glow removed -->
 				<!-- Loading state -->
 				{#if activeSlides.length === 0}
-				<div
-					class="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-primary/10 to-primary/5"
-				>
-					<div class="text-center">
-						<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-						<p class="font-medium text-primary">Loading...</p>
+					<div
+						class="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-primary/10 to-primary/5"
+					>
+						<div class="text-center">
+							<div
+								class="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary"
+							></div>
+							<p class="font-medium text-primary">Loading...</p>
+						</div>
 					</div>
-				</div>
 				{:else}
 					<!-- Slide container with perspective for 3D depth -->
 					<div
-						class="relative w-full h-[400px] sm:h-[480px] md:h-[580px] lg:h-[720px]"
-						style={`perspective: ${isMobile ? 1400 : 2000}px; transform-style: preserve-3d;`}
+						class="relative h-[350px] w-full sm:h-[400px] md:h-[500px] lg:h-[600px] xl:h-[720px]"
+						style={`perspective: ${isMobile ? 1200 : 1800}px; transform-style: preserve-3d;`}
 					>
 						{#each activeSlides as slide, i (slide.image ?? i)}
 							{#if isRenderableSlide(i, current, activeSlides.length || 1, isMobile)}
 								<div
 									class="absolute inset-0 flex items-center justify-center will-change-transform"
-									style={slideStyle(i, current, activeSlides.length || 1, isMobile, prefersReducedMotion)}
+									style={slideStyle(
+										i,
+										current,
+										activeSlides.length || 1,
+										isMobile,
+										prefersReducedMotion
+									)}
 								>
-								<!-- Card container with full responsive sizing -->
-								<div
-									class="relative w-[92%] sm:w-[88%] md:w-[85%] lg:w-[80%] xl:w-[75%] h-[85%] sm:h-[87%] md:h-[90%] rounded-3xl bg-base-100 shadow-2xl overflow-hidden border border-base-300/20"
-								>
-									<!-- Image with error handling -->
-									{#if shouldShowSlide(i)}
-										<figure class="absolute inset-0">
-											<img
-												src={slide.image}
-												alt={slide.title}
-												class="h-full w-full object-cover transition-opacity duration-300"
-												loading={i === current ? 'eager' : 'lazy'}
-												decoding="async"
-												on:error={() => handleImageError(i)}
-											/>
-										</figure>
-									{:else}
-										<div
-											class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-base-300 to-base-200"
-										>
-											<div class="text-center text-base-content/60">
-												<div class="mb-2 text-4xl">📷</div>
-												<p class="text-sm">Image failed to load</p>
-											</div>
-										</div>
-									{/if}
-
-									<!-- Gradient overlay -->
+									<!-- Card container with full responsive sizing -->
 									<div
-										class="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"
-									></div>
-
-									<!-- Content overlay -->
-									<div
-										class={`absolute inset-0 flex ${positionClasses(slide.contentPosition)} p-6 md:p-8`}
+										class="relative h-[90%] w-[95%] mx-auto overflow-hidden rounded-2xl sm:h-[87%] sm:w-[90%] md:h-[88%] md:w-[85%] lg:w-[80%] xl:w-[75%]"
 									>
-										<div class={`flex w-full ${justifyClasses(slide.textAlign)}`}>
+										<!-- Image with error handling -->
+										{#if shouldShowSlide(i)}
+											<figure class="absolute inset-0">
+												<img
+													src={slide.image}
+													alt={slide.title}
+													class="h-full w-full object-cover transition-opacity duration-300"
+													loading={i === current ? 'eager' : 'lazy'}
+													decoding="async"
+													on:error={() => handleImageError(i)}
+												/>
+											</figure>
+										{:else}
 											<div
-												class={`max-w-3xl text-white ${textAlignClass(slide.textAlign)}`}
-												style={contentStyle(i, current, activeSlides.length || 1)}
-												aria-hidden={i !== current}
+												class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-base-300 to-base-200"
 											>
-												<!-- Badge -->
-												{#if slide.badge}
-													<div
-														class="mb-4 inline-flex items-center px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-medium border border-white/30 backdrop-blur-sm"
-													>
-														{slide.badge}
-													</div>
-												{/if}
+												<div class="text-center text-base-content/60">
+													<div class="mb-2 text-4xl">📷</div>
+													<p class="text-sm">Image failed to load</p>
+												</div>
+											</div>
+										{/if}
 
-												<!-- Title -->
-												<h1 class="mb-4 text-3xl leading-tight font-bold md:text-5xl xl:text-6xl">
-													{slide.title}
-													{#if slide.accent}
-														<br />
-														<span class="text-primary-content/90 drop-shadow-lg">{slide.accent}</span>
-													{/if}
-												</h1>
+										<!-- Gradient overlay -->
+										<div
+											class="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"
+										></div>
 
-												<!-- Subtitle -->
-												{#if slide.subtitle}
-													<p
-														class="mb-6 max-w-2xl text-lg leading-relaxed text-white/90 md:text-xl"
-													>
-														{slide.subtitle}
-													</p>
-												{/if}
-
-												<!-- CTA Buttons -->
+										<!-- Content overlay -->
+										<div
+											class={`absolute inset-0 flex ${positionClasses(slide.contentPosition)} p-4 sm:p-6 md:p-8`}
+										>
+											<div class={`flex w-full ${justifyClasses(slide.textAlign)}`}>
 												<div
-													class={`flex flex-col gap-4 sm:flex-row ${justifyClasses(slide.textAlign)}`}
+													class={`max-w-2xl text-white ${textAlignClass(slide.textAlign)}`}
+													style={contentStyle(i, current, activeSlides.length || 1)}
+													aria-hidden={i !== current}
 												>
-													{#if slide.ctaPrimary}
-														<a
-															href={slide.ctaPrimary.href}
-															class="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-primary text-primary-content font-semibold shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-primary/90"
-															tabindex={i === current ? 0 : -1}
+													<!-- Badge -->
+													{#if slide.badge}
+														<div
+															class="mb-4 inline-flex items-center rounded-full border border-white/30 bg-white/20 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm"
 														>
-															{slide.ctaPrimary.label}
-														</a>
+															{slide.badge}
+														</div>
 													{/if}
-													{#if slide.ctaSecondary}
-														<a
-															href={slide.ctaSecondary.href}
-															class="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 text-white font-semibold transition-all duration-300 hover:bg-white/20"
-															tabindex={i === current ? 0 : -1}
+
+													<!-- Title -->
+													<h1 class="mb-3 text-2xl leading-tight font-bold sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">
+														{slide.title}
+														{#if slide.accent}
+															<br />
+															<span class="text-primary-content/90 drop-shadow-lg"
+																>{slide.accent}</span
+															>
+														{/if}
+													</h1>
+
+													<!-- Subtitle -->
+													{#if slide.subtitle}
+														<p
+															class="mb-4 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg md:text-xl"
 														>
-															{slide.ctaSecondary.label}
-														</a>
+															{slide.subtitle}
+														</p>
 													{/if}
+
+													<!-- CTA Buttons -->
+													<div
+														class={`flex flex-col gap-3 sm:flex-row ${justifyClasses(slide.textAlign)}`}
+													>
+														{#if slide.ctaPrimary}
+															<a
+																href={slide.ctaPrimary.href}
+																class="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base"
+																tabindex={i === current ? 0 : -1}
+															>
+																{slide.ctaPrimary.label}
+															</a>
+														{/if}
+														{#if slide.ctaSecondary}
+															<a
+																href={slide.ctaSecondary.href}
+																class="inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base"
+																tabindex={i === current ? 0 : -1}
+															>
+																{slide.ctaSecondary.label}
+															</a>
+														{/if}
+													</div>
 												</div>
 											</div>
 										</div>
 									</div>
 								</div>
-							</div>
 							{/if}
 						{/each}
 					</div>
@@ -402,10 +428,10 @@
 				{#if activeSlides.length > 1}
 					<button
 						on:click={prev}
-						class="absolute top-1/2 left-4 -translate-y-1/2 w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/50"
+						class="absolute top-1/2 left-2 flex h-10 w-10 -translate-y-1/2 -translate-x-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:left-4 sm:h-12 sm:w-12"
 						aria-label="Previous slide"
 					>
-						<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -416,10 +442,10 @@
 					</button>
 					<button
 						on:click={next}
-						class="absolute top-1/2 right-4 -translate-y-1/2 w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/50"
+						class="absolute top-1/2 right-2 flex h-10 w-10 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:right-4 sm:h-12 sm:w-12"
 						aria-label="Next slide"
 					>
-						<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -432,11 +458,11 @@
 
 				<!-- Pagination Dots -->
 				{#if activeSlides.length > 1}
-					<div class="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-3">
+					<div class="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2 sm:bottom-6 sm:gap-3">
 						{#each activeSlides as _, i (i)}
 							<button
 								on:click={() => (current = i)}
-								class={`h-3 w-3 rounded-full transition-all duration-200 focus:ring-2 focus:ring-white/50 focus:outline-none ${
+								class={`h-2.5 w-2.5 rounded-full transition-all duration-200 focus:ring-2 focus:ring-white/50 focus:outline-none sm:h-3 sm:w-3 ${
 									i === current ? 'scale-125 bg-white' : 'bg-white/50 hover:bg-white/80'
 								}`}
 								aria-label={'Go to slide ' + (i + 1)}

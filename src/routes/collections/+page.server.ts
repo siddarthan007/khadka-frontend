@@ -7,7 +7,7 @@ export const load: PageServerLoad = async () => {
 		name: c.title ?? c.handle,
 		handle: c.handle,
 		thumbnail: (c as any).metadata?.thumbnail ?? null,
-		emoji: (c as any).metadata?.emoji ?? null,
+		emoji: (c as any).metadata?.emoji ?? null
 	}));
 	return {
 		collections: items

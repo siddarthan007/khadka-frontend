@@ -1,9 +1,20 @@
 <script lang="ts">
-	import { Dialog as SheetPrimitive } from "bits-ui";
+	import { Dialog as SheetPrimitive } from 'bits-ui';
 
-	let { ref = $bindable(null), children, ...restProps }: SheetPrimitive.CloseProps & { children?: any } = $props();
+	let {
+		ref = $bindable(null),
+		child,
+		children,
+		...restProps
+	}: SheetPrimitive.CloseProps & { children?: any } = $props();
 </script>
 
-<SheetPrimitive.Close asChild bind:ref data-slot="sheet-close" {...restProps}>
-	{@render children?.()}
+<SheetPrimitive.Close bind:ref data-slot="sheet-close" {...restProps} {child}>
+	{#if !child}
+		{#snippet child({ props }: { props: Record<string, any> })}
+			<span {...props}>
+				{@render children?.()}
+			</span>
+		{/snippet}
+	{/if}
 </SheetPrimitive.Close>

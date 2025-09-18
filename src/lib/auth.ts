@@ -6,19 +6,45 @@ import { get } from 'svelte/store';
 import { showToast } from '$lib/stores/toast';
 import { normalizeUSPhone } from '$lib/us';
 
+/**
+ * Auth module notes:
+ *
+ * Password reset flow:
+ * - Request reset email: requestPasswordReset(email) wraps sdk.auth.resetPassword('customer', 'emailpass', { identifier: email })
+ *   which triggers Medusa to email a reset link containing token and email.
+ * - Complete reset: resetPassword(email, password, token) wraps sdk.auth.updateProvider('customer', 'emailpass', { email, password }, token)
+ *   to set the new password using the one-time token.
+ * - UI pages:
+ *   - /password-reset requests a reset email.
+ *   - /reset-password reads ?token=...&email=... from the URL to submit the new password.
+ *
+ * OAuth (Google) overview:
+ * - Start endpoint: GET /oauth/google/start – builds the Medusa authorize URL and sets CSRF state cookie.
+ * - Callback endpoint: GET /oauth/google/callback – validates state and redirects to the intended page.
+ * - Session is managed by the Medusa store session cookie (session auth); after redirect you can call getCurrentCustomer().
+ *
+ * Placeholders:
+ * - If we later want client helpers in this module, prefer thin wrappers around those routes, e.g.:
+ *   startGoogleOAuth(returnTo = '/account') → window.location = `/oauth/google/start?return_to=${encodeURIComponent(returnTo)}`
+ *   After callback, call getCurrentCustomer() to sync the customer store.
+ */
 export type RegisterPayload = {
 	first_name?: string;
 	last_name?: string;
 	email: string;
 	password: string;
-  	phone?: string;
+	phone?: string;
 };
 
 export async function getCurrentCustomer(): Promise<HttpTypes.StoreCustomer | null> {
 	try {
 		const sdk = getStoreClient();
-		if (!sdk) return null;
+		if (!sdk) {
+			console.warn('Medusa SDK not available');
+			return null;
+		}
 		const { customer: me } = await sdk.store.customer.retrieve();
+		customer.set(me ?? null);
 		customer.set(me ?? null);
 		return me ?? null;
 	} catch (error: any) {
@@ -33,7 +59,10 @@ export async function getCurrentCustomer(): Promise<HttpTypes.StoreCustomer | nu
 	}
 }
 
-export async function login(email: string, password: string): Promise<HttpTypes.StoreCustomer | null> {
+export async function login(
+	email: string,
+	password: string
+): Promise<HttpTypes.StoreCustomer | null> {
 	try {
 		const sdk = getStoreClient();
 		if (!sdk) return null;
@@ -42,6 +71,17 @@ export async function login(email: string, password: string): Promise<HttpTypes.
 			return null;
 		}
 		const me = await getCurrentCustomer();
+		// After login, try to claim recent guest orders for this email
+		try {
+			if (me?.email && me?.id) {
+				const claimed = await sweepClaimGuestOrders(me.email, me.id);
+				if (claimed > 0) {
+					showToast(`Attached ${claimed} order${claimed > 1 ? 's' : ''} to your account`, {
+						type: 'success'
+					});
+				}
+			}
+		} catch {}
 		try {
 			const c = get(cart);
 			if (c?.id) {
@@ -65,40 +105,42 @@ export async function register(payload: RegisterPayload): Promise<HttpTypes.Stor
 
 	let token: string | null = null;
 	try {
-		// 1) Register identity and get registration token; SDK often stores it, but keep it for safety
 		token = await (sdk as any).auth.register('customer', 'emailpass', { email, password });
-		if (typeof token === 'string' && token) {
-			try { (sdk as any).client.setToken(token); } catch {}
+		if (typeof token !== 'string' || !token) {
+			throw new Error('Registration failed to return a valid token');
 		}
 	} catch (error: any) {
 		const statusText = error?.statusText ?? error?.response?.statusText;
 		const message = error?.message ?? error?.response?.data?.message;
-		if (!(statusText === 'Unauthorized' && message === 'Identity with email already exists')) {
-			logApiError('register', error);
-			showToast('Registration failed', { type: 'error' });
-			return null;
+		if (statusText === 'Unauthorized' && message === 'Identity with email already exists') {
+			return await login(email, password);
 		}
-		// Identity exists → login to obtain a token
-		const loginTok = await (sdk as any).auth.login('customer', 'emailpass', { email, password }).catch(() => null);
-		if (!loginTok || typeof loginTok !== 'string') return null;
-		token = loginTok;
-		try { (sdk as any).client.setToken(token); } catch {}
+		logApiError('auth.register', error);
+		showToast('Registration failed', { type: 'error' });
+		return null;
 	}
 
 	try {
-		// 2) Create customer using current token (no manual headers)
-		await sdk.store.customer.create({ email, first_name, last_name, phone }).catch((e: any) => {
-			const code = e?.response?.status;
-			if (code === 409 || code === 400) return;
-			try { console.debug('customer.create failed', { email, hasFirst: !!first_name, hasLast: !!last_name, hasPhone: !!phone, status: code }); } catch {}
-			logApiError('store.customer.create', e);
-			throw e;
-		});
-		try { (sdk as any).client.setToken(undefined); } catch {}
-		await (sdk as any).auth.login('customer', 'emailpass', { email, password }).catch(() => {});
-		return await getCurrentCustomer();
+		await sdk.store.customer.create(
+			{ email, first_name, last_name, phone },
+			{},
+			{ Authorization: `Bearer ${token}` }
+		);
+		const me = await login(email, password);
+		// Claim guest orders post-register
+		try {
+			if (me?.email && me?.id) {
+				const claimed = await sweepClaimGuestOrders(me.email, me.id);
+				if (claimed > 0) {
+					showToast(`Attached ${claimed} order${claimed > 1 ? 's' : ''} to your account`, {
+						type: 'success'
+					});
+				}
+			}
+		} catch {}
+		return me;
 	} catch (error) {
-		logApiError('register.createCustomer', error);
+		logApiError('register.createCustomerOrLogin', error);
 		showToast('Account creation failed', { type: 'error' });
 		return null;
 	}
@@ -131,7 +173,11 @@ export async function requestPasswordReset(email: string): Promise<boolean> {
 	}
 }
 
-export async function resetPassword(email: string, password: string, token: string): Promise<boolean> {
+export async function resetPassword(
+	email: string,
+	password: string,
+	token: string
+): Promise<boolean> {
 	try {
 		const sdk = getStoreClient();
 		if (!sdk) return false;
@@ -145,7 +191,172 @@ export async function resetPassword(email: string, password: string, token: stri
 	}
 }
 
-export async function updateProfile(update: Partial<Pick<HttpTypes.StoreCustomer, 'first_name' | 'last_name' | 'email' | 'phone'>>): Promise<HttpTypes.StoreCustomer | null> {
+export async function loginWithGoogle(): Promise<{
+	success: boolean;
+	location?: string;
+	customer?: HttpTypes.StoreCustomer;
+}> {
+	try {
+		const sdk = getStoreClient();
+		if (!sdk) return { success: false };
+
+		const result = await (sdk as any).auth.login('customer', 'google', {});
+
+		if (typeof result === 'object' && result.location) {
+			// redirect to Google for authentication
+			return { success: true, location: result.location };
+		}
+
+		if (typeof result !== 'string') {
+			// result failed
+			return { success: false };
+		}
+
+		// all subsequent requests are authenticated
+		const { customer } = await sdk.store.customer.retrieve();
+		return { success: true, customer };
+	} catch (error) {
+		logApiError('loginWithGoogle', error);
+		return { success: false };
+	}
+}
+
+export async function registerWithGoogle(): Promise<{
+	success: boolean;
+	location?: string;
+	customer?: HttpTypes.StoreCustomer;
+}> {
+	try {
+		const sdk = getStoreClient();
+		if (!sdk) return { success: false };
+
+		const result = await (sdk as any).auth.login('customer', 'google', {});
+
+		if (typeof result === 'object' && result.location) {
+			// redirect to Google for authentication
+			return { success: true, location: result.location };
+		}
+
+		if (typeof result !== 'string') {
+			// result failed
+			return { success: false };
+		}
+
+		// all subsequent requests are authenticated
+		const { customer } = await sdk.store.customer.retrieve();
+		return { success: true, customer };
+	} catch (error) {
+		logApiError('registerWithGoogle', error);
+		return { success: false };
+	}
+}
+
+// Starts Google OAuth using official SDK and redirects the browser.
+export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
+	const sdk = getStoreClient() as any;
+	if (!sdk || typeof window === 'undefined') return;
+	try {
+		const origin = window.location.origin;
+		const callback = new URL('/oauth/google/callback', origin);
+		callback.searchParams.set('return_to', returnTo);
+		const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback.toString() });
+		if (res && typeof res === 'object' && 'location' in res && res.location) {
+			window.location.href = res.location as string;
+			return;
+		}
+		if (typeof res === 'string' && res) {
+			await getCurrentCustomer();
+			window.location.href = returnTo;
+			return;
+		}
+	} catch (error) {
+		logApiError('startGoogleOAuth', error);
+	}
+}
+
+// Completes Google OAuth on the callback page.
+export async function completeGoogleOAuth(searchParams: URLSearchParams): Promise<boolean> {
+	try {
+		const sdk = getStoreClient() as any;
+		if (!sdk) return false;
+		const query: Record<string, string> = {};
+		for (const [k, v] of searchParams.entries()) query[k] = v;
+		const res = await sdk.auth.callback('customer', 'google', query);
+		if (res) {
+			await getCurrentCustomer();
+			// After login, try to claim recent guest orders for this email
+			try {
+				const me = get(customer);
+				if (me?.email && me?.id) {
+					const claimed = await sweepClaimGuestOrders(me.email, me.id);
+					if (claimed > 0) {
+						showToast(`Attached ${claimed} order${claimed > 1 ? 's' : ''} to your account`, {
+							type: 'success'
+						});
+					}
+				}
+			} catch {}
+			try {
+				const c = get(cart);
+				if (c?.id) {
+					await (sdk as any).store.cart.transferCart(c.id).catch(() => {});
+				}
+			} catch {}
+			return true;
+		}
+		return false;
+	} catch (error) {
+		logApiError('completeGoogleOAuth', error);
+		return false;
+	}
+}
+
+// Attempts to claim recent guest orders by display_id guesses for a given email.
+// Strategy: probe a small range of recent display ids around a passed hint (optional).
+// If backend exposes a safer index, replace this with that call.
+export async function sweepClaimGuestOrders(
+	email: string,
+	customerId: string,
+	hints: Array<string | number> = []
+): Promise<number> {
+	let claimed = 0;
+	try {
+		const tryIds: Array<string | number> = [];
+		for (const h of hints) tryIds.push(h);
+		// Reduced attempts to minimize 404 noise - only try if we have hints
+		if (hints.length === 0) {
+			return 0;
+		}
+
+		const seen = new Set<string>();
+		for (const key of tryIds) {
+			const k = String(key);
+			if (seen.has(k)) continue;
+			seen.add(k);
+			try {
+				const res = await fetch('/api/orders/claim', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ display_id: k, email, customer_id: customerId })
+				});
+				if (res.ok) {
+					claimed++;
+				} else if (res.status !== 404) {
+					// Log non-404 errors (404 is expected for most guesses)
+					console.warn(`Order claim failed for ${k}: ${res.status} ${res.statusText}`);
+				}
+			} catch (error) {
+				// Silently continue - these are expected to fail most of the time
+			}
+		}
+	} catch (error) {
+		console.error('Error in sweepClaimGuestOrders:', error);
+	}
+	return claimed;
+}
+export async function updateProfile(
+	update: Partial<Pick<HttpTypes.StoreCustomer, 'first_name' | 'last_name' | 'email' | 'phone'>>
+): Promise<HttpTypes.StoreCustomer | null> {
 	try {
 		const sdk = getStoreClient();
 		if (!sdk) return null;
@@ -161,4 +372,49 @@ export async function updateProfile(update: Partial<Pick<HttpTypes.StoreCustomer
 	}
 }
 
+/**
+ * Debug function to check authentication status and session health
+ */
+export async function checkAuthStatus(): Promise<{
+	isAuthenticated: boolean;
+	customerEmail?: string;
+	sdkAvailable: boolean;
+	sessionValid: boolean;
+	errors?: string[];
+}> {
+	const errors: string[] = [];
+	let isAuthenticated = false;
+	let customerEmail: string | undefined;
+	let sessionValid = false;
 
+	const sdk = getStoreClient();
+	const sdkAvailable = !!sdk;
+
+	if (!sdkAvailable) {
+		errors.push('Medusa SDK not initialized - check environment variables');
+	} else {
+		try {
+			const { customer: me } = await sdk.store.customer.retrieve();
+			if (me) {
+				isAuthenticated = true;
+				customerEmail = me.email;
+				sessionValid = true;
+			}
+		} catch (error: any) {
+			const status = error?.response?.status ?? error?.status;
+			if (status === 401) {
+				errors.push('Authentication token expired or invalid');
+			} else {
+				errors.push(`Customer retrieval failed: ${error?.message || 'Unknown error'}`);
+			}
+		}
+	}
+
+	return {
+		isAuthenticated,
+		customerEmail,
+		sdkAvailable,
+		sessionValid,
+		errors: errors.length > 0 ? errors : undefined
+	};
+}

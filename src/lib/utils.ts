@@ -1,5 +1,5 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -11,11 +11,34 @@ export function cn(...inputs: ClassValue[]) {
 // - If the value is an integer >= 100, treat as minor units (divide by 100)
 // - If the value has decimals, treat as major units
 // - If the value is an integer < 100, assume major units to avoid $0.04 for $4
-export function formatCurrency(amountUnknownUnits: number, currencyCode?: string, locale?: string): string {
+export function formatCurrency(
+	amountUnknownUnits: number,
+	currencyCode?: string,
+	locale?: string
+): string {
 	const currency = (currencyCode || 'USD').toUpperCase();
 	const amount = typeof amountUnknownUnits === 'number' ? amountUnknownUnits : 0;
 	const ZERO_DECIMAL_CURRENCIES = new Set([
-		'BIF','CLP','DJF','GNF','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF','HUF','IDR','LAK','TWD'
+		'BIF',
+		'CLP',
+		'DJF',
+		'GNF',
+		'JPY',
+		'KMF',
+		'KRW',
+		'MGA',
+		'PYG',
+		'RWF',
+		'UGX',
+		'VND',
+		'VUV',
+		'XAF',
+		'XOF',
+		'XPF',
+		'HUF',
+		'IDR',
+		'LAK',
+		'TWD'
 	]);
 
 	const toMajorUnits = (val: number): number => {
@@ -46,8 +69,8 @@ export function formatCalculatedPrice(cp: any, locale?: string): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type WithoutChild<T> = T extends { child?: any } ? Omit<T, "child"> : T;
+export type WithoutChild<T> = T extends { child?: any } ? Omit<T, 'child'> : T;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type WithoutChildren<T> = T extends { children?: any } ? Omit<T, "children"> : T;
+export type WithoutChildren<T> = T extends { children?: any } ? Omit<T, 'children'> : T;
 export type WithoutChildrenOrChild<T> = WithoutChildren<WithoutChild<T>>;
 export type WithElementRef<T, U extends HTMLElement = HTMLElement> = T & { ref?: U | null };

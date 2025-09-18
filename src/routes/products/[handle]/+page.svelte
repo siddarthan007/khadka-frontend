@@ -148,13 +148,51 @@
 <svelte:head>
 	<title>{product?.title ? `${product.title} • KhadkaFoods` : 'Product • KhadkaFoods'}</title>
 	{#if product?.description}
-		<meta name="description" content={product.description.slice(0, 150)} />
+		<meta name="description" content={`${product.description.slice(0, 150)}${product.description.length > 150 ? '...' : ''}`} />
+		<meta name="keywords" content={`buy ${product.title}, ${product.title} online, groceries, fresh products, KhadkaFoods`} />
 	{/if}
+	<meta name="robots" content="index, follow" />
+	<meta name="author" content="KhadkaFoods" />
 	{#if activeImage}
 		<meta property="og:image" content={activeImage} />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta name="twitter:image" content={activeImage} />
+	{:else}
+		<meta property="og:image" content="/logo.png" />
+		<meta name="twitter:image" content="/logo.png" />
 	{/if}
 	<meta property="og:title" content={product?.title ?? 'Product'} />
+	<meta property="og:description" content={product?.description?.slice(0, 150) ?? 'Premium quality product at KhadkaFoods'} />
 	<meta property="og:type" content="product" />
+	<meta property="og:url" content={`https://khadkafoods.com/products/${product?.handle ?? ''}`} />
+	<meta property="product:price:amount" content={product?.variants?.[0]?.prices?.[0]?.amount ? (product.variants[0].prices[0].amount / 100).toString() : ''} />
+	<meta property="product:price:currency" content={product?.variants?.[0]?.prices?.[0]?.currency_code ?? 'USD'} />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={product?.title ?? 'Product'} />
+	<meta name="twitter:description" content={product?.description?.slice(0, 150) ?? 'Premium quality product at KhadkaFoods'} />
+	<link rel="canonical" href={`https://khadkafoods.com/products/${product?.handle ?? ''}`} />
+	{#if product}
+		<script type="application/ld+json">
+			{{
+				"@context": "https://schema.org",
+				"@type": "Product",
+				"name": product.title,
+				"description": product.description,
+				"image": activeImage || "/logo.png",
+				"brand": {
+					"@type": "Brand",
+					"name": "KhadkaFoods"
+				},
+				"offers": {
+					"@type": "Offer",
+					"price": product.variants?.[0]?.prices?.[0]?.amount ? (product.variants[0].prices[0].amount / 100) : 0,
+					"priceCurrency": product.variants?.[0]?.prices?.[0]?.currency_code || "USD",
+					"availability": "https://schema.org/InStock"
+				}
+			}}
+		</script>
+	{/if}
 </svelte:head>
 
 <section class="w-full py-8">
@@ -207,7 +245,10 @@
 								{/if}
 							</div>
 							{#if isNew()}
-							<span class="badge badge-primary badge-sm text-primary-content left-2 top-2 px-2.5 py-0.5 rounded-full shadow">NEW</span>
+								<span
+									class="top-2 left-2 badge rounded-full badge-sm px-2.5 py-0.5 text-primary-content shadow badge-primary"
+									>NEW</span
+								>
 							{/if}
 
 							{#if (product.options?.length ?? 0) > 0}
@@ -255,7 +296,7 @@
 											/>
 											<Button
 												variant="ghost"
-												size="lg"	
+												size="lg"
 												class="join-item"
 												onclick={incSelected}
 												disabled={isUpdating}
@@ -302,7 +343,7 @@
 												{#each product.categories as c}
 													<a
 														href={`/categories/${c.handle}`}
-														class="badge rounded-full badge-primary px-3 py-2 transition-colors hover:badge-primary"
+														class="badge rounded-full px-3 py-2 transition-colors badge-primary hover:badge-primary"
 														>{c.name}</a
 													>
 												{/each}
@@ -310,7 +351,7 @@
 											{#if product.collection}
 												<a
 													href={`/collections/${product.collection.handle}`}
-													class="badge rounded-full badge-secondary px-3 py-2 badge-secondary hover:badge-secondary"
+													class="badge rounded-full px-3 py-2 badge-secondary hover:badge-secondary"
 													>{product.collection.title}</a
 												>
 											{/if}

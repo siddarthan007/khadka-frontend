@@ -2,10 +2,11 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
-@plugin "daisyui" {}
+@plugin "daisyui" {
+}
 
 @plugin "daisyui/theme" {
-	name: "khadka";
+	name: 'khadka';
 	default: true;
 	prefersdark: false;
 	color-scheme: light;
@@ -29,7 +30,7 @@
 }
 
 @plugin "daisyui/theme" {
-	name: "dark";
+	name: 'dark';
 	prefersdark: true;
 	color-scheme: dark;
 
@@ -186,9 +187,9 @@
 }
 
 /* Button hover tweaks in dark mode for better contrast */
-.dark [data-slot="button"].hover\:bg-accent:hover,
-.dark [data-slot="button"].hover\:bg-accent\/50:hover,
-.dark [data-slot="button"].hover\:bg-primary\/90:hover,
+.dark [data-slot='button'].hover\:bg-accent:hover,
+.dark [data-slot='button'].hover\:bg-accent\/50:hover,
+.dark [data-slot='button'].hover\:bg-primary\/90:hover,
 .dark .btn:hover,
 .dark .btn-ghost:hover,
 .dark .btn-outline:hover,

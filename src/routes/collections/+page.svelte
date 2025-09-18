@@ -1,24 +1,60 @@
 <script lang="ts">
-	import Pill from '$lib/components/Pill.svelte'
-	let { data }: { data?: { collections: Array<{ name: string; handle: string; thumbnail?: string | null; emoji?: string }> } } = $props();
-	const items = (data?.collections ?? []).slice().reverse()
+	import Pill from '$lib/components/Pill.svelte';
+	let {
+		data
+	}: {
+		data?: {
+			collections: Array<{
+				name: string;
+				handle: string;
+				thumbnail?: string | null;
+				emoji?: string;
+			}>;
+		};
+	} = $props();
+	const items = (data?.collections ?? []).slice().reverse();
 
 	$effect(() => {
 		if (typeof document !== 'undefined') {
-			document.title = 'Collections • KhadkaFoods'
+			document.title = 'Collections • KhadkaFoods';
 		}
-	})
+	});
 </script>
+
+<svelte:head>
+	<title>Collections • KhadkaFoods - Curated Product Collections</title>
+	<meta name="description" content="Explore our carefully curated product collections at KhadkaFoods. Find themed collections of premium groceries, fresh produce, and household essentials." />
+	<meta name="keywords" content="collections, product collections, curated products, groceries collections, household essentials, themed products" />
+	<meta name="robots" content="index, follow" />
+	<meta name="author" content="KhadkaFoods" />
+	<meta property="og:title" content="Collections • KhadkaFoods - Curated Product Collections" />
+	<meta property="og:description" content="Explore our carefully curated product collections at KhadkaFoods. Find themed collections of premium groceries and essentials." />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://khadkafoods.com/collections" />
+	<meta property="og:image" content="/logo.png" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="Collections • KhadkaFoods - Curated Product Collections" />
+	<meta name="twitter:description" content="Explore our carefully curated product collections at KhadkaFoods. Find themed collections of premium groceries and essentials." />
+	<meta name="twitter:image" content="/logo.png" />
+	<link rel="canonical" href="https://khadkafoods.com/collections" />
+</svelte:head>
 
 <section class="w-full py-10">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 		<header class="mb-8">
 			<h1 class="text-3xl font-bold tracking-tight">All collections</h1>
-			<p class="text-base-content/70 mt-1">Browse all collections.</p>
+			<p class="mt-1 text-base-content/70">Browse all collections.</p>
 		</header>
-		<div class="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
+		<div
+			class="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5"
+		>
 			{#each items as c}
-				<Pill href={`/collections/${c.handle}`} label={c.name} emoji={c.emoji ?? '🌍'} class="w-full" />
+				<Pill
+					href={`/collections/${c.handle}`}
+					label={c.name}
+					emoji={c.emoji ?? '🌍'}
+					class="w-full"
+				/>
 			{/each}
 		</div>
 	</div>

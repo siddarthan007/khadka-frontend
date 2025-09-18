@@ -2,7 +2,26 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { listProducts } from '$lib/medusa';
 
 const ZERO_DECIMAL_CURRENCIES = new Set([
-	'BIF','CLP','DJF','GNF','JPY','KMF','KRW','MGA','PYG','RWF','UGX','VND','VUV','XAF','XOF','XPF','HUF','IDR','LAK','TWD'
+	'BIF',
+	'CLP',
+	'DJF',
+	'GNF',
+	'JPY',
+	'KMF',
+	'KRW',
+	'MGA',
+	'PYG',
+	'RWF',
+	'UGX',
+	'VND',
+	'VUV',
+	'XAF',
+	'XOF',
+	'XPF',
+	'HUF',
+	'IDR',
+	'LAK',
+	'TWD'
 ]);
 
 function toMajorUnits(amountUnknownUnits: number, currencyCode?: string): number {
@@ -46,7 +65,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const { products, count } = await listProducts(params);
 
-    // debug removed
+	// debug removed
 
 	let filtered = products ?? [];
 	// Apply price filtering locally using MAJOR units to match UI range values
