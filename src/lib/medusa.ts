@@ -30,8 +30,7 @@ export function getStoreClient(): Medusa | null {
 				baseUrl,
 				publishableKey,
 				auth: {
-					type: 'session',
-					fetchCredentials: 'include'
+					type: 'jwt'
 				}
 			});
 		} catch (err) {
