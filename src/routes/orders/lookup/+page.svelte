@@ -65,20 +65,23 @@
 	async function hydrate(_id: string) {
 		/* already full from lookup */
 	}
-	async function reorder() {
-		if (!order) return;
-		try {
-			const store = getStoreClient() as any;
-			if (!store) return;
-			await store.store.cart.create({
-				items: order.items.map((i: any) => ({ variant_id: i.variant_id, quantity: i.quantity }))
-			});
-			goto('/cart');
-			showToast('Order items added to cart', { type: 'success' });
-		} catch (e) {
-			showToast('Failed to reorder items', { type: 'error' });
+		async function reorder() {
+			if (!order) return;
+			try {
+				const store = getStoreClient() as any;
+				if (!store) return;
+				const { ensureCart, addLine } = await import('$lib/cart');
+				await ensureCart();
+				for (const i of order.items || []) {
+					if (!i?.variant_id || !i?.quantity) continue;
+					try { await addLine(i.variant_id, i.quantity); } catch {}
+				}
+				goto('/cart');
+				showToast('Order items added to cart', { type: 'success' });
+			} catch (e) {
+				showToast('Failed to reorder items', { type: 'error' });
+			}
 		}
-	}
 	async function cancelOrder(orderId: string) {
 		if (!order) return;
 		

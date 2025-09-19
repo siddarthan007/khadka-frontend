@@ -8,6 +8,7 @@ import { US_STATES, normalizeUSPhone } from '$lib/us';
 import { addAddress as apiAddAddress, deleteAddress as apiDeleteAddress, listAddresses, listOrders, retrieveOrder } from '$lib/customer-api';
 import type { HttpTypes } from '@medusajs/types';
 import { getStoreClient } from '$lib/medusa';
+import { ensureCart, addLine } from '$lib/cart';
 import { showToast } from '$lib/stores/toast';
 import AddressRow from './AddressRow.svelte';
 import { Tabs, Accordion } from 'bits-ui';
@@ -62,11 +63,21 @@ async function hydrateOrder(id: string) {
 async function reorder(orderId: string) {
 	try {
 		const sdk = getStoreClient() as any; if (!sdk) return;
-		const order = (await sdk.store.order.retrieve(orderId, { fields: 'id,*items,*items.variant' })).order;
-		await sdk.store.cart.create({ items: order.items.map((i: any) => ({ variant_id: i.variant_id, quantity: i.quantity })) });
-		goto('/cart');
+		const { order } = await sdk.store.order.retrieve(orderId, { fields: 'id,*items' });
+		if (!order?.items?.length) {
+			showToast('No items to reorder', { type: 'info' });
+			return;
+		}
+		await ensureCart();
+		for (const i of order.items) {
+			if (!i?.variant_id || !i?.quantity) continue;
+			try { await addLine(i.variant_id, i.quantity); } catch {}
+		}
 		showToast('Order items added to cart', { type: 'success' });
-	} catch (e:any) { showToast('Failed to reorder items', { type: 'error' }); }
+		goto('/cart');
+	} catch (e:any) {
+		showToast('Failed to reorder items', { type: 'error' });
+	}
 }
 
 async function cancelOrder(orderId: string) {

@@ -1,5 +1,4 @@
 import type { HttpTypes } from '@medusajs/types';
-import { env as publicEnv } from '$env/dynamic/public';
 import { getStoreClient, logApiError } from '$lib/medusa';
 import { customer } from '$lib/stores/customer';
 import { cart } from '$lib/stores/cart';
@@ -189,14 +188,27 @@ export async function resetPassword(
 // --- Google OAuth (simplified) ---
 // Starts Google OAuth and redirects user to provider if needed.
 export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
-	if (typeof window === 'undefined') return;
-	// Persist intended redirect so callback can navigate correctly as a fallback
-	try { localStorage.setItem('oauth_intended_path', returnTo); } catch {}
-	const params = new URLSearchParams({ return_to: returnTo });
-	window.location.href = `/oauth/google/start?${params.toString()}`;
+	const sdk = getStoreClient() as any;
+	if (!sdk || typeof window === 'undefined') return;
+
+	try {
+		const callbackUrl = new URL('/oauth/google/callback', window.location.origin).toString();
+
+		localStorage.setItem('oauth_intended_path', returnTo);
+
+		const res = await sdk.auth.login('customer', 'google', { callbackUrl: callbackUrl });
+
+		if (res && typeof res === 'object' && 'location' in res && res.location) {
+			window.location.href = res.location as string;
+		} else {
+			showToast('Unable to start Google authentication. Please try again.', { type: 'error' });
+		}
+	} catch (error) {
+		logApiError('startGoogleOAuth', error);
+		showToast('Failed to start Google sign-in.', { type: 'error' });
+	}
 }
 
-// Handle callback page: exchange code for token, optionally create customer, refresh token, hydrate store.
 export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): Promise<boolean> {
 	const sdk = getStoreClient() as any;
 	if (!sdk) return false;
@@ -209,165 +221,68 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			return false;
 		}
 		if (!query.code) {
-			showToast('Authentication failed: Missing authorization code', { type: 'error' });
+			showToast('Authentication failed: Missing authorization code.', { type: 'error' });
 			return false;
 		}
 
-		// 1. Exchange code for token (MANUAL) to avoid SDK auto /auth/session before actor exists
+		// 1. Exchange code for token
 		let token: string = '';
 		try {
-			const params = new URLSearchParams();
-			for (const [k, v] of Object.entries(query)) params.set(k, String(v));
-			const resp: Response = await sdk.client.fetch(`/auth/customer/google/callback?${params.toString()}`, {
-				method: 'POST'
-			});
-			if (!resp.ok) {
-				const text = await resp.text().catch(() => '');
-				throw new Error(`Callback failed: ${resp.status} ${resp.statusText} ${text}`);
-			}
-			const data = await resp.json().catch(() => ({}));
-			token = typeof data === 'string' ? data : (data?.token ?? '');
+			token = await sdk.auth.callback('customer', 'google', query);
 		} catch (err) {
-			logApiError('googleOAuthCallbackManual', err);
-			showToast('Authentication failed while exchanging code', { type: 'error' });
-			return false;
-		}
-		if (typeof token !== 'string' || !token) {
-			showToast('Authentication failed: Invalid token response', { type: 'error' });
+			logApiError('googleOAuthCallback', err);
+			showToast('Authentication failed while exchanging code. Check backend logs and ensure callback URLs match.', { type: 'error' });
 			return false;
 		}
 
-		// Set token on SDK so subsequent requests use bearer auth until session is established
-		try { sdk.client.setToken(token); } catch {}
+		if (typeof token !== 'string') {
+			showToast('Authentication failed: Invalid token response from server.', { type: 'error' });
+			return false;
+		}
 
-		// 2. Decode token
-		// Claims include Medusa's actor_id; when provider is Google, typical OIDC claims include
-		// sub, email, email_verified, name, given_name, family_name, picture, locale.
-		type Decoded = {
-			actor_id?: string;
-			email?: string;
-			email_verified?: boolean;
-			given_name?: string;
-			family_name?: string;
-			name?: string;
-			picture?: string;
-			sub?: string;
-		};
-		let decoded: Decoded | null = null;
-		try {
-			decoded = decodeToken<Decoded>(token);
-		} catch { }
+		type DecodedToken = { actor_id?: string; email?: string; given_name?: string; family_name?: string; name?: string; };
+		const decoded = decodeToken<DecodedToken>(token);
+		
+		const needsCustomer = !decoded?.actor_id;
 
-		const actorId = decoded?.actor_id;
-		const needsCustomer = actorId === '' || actorId == null;
 		if (needsCustomer) {
 			const email = decoded?.email?.toLowerCase()?.trim();
-			const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
-			const last_name =
-				decoded?.family_name ||
-				(decoded?.name && decoded.name.split(' ').slice(1).join(' ')) ||
-				undefined;
-
 			if (!email) {
-				showToast('Authentication failed: Provider did not return an email', { type: 'error' });
+				showToast('Authentication failed: Provider did not return an email.', { type: 'error' });
 				return false;
 			}
+			
+			const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
+			const last_name = decoded?.family_name || decoded?.name?.split(' ').slice(1).join(' ') || undefined;
 
 			try {
-				await sdk.store.customer.create({ email, first_name, last_name });
+				await sdk.store.customer.create(
+					{ email, first_name, last_name },
+					{},
+					{ Authorization: `Bearer ${token}` }
+				);
+				await sdk.auth.refresh();
+
 			} catch (createErr: any) {
 				const msg = createErr?.response?.data?.message || createErr?.message;
 				if (!msg || !/already exists/i.test(msg)) {
 					logApiError('googleOAuthCreateCustomer', createErr);
-					showToast('Failed to finalize account creation', { type: 'error' });
+					showToast('Failed to create your account.', { type: 'error' });
 					return false;
 				}
 			}
 		}
 
-		// 4. Refresh token (establish session cookie). If actor was just created, this binds identity -> actor.
-		let latestToken: string | null = null;
-		try {
-			latestToken = await sdk.auth.refresh();
-			if (typeof latestToken === 'string' && latestToken) {
-				try { sdk.client.setToken(latestToken); } catch {}
-			}
-		} catch (refreshErr) {
-			logApiError('googleOAuthRefresh', refreshErr);
-			// Non-fatal; continue with current bearer token
-		}
-
-		// 4b. Force session cookie creation for session auth setups, explicitly attaching Authorization
-		try {
-			const baseUrl = publicEnv.PUBLIC_MEDUSA_BACKEND_URL as string | undefined;
-			const pk = publicEnv.PUBLIC_MEDUSA_PUBLISHABLE_KEY as string | undefined;
-			const bearer = latestToken || token;
-			if (baseUrl && /^https?:\/\//.test(baseUrl)) {
-				await fetch(`${baseUrl.replace(/\/$/, '')}/auth/session`, {
-					method: 'POST',
-					headers: {
-						...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
-						...(pk ? { 'x-publishable-api-key': pk } : {}),
-						'content-type': 'application/json'
-					},
-					credentials: 'include',
-					mode: 'cors'
-				});
-			} else {
-				// Fallback to SDK if baseUrl missing
-				await sdk.client.fetch('/auth/session', { method: 'POST' });
-			}
-		} catch (sessionErr) {
-			// If this fails, we can still proceed with bearer token; log for diagnostics
-			logApiError('googleOAuthSession', sessionErr);
-		}
-
 
 		// 5. Hydrate customer + cart
-		let me = await getCurrentCustomer();
-		if (!me) {
-			try {
-				const baseUrl = publicEnv.PUBLIC_MEDUSA_BACKEND_URL as string | undefined;
-				const pk = publicEnv.PUBLIC_MEDUSA_PUBLISHABLE_KEY as string | undefined;
-				const bearer = latestToken || token;
-				if (baseUrl && /^https?:\/\//.test(baseUrl) && bearer) {
-					const resp = await fetch(`${baseUrl.replace(/\/$/, '')}/store/customers/me`, {
-						method: 'GET',
-						headers: {
-							authorization: `Bearer ${bearer}`,
-							...(pk ? { 'x-publishable-api-key': pk } : {}),
-							'content-type': 'application/json'
-						},
-						credentials: 'include',
-						mode: 'cors'
-					});
-					if (resp.ok) {
-						const data = await resp.json().catch(() => ({}));
-						const candidate = (data && (data.customer || data)) ?? null;
-						if (candidate && candidate.email) {
-							customer.set(candidate as any);
-							me = candidate as any;
-						}
-					}
-				}
-			} catch (meErr) {
-				logApiError('googleOAuthRetrieveMeFallback', meErr);
-			}
-		}
+		await getCurrentCustomer();
 		try {
 			const c = get(cart);
-			if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => { });
-		} catch { }
+			if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => {});
+		} catch {}
 
 		// 6. Redirect
 		showToast('Signed in with Google', { type: 'success' });
-		const intendedPath =
-			(typeof window !== 'undefined' ? localStorage.getItem('oauth_intended_path') : null) ||
-			'/account';
-		if (typeof window !== 'undefined') {
-			localStorage.removeItem('oauth_intended_path');
-			window.location.href = intendedPath;
-		}
 		return true;
 	} catch (error) {
 		logApiError('handleGoogleOAuthCallback', error);
