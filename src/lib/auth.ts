@@ -1,4 +1,5 @@
 import type { HttpTypes } from '@medusajs/types';
+import { env as publicEnv } from '$env/dynamic/public';
 import { getStoreClient, logApiError } from '$lib/medusa';
 import { customer } from '$lib/stores/customer';
 import { cart } from '$lib/stores/cart';
@@ -296,9 +297,26 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			// Non-fatal; continue with current bearer token
 		}
 
-		// 4b. Force session cookie creation for session auth setups
+		// 4b. Force session cookie creation for session auth setups, explicitly attaching Authorization
 		try {
-			await sdk.client.fetch('/auth/session', { method: 'POST' });
+			const baseUrl = publicEnv.PUBLIC_MEDUSA_BACKEND_URL as string | undefined;
+			const pk = publicEnv.PUBLIC_MEDUSA_PUBLISHABLE_KEY as string | undefined;
+			const bearer = latestToken || token;
+			if (baseUrl && /^https?:\/\//.test(baseUrl)) {
+				await fetch(`${baseUrl.replace(/\/$/, '')}/auth/session`, {
+					method: 'POST',
+					headers: {
+						...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
+						...(pk ? { 'x-publishable-api-key': pk } : {}),
+						'content-type': 'application/json'
+					},
+					credentials: 'include',
+					mode: 'cors'
+				});
+			} else {
+				// Fallback to SDK if baseUrl missing
+				await sdk.client.fetch('/auth/session', { method: 'POST' });
+			}
 		} catch (sessionErr) {
 			// If this fails, we can still proceed with bearer token; log for diagnostics
 			logApiError('googleOAuthSession', sessionErr);
@@ -306,7 +324,36 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 
 
 		// 5. Hydrate customer + cart
-		await getCurrentCustomer();
+		let me = await getCurrentCustomer();
+		if (!me) {
+			try {
+				const baseUrl = publicEnv.PUBLIC_MEDUSA_BACKEND_URL as string | undefined;
+				const pk = publicEnv.PUBLIC_MEDUSA_PUBLISHABLE_KEY as string | undefined;
+				const bearer = latestToken || token;
+				if (baseUrl && /^https?:\/\//.test(baseUrl) && bearer) {
+					const resp = await fetch(`${baseUrl.replace(/\/$/, '')}/store/customers/me`, {
+						method: 'GET',
+						headers: {
+							authorization: `Bearer ${bearer}`,
+							...(pk ? { 'x-publishable-api-key': pk } : {}),
+							'content-type': 'application/json'
+						},
+						credentials: 'include',
+						mode: 'cors'
+					});
+					if (resp.ok) {
+						const data = await resp.json().catch(() => ({}));
+						const candidate = (data && (data.customer || data)) ?? null;
+						if (candidate && candidate.email) {
+							customer.set(candidate as any);
+							me = candidate as any;
+						}
+					}
+				}
+			} catch (meErr) {
+				logApiError('googleOAuthRetrieveMeFallback', meErr);
+			}
+		}
 		try {
 			const c = get(cart);
 			if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => { });
