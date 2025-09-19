@@ -230,8 +230,6 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 		let token: string = '';
 		try {
 			token = await sdk.auth.callback('customer', 'google', query);
-
-			console.log('[OAuth] Received token:', token);
 		} catch (err) {
 			logApiError('googleOAuthCallback', err);
 			showToast('Authentication failed while exchanging code. Check backend logs.', { type: 'error' });
@@ -245,22 +243,42 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 
 		type DecodedToken = { actor_id?: string; auth_identity_id?: string; email?: string; given_name?: string; family_name?: string; name?: string; };
 		const decoded = decodeToken<DecodedToken>(token);
-		// Debug: Log decoded payload
-		console.log('[OAuth] Decoded token payload:', decoded);
 
 		const needsCustomer = !decoded?.actor_id;
 
-		console.log(await getOAuthCustomer(token, decoded?.auth_identity_id || ''));
+		type OAuthProfile = {
+            user_metadata?: {
+                email?: string;
+                family_name?: string;
+                given_name?: string;
+                name?: string;
+                picture?: string;
+            };
+        };
+		let oauthProfile: OAuthProfile | null = null;
+        try {
+            oauthProfile = await getOAuthCustomer(token, decoded?.auth_identity_id || '');
+        } catch (e) {
+            console.warn('[OAuth] getOAuthCustomer failed, using decoded token metadata.');
+        }
 
 		if (needsCustomer) {
-			const email = decoded?.email?.toLowerCase()?.trim();
+			const md = oauthProfile?.user_metadata ?? {};
+            const email = md.email?.toLowerCase()?.trim() || decoded?.email?.toLowerCase()?.trim();
 			if (!email) {
 				showToast('Authentication failed: Provider did not return an email.', { type: 'error' });
 				return false;
 			}
 
-			const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
-			const last_name = decoded?.family_name || decoded?.name?.split(' ').slice(1).join(' ') || undefined;
+			const first_name =
+                md.given_name ??
+                decoded?.given_name ??
+                (md.name ? md.name.split(' ')[0] : undefined);
+
+            const last_name =
+                md.family_name ??
+                decoded?.family_name ??
+                (md.name ? md.name.split(' ').slice(1).join(' ') : undefined);
 
 			try {
 				await sdk.store.customer.create(

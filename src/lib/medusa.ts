@@ -451,22 +451,44 @@ export async function lookupOrder(params: { token?: string; display_id?: string 
 	return null;
 }
 
-export async function getOAuthCustomer(token: string, identity: string) {
-	try {
-		const store = getStoreClient();
-		if (!store) return null;
-		const resp = await store.client.fetch(`/store/google/auth?auth_identity_id=${identity}`, {
-			method: 'GET',
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
-			}
-		});
-		return resp;
-	} catch (e) {
-		logApiError('getOAuthCustomer', e);
-		return null;
-	}
+type OAuthProfile = {
+	user_metadata?: {
+		email?: string;
+		family_name?: string;
+		given_name?: string;
+		name?: string;
+		picture?: string;
+	};
+};
+
+export async function getOAuthCustomer(token: string, identity: string): Promise<OAuthProfile | null> {
+    try {
+        const store = getStoreClient();
+        if (!store) return null;
+        if (!identity || typeof identity !== 'string') {
+            console.warn('[OAuth] getOAuthCustomer called without a valid auth_identity_id');
+            return null;
+        }
+
+        const qs = new URLSearchParams({ auth_identity_id: identity }).toString();
+        const resp = await store.client.fetch(`/store/google/auth?${qs}`, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        const md =
+            (resp as any)?.user_metadata ??
+            (resp as any)?.auth_identity?.user_metadata ??
+            null;
+
+        return { user_metadata: md || undefined };
+    } catch (e) {
+        logApiError('getOAuthCustomer', e);
+        return null;
+    }
 }
 
 // Query system order fetch using Medusa SDK REST API
