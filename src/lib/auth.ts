@@ -44,7 +44,6 @@ export async function getCurrentCustomer(): Promise<HttpTypes.StoreCustomer | nu
 		}
 		const { customer: me } = await sdk.store.customer.retrieve();
 		customer.set(me ?? null);
-		customer.set(me ?? null);
 		return me ?? null;
 	} catch (error: any) {
 		const status = error?.response?.status ?? error?.status;
@@ -120,11 +119,7 @@ export async function register(payload: RegisterPayload): Promise<HttpTypes.Stor
 	}
 
 	try {
-		await sdk.store.customer.create(
-			{ email, first_name, last_name, phone },
-			{},
-			{ Authorization: `Bearer ${token}` }
-		);
+		await sdk.store.customer.create({ email, first_name, last_name, phone });
 		const me = await login(email, password);
 		// Claim guest orders post-register
 		try {
@@ -252,14 +247,6 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			return false;
 		}
 
-		console.log('Callback response:', typeof token, token?.substring(0, 20) + '...');  // Debug: remove after testing
-
-		if (typeof token !== 'string') {
-			console.error('Invalid token type:', typeof token);  // Debug
-			showToast('Authentication failed: Invalid token response', { type: 'error' });
-			return false;
-		}
-
 		// 2. Decode token
 		// Claims include Medusa's actor_id; when provider is Google, typical OIDC claims include
 		// sub, email, email_verified, name, given_name, family_name, picture, locale.
@@ -294,11 +281,7 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			}
 
 			try {
-				await sdk.store.customer.create(
-					{ email, first_name, last_name },
-					{},
-					{ Authorization: `Bearer ${token}` }
-				);
+				await sdk.store.customer.create({ email, first_name, last_name });
 			} catch (createErr: any) {
 				const msg = createErr?.response?.data?.message || createErr?.message;
 				if (!msg || !/already exists/i.test(msg)) {

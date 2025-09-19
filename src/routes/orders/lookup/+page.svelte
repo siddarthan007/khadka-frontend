@@ -8,7 +8,8 @@
 	import { Accordion } from 'bits-ui';
 	import { showToast } from '$lib/stores/toast';
 	import { customer } from '$lib/stores/customer';
-  import { Info } from "@lucide/svelte";
+	import { Info, X } from "@lucide/svelte";
+	import { createDialog, melt } from '@melt-ui/svelte';
 
 	let email: string = $state('');
 	let orderNo: string = $state('');
@@ -19,6 +20,17 @@
 	// Guard auto-lookups to avoid loops and thrash
 	let lastLookupKey: string = $state('');
 	let tokenFromUrl: boolean = $state(false); // Track if token came from URL params
+
+	// Melt UI Dialog setup for cancel confirmation
+	const {
+		elements: { trigger, portalled, overlay, content, title, description, close },
+		states: { open }
+	} = createDialog({
+		preventScroll: true
+	});
+
+	// Store which order is being cancelled
+	let orderToCancel: string | null = $state(null);
 
 	// Reset state when user starts typing in any field
 	function resetLookupState() {
@@ -69,13 +81,24 @@
 	}
 	async function cancelOrder(orderId: string) {
 		if (!order) return;
-		if (!confirm('Cancel this order? This cannot be undone.')) return;
+		
+		// Open the confirmation dialog
+		orderToCancel = orderId;
+		open.set(true);
+	}
+
+	async function confirmCancelOrder() {
+		if (!order || !orderToCancel) return;
+		
+		// Close the dialog first
+		open.set(false);
+		loading = true;
 
 		try {
 			const res = await fetch('/api/orders/cancel', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ order_id: orderId, email: order.email })
+				body: JSON.stringify({ order_id: orderToCancel, email: order.email || email })
 			});
 			if (!res.ok) throw new Error(await res.text());
 			const data = await res.json();
@@ -83,8 +106,12 @@
 			// Reload the order data
 			order = data.order;
 		} catch (e: any) {
+			logApiError('order.cancel.api', e);
 			errorMsg = (e?.message || 'Unable to cancel order') as string;
 			showToast(errorMsg, { type: 'error' });
+		} finally {
+			loading = false;
+			orderToCancel = null;
 		}
 	}
 
@@ -354,24 +381,13 @@
 
 	async function cancel() {
 		if (!order?.id) return;
-		if (!confirm('Cancel this order? This cannot be undone.')) return;
-		loading = true;
-		try {
-			const res = await fetch('/api/orders/cancel', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ order_id: order.id, email })
-			});
-			if (!res.ok) throw new Error(await res.text());
-			const data = await res.json();
-			order = data?.order ?? order;
-		} catch (e) {
-			logApiError('order.cancel.api', e);
-			errorMsg = 'Unable to cancel order';
-		} finally {
-			loading = false;
-		}
+		
+		// Open the confirmation dialog
+		orderToCancel = order.id;
+		open.set(true);
 	}
+
+
 
 	// duplicate reorder & fmt removed; OrderCard formats its own amounts
 
@@ -542,4 +558,64 @@
 			</div>
 		{/if}
 	</div>
+
+	<!-- Cancel Order Confirmation Dialog -->
+	{#if $open}
+		<div use:melt={$portalled}>
+			<!-- Backdrop -->
+			<div
+				use:melt={$overlay}
+				class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+			></div>
+
+			<!-- Dialog Content -->
+			<div
+				use:melt={$content}
+				class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-base-300 bg-base-100 p-4 shadow-2xl animate-in zoom-in-95 fade-in duration-200 mx-4 sm:max-w-lg sm:p-6"
+			>
+				<!-- Header -->
+				<div class="flex items-center justify-between mb-3 sm:mb-4">
+					<h3 use:melt={$title} class="text-lg sm:text-xl font-bold text-base-content">
+						Cancel Order
+					</h3>
+					<button
+						use:melt={$close}
+						class="btn btn-ghost btn-sm btn-circle"
+						aria-label="Close dialog"
+						onclick={() => {
+							orderToCancel = null;
+						}}
+					>
+						<X class="w-4 h-4" />
+					</button>
+				</div>
+
+				<!-- Description -->
+				<p use:melt={$description} class="text-sm text-base-content/70 mb-4 sm:mb-6">
+					Are you sure you want to cancel this order? This action cannot be undone and the order will be permanently cancelled.
+				</p>
+
+				<!-- Action Buttons -->
+				<div class="flex gap-3 justify-end">
+					<button
+						class="btn btn-ghost px-4 py-2"
+						onclick={() => {
+							open.set(false);
+							orderToCancel = null;
+						}}
+					>
+						Keep Order
+					</button>
+
+					<button
+						class="btn btn-error px-4 py-2"
+						onclick={confirmCancelOrder}
+						disabled={loading}
+					>
+						{loading ? 'Cancelling...' : 'Cancel Order'}
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </section>
