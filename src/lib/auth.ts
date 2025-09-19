@@ -212,19 +212,32 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			return false;
 		}
 
-		// 1. Exchange code for token
+		// 1. Exchange code for token (MANUAL) to avoid SDK auto /auth/session before actor exists
 		let token: string = '';
 		try {
-			token = await sdk.auth.callback('customer', 'google', query);
+			const params = new URLSearchParams();
+			for (const [k, v] of Object.entries(query)) params.set(k, String(v));
+			const resp: Response = await sdk.client.fetch(`/auth/customer/google/callback?${params.toString()}`, {
+				method: 'POST'
+			});
+			if (!resp.ok) {
+				const text = await resp.text().catch(() => '');
+				throw new Error(`Callback failed: ${resp.status} ${resp.statusText} ${text}`);
+			}
+			const data = await resp.json().catch(() => ({}));
+			token = typeof data === 'string' ? data : (data?.token ?? '');
 		} catch (err) {
-			logApiError('googleOAuthCallback', err);
+			logApiError('googleOAuthCallbackManual', err);
 			showToast('Authentication failed while exchanging code', { type: 'error' });
 			return false;
 		}
-		if (typeof token !== 'string') {
+		if (typeof token !== 'string' || !token) {
 			showToast('Authentication failed: Invalid token response', { type: 'error' });
 			return false;
 		}
+
+		// Set token on SDK so subsequent requests use bearer auth until session is established
+		try { sdk.client.setToken(token); } catch {}
 
 		// 2. Decode token
 		// Claims include Medusa's actor_id; when provider is Google, typical OIDC claims include
@@ -271,14 +284,24 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			}
 		}
 
-		// 4. Refresh token only if we just created the customer to bind identity → actor
-		if (needsCustomer) {
-			try {
-				await sdk.auth.refresh();
-			} catch (refreshErr) {
-				logApiError('googleOAuthRefresh', refreshErr);
-				// Non-fatal; continue with current session/token
+		// 4. Refresh token (establish session cookie). If actor was just created, this binds identity -> actor.
+		let latestToken: string | null = null;
+		try {
+			latestToken = await sdk.auth.refresh();
+			if (typeof latestToken === 'string' && latestToken) {
+				try { sdk.client.setToken(latestToken); } catch {}
 			}
+		} catch (refreshErr) {
+			logApiError('googleOAuthRefresh', refreshErr);
+			// Non-fatal; continue with current bearer token
+		}
+
+		// 4b. Force session cookie creation for session auth setups
+		try {
+			await sdk.client.fetch('/auth/session', { method: 'POST' });
+		} catch (sessionErr) {
+			// If this fails, we can still proceed with bearer token; log for diagnostics
+			logApiError('googleOAuthSession', sessionErr);
 		}
 
 

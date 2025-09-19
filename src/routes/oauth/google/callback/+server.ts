@@ -50,7 +50,9 @@ export const GET: RequestHandler = async (event) => {
 		return new Response(null, { status: 200 });
 	}
 
-	// Valid state; leave handling to client page. Do not exchange code here.
+	// Valid state; clear one-time cookies and leave handling to client page.
+	clearCookie('oauth_state');
+	clearCookie('oauth_return_to');
 	// We purposely avoid redirecting so the client page can read URL params.
 	return new Response(null, {
 		status: 200,
