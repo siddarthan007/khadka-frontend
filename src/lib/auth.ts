@@ -247,6 +247,7 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 		if (needsCustomer) {
 			const email = decoded?.email?.toLowerCase()?.trim();
 			if (!email) {
+				console.log(decoded);
 				showToast('Authentication failed: Provider did not return an email.', { type: 'error' });
 				return false;
 			}
