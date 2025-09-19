@@ -1,5 +1,5 @@
 import type { HttpTypes } from '@medusajs/types';
-import { getStoreClient, logApiError } from '$lib/medusa';
+import { getStoreClient, logApiError, getOAuthCustomer } from '$lib/medusa';
 import { customer } from '$lib/stores/customer';
 import { cart } from '$lib/stores/cart';
 import { get } from 'svelte/store';
@@ -250,16 +250,7 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 
 		const needsCustomer = !decoded?.actor_id;
 
-		const retrieveCustomer = async (token: string, identity: string) => {
-			return sdk.client.fetch(`/store/google/auth?auth_identity_id=${identity}`, {
-				headers: {
-					"Content-Type": "application/json",
-					"Authorization": `Bearer ${token}`,
-				},
-			}).then((res: Response) => res.json())
-		}
-
-		console.log(await retrieveCustomer(token, decoded?.auth_identity_id || ''));
+		console.log(await getOAuthCustomer(token, decoded?.auth_identity_id || ''));
 
 		if (needsCustomer) {
 			const email = decoded?.email?.toLowerCase()?.trim();

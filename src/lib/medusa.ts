@@ -111,7 +111,7 @@ export async function listAllCollections(): Promise<HttpTypes.StoreCollection[]>
 	const all: HttpTypes.StoreCollection[] = [];
 	let offset = 0;
 	const limit = 50;
-	
+
 	const store = getStoreClient();
 	if (!store) return [];
 
@@ -419,36 +419,54 @@ export async function lookupOrder(params: { token?: string; display_id?: string 
 			try {
 				const full = await store.store.order.retrieve(token, { fields: fullFields });
 				return (full as any)?.order ?? null;
-			} catch {}
+			} catch { }
 		}
 
 		// Display ID + email path: list orders for email then match display_id
-				if (display_id && email) {
+		if (display_id && email) {
+			try {
+				const listResp = await store.store.order.list({ fields: 'id,display_id,email,status,payment_status,fulfillment_status,total,currency_code,created_at', limit: 50 });
+				const match = (listResp as any)?.orders?.find((o: any) => String(o.display_id) === String(display_id) && o.email?.toLowerCase() === email.toLowerCase());
+				if (match) {
 					try {
-						const listResp = await store.store.order.list({ fields: 'id,display_id,email,status,payment_status,fulfillment_status,total,currency_code,created_at', limit: 50 });
-						const match = (listResp as any)?.orders?.find((o: any) => String(o.display_id) === String(display_id) && o.email?.toLowerCase() === email.toLowerCase());
-						if (match) {
-							try {
-								const full = await store.store.order.retrieve(match.id, { fields: fullFields });
-								return (full as any)?.order ?? match;
-							} catch { return match; }
-						}
-					} catch (e) {
-						logApiError('lookupOrder.list', e);
-					}
+						const full = await store.store.order.retrieve(match.id, { fields: fullFields });
+						return (full as any)?.order ?? match;
+					} catch { return match; }
 				}
+			} catch (e) {
+				logApiError('lookupOrder.list', e);
+			}
+		}
 
 		// Last resort: try treating display_id as id
-			if (display_id && /^order_/.test(String(display_id))) {
-				try {
-					const full = await store.store.order.retrieve(String(display_id), { fields: fullFields });
-					return (full as any)?.order ?? null;
-				} catch {}
-			}
+		if (display_id && /^order_/.test(String(display_id))) {
+			try {
+				const full = await store.store.order.retrieve(String(display_id), { fields: fullFields });
+				return (full as any)?.order ?? null;
+			} catch { }
+		}
 	} catch (error) {
 		logApiError('lookupOrder', error);
 	}
 	return null;
+}
+
+export async function getOAuthCustomer(token: string, identity: string) {
+	try {
+		const store = getStoreClient();
+		if (!store) return null;
+		const resp = await store.client.fetch(`/store/google/auth?auth_identity_id=${identity}`, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${token}`
+			}
+		});
+		return resp;
+	} catch (e) {
+		logApiError('getOAuthCustomer', e);
+		return null;
+	}
 }
 
 // Query system order fetch using Medusa SDK REST API
