@@ -80,13 +80,13 @@ export async function login(
 					});
 				}
 			}
-		} catch {}
+		} catch { }
 		try {
 			const c = get(cart);
 			if (c?.id) {
-				await (sdk as any).store.cart.transferCart(c.id).catch(() => {});
+				await (sdk as any).store.cart.transferCart(c.id).catch(() => { });
 			}
-		} catch {}
+		} catch { }
 		if (me) showToast('Signed in successfully', { type: 'success' });
 		return me;
 	} catch (error) {
@@ -136,7 +136,7 @@ export async function register(payload: RegisterPayload): Promise<HttpTypes.Stor
 					});
 				}
 			}
-		} catch {}
+		} catch { }
 		return me;
 	} catch (error) {
 		logApiError('register.createCustomerOrLogin', error);
@@ -193,68 +193,68 @@ export async function resetPassword(
 // --- Google OAuth (simplified) ---
 // Starts Google OAuth and redirects user to provider if needed.
 export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
-	
-	const sdk = getStoreClient() as any;
-    if (!sdk || typeof window === 'undefined') return;
-    try {
-        const origin = window.location.origin;
-				// Persist intended redirect so callback can navigate correctly
-				try {
-					localStorage.setItem('oauth_intended_path', returnTo);
-				} catch {}
 
-				const callback = new URL('/oauth/google/callback', origin).toString();
-        const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback });
-        if (res && typeof res === 'object' && 'location' in res && res.location) {
-            window.location.href = res.location as string; // Redirect to Google
-            return;
-        }
-        if (typeof res === 'string') {
-            await getCurrentCustomer();
-            window.location.href = returnTo;
-            return;
-        }
-        showToast('Unable to start Google authentication', { type: 'error' });
-    } catch (error) {
-        logApiError('startGoogleOAuth', error);
-        showToast('Failed to start Google sign-in', { type: 'error' });
-    }
+	const sdk = getStoreClient() as any;
+	if (!sdk || typeof window === 'undefined') return;
+	try {
+		const origin = window.location.origin;
+		// Persist intended redirect so callback can navigate correctly
+		try {
+			localStorage.setItem('oauth_intended_path', returnTo);
+		} catch { }
+
+		const callback = new URL('/oauth/google/callback', origin).toString();
+		const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback });
+		if (res && typeof res === 'object' && 'location' in res && res.location) {
+			window.location.href = res.location as string; // Redirect to Google
+			return;
+		}
+		if (typeof res === 'string') {
+			await getCurrentCustomer();
+			window.location.href = returnTo;
+			return;
+		}
+		showToast('Unable to start Google authentication', { type: 'error' });
+	} catch (error) {
+		logApiError('startGoogleOAuth', error);
+		showToast('Failed to start Google sign-in', { type: 'error' });
+	}
 }
 
 // Handle callback page: exchange code for token, optionally create customer, refresh token, hydrate store.
 export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): Promise<boolean> {
-  const sdk = getStoreClient() as any;
-  if (!sdk) return false;
+	const sdk = getStoreClient() as any;
+	if (!sdk) return false;
 
-  try {
-    const query = Object.fromEntries(searchParams.entries());
+	try {
+		const query = Object.fromEntries(searchParams.entries());
 
-    if (query.error) {
-      showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
-      return false;
-    }
-    if (!query.code) {
-      showToast('Authentication failed: Missing authorization code', { type: 'error' });
-      return false;
-    }
+		if (query.error) {
+			showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
+			return false;
+		}
+		if (!query.code) {
+			showToast('Authentication failed: Missing authorization code', { type: 'error' });
+			return false;
+		}
 
-    // 1. Exchange code for token
-    let token: string = '';
-    try {
-      token = await sdk.auth.callback('customer', 'google', query);
-    } catch (err) {
-      logApiError('googleOAuthCallback', err);
-      showToast('Authentication failed while exchanging code', { type: 'error' });
-      return false;
-    }
-    if (typeof token !== 'string') {
-      showToast('Authentication failed: Invalid token response', { type: 'error' });
-      return false;
-    }
+		// 1. Exchange code for token
+		let token: string = '';
+		try {
+			token = await sdk.auth.callback('customer', 'google', query);
+		} catch (err) {
+			logApiError('googleOAuthCallback', err);
+			showToast('Authentication failed while exchanging code', { type: 'error' });
+			return false;
+		}
+		if (typeof token !== 'string') {
+			showToast('Authentication failed: Invalid token response', { type: 'error' });
+			return false;
+		}
 
-    // 2. Decode token
-    // Claims include Medusa's actor_id; when provider is Google, typical OIDC claims include
-    // sub, email, email_verified, name, given_name, family_name, picture, locale.
+		// 2. Decode token
+		// Claims include Medusa's actor_id; when provider is Google, typical OIDC claims include
+		// sub, email, email_verified, name, given_name, family_name, picture, locale.
 		type Decoded = {
 			actor_id?: string;
 			email?: string;
@@ -265,84 +265,88 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			picture?: string;
 			sub?: string;
 		};
-    let decoded: Decoded | null = null;
-    try {
+		let decoded: Decoded | null = null;
+		try {
 			decoded = decodeToken<Decoded>(token);
-    } catch {}
+		} catch { }
 
 		const actorId = decoded?.actor_id;
 		const needsCustomer = actorId === '' || actorId == null;
 		if (needsCustomer) {
-      const email = decoded?.email?.toLowerCase()?.trim();
-      const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
-      const last_name =
-        decoded?.family_name ||
-        (decoded?.name && decoded.name.split(' ').slice(1).join(' ')) ||
-        undefined;
+			const email = decoded?.email?.toLowerCase()?.trim();
+			const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
+			const last_name =
+				decoded?.family_name ||
+				(decoded?.name && decoded.name.split(' ').slice(1).join(' ')) ||
+				undefined;
 
-      if (!email) {
-        showToast('Authentication failed: Provider did not return an email', { type: 'error' });
-        return false;
-      }
+			if (!email) {
+				showToast('Authentication failed: Provider did not return an email', { type: 'error' });
+				return false;
+			}
 
-      try {
-        await sdk.store.customer.create(
-          { email, first_name, last_name },
-          {},
-          { Authorization: `Bearer ${token}` }
-        );
-      } catch (createErr: any) {
-        const msg = createErr?.response?.data?.message || createErr?.message;
-        if (!msg || !/already exists/i.test(msg)) {
-          logApiError('googleOAuthCreateCustomer', createErr);
-          showToast('Failed to finalize account creation', { type: 'error' });
-          return false;
-        }
-      }
-    }
+			try {
+				await sdk.store.customer.create(
+					{ email, first_name, last_name },
+					{},
+					{ Authorization: `Bearer ${token}` }
+				);
+			} catch (createErr: any) {
+				const msg = createErr?.response?.data?.message || createErr?.message;
+				if (!msg || !/already exists/i.test(msg)) {
+					logApiError('googleOAuthCreateCustomer', createErr);
+					showToast('Failed to finalize account creation', { type: 'error' });
+					return false;
+				}
+			}
+		}
 
-    // 4. Refresh token OR retry login
-    let refreshed = false;
-    try {
-      await sdk.auth.refresh();
-      refreshed = true;
-    } catch (refreshErr) {
-      logApiError('googleOAuthRefresh', refreshErr);
-    }
+		// 4. Refresh token OR retry login
+		// Refresh token OR force login
+		let refreshed = false;
+		try {
+			await sdk.auth.refresh();
+			refreshed = true;
+		} catch (refreshErr) {
+			logApiError('googleOAuthRefresh', refreshErr);
+		}
 
-    // If refresh still useless, force login again to rebuild session
-    if (!refreshed || !decoded?.actor_id) {
-      try {
-        await sdk.auth.login('customer', 'google', { callbackUrl: window.location.origin + '/oauth/google/callback' });
-      } catch (loginErr) {
-        logApiError('googleOAuthReLogin', loginErr);
-        showToast('Session could not be established', { type: 'error' });
-        return false;
-      }
-    }
+		if (!refreshed || !decoded?.actor_id) {
+			try {
+				// force login to establish session
+				await sdk.auth.login('customer', 'google', {
+					callbackUrl: window.location.origin + '/oauth/google/callback'
+				});
+			} catch (loginErr) {
+				logApiError('googleOAuthReLogin', loginErr);
+				showToast('Session could not be established', { type: 'error' });
+				return false;
+			}
+		}
 
-    // 5. Hydrate customer + cart
-    await getCurrentCustomer();
-    try {
-      const c = get(cart);
-      if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => {});
-    } catch {}
 
-    // 6. Redirect
-    showToast('Signed in with Google', { type: 'success' });
-    const intendedPath =
-      (typeof window !== 'undefined' ? localStorage.getItem('oauth_intended_path') : null) ||
-      '/account';
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('oauth_intended_path');
-      window.location.href = intendedPath;
-    }
-    return true;
-  } catch (error) {
-    logApiError('handleGoogleOAuthCallback', error);
-    showToast('Google sign-in failed', { type: 'error' });
-    return false;
-  }
+		// 5. Hydrate customer + cart
+		await getCurrentCustomer();
+		try {
+			const c = get(cart);
+			if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => { });
+		} catch { }
+
+		// 6. Redirect
+		showToast('Signed in with Google', { type: 'success' });
+		const intendedPath =
+			(typeof window !== 'undefined' ? localStorage.getItem('oauth_intended_path') : null) ||
+			'/account';
+		if (typeof window !== 'undefined') {
+			localStorage.removeItem('oauth_intended_path');
+			window.location.href = intendedPath;
+		}
+		return true;
+	} catch (error) {
+		logApiError('handleGoogleOAuthCallback', error);
+		showToast('Google sign-in failed', { type: 'error' });
+		return false;
+	}
 }
 
 
@@ -430,7 +434,7 @@ export async function checkAuthStatus(): Promise<{
 	} else {
 		try {
 			await sdk.auth.refresh();
-			
+
 			const { customer: me } = await sdk.store.customer.retrieve();
 			if (me) {
 				isAuthenticated = true;
