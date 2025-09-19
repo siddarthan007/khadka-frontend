@@ -5,7 +5,7 @@ import { cart } from '$lib/stores/cart';
 import { get } from 'svelte/store';
 import { showToast } from '$lib/stores/toast';
 import { normalizeUSPhone } from '$lib/us';
-import { jwtDecode } from 'jwt-decode';
+import { decodeToken } from 'react-jwt';
 
 /**
  * Auth module notes:
@@ -24,7 +24,7 @@ import { jwtDecode } from 'jwt-decode';
  * startGoogleOAuth(): sdk.auth.login('customer','google', { callbackUrl }) returns either a redirect location
  * (object with location) or a token string if the user is already authenticated with the provider.
  * handleGoogleOAuthCallback(): sdk.auth.callback('customer','google', queryParams) returns a JWT. We decode
- * it with jwt-decode (lightweight) to check if actor/customer needs creation (actor_id === ''). If so we create
+ * it with react-jwt's decodeToken to check if actor/customer needs creation (actor_id === ''). If so we create
  * the customer then refresh the token via sdk.auth.refresh(). Finally we call getCurrentCustomer().
  */
 export type RegisterPayload = {
@@ -198,8 +198,12 @@ export async function startGoogleOAuth(returnTo: string = '/account'): Promise<v
     if (!sdk || typeof window === 'undefined') return;
     try {
         const origin = window.location.origin;
+				// Persist intended redirect so callback can navigate correctly
+				try {
+					localStorage.setItem('oauth_intended_path', returnTo);
+				} catch {}
 
-        const callback = new URL('/oauth/google/callback', origin).toString();
+				const callback = new URL('/oauth/google/callback', origin).toString();
         const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback });
         if (res && typeof res === 'object' && 'location' in res && res.location) {
             window.location.href = res.location as string; // Redirect to Google
@@ -249,13 +253,26 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
     }
 
     // 2. Decode token
-    type Decoded = { actor_id?: string; email?: string; given_name?: string; family_name?: string; name?: string };
+    // Claims include Medusa's actor_id; when provider is Google, typical OIDC claims include
+    // sub, email, email_verified, name, given_name, family_name, picture, locale.
+		type Decoded = {
+			actor_id?: string;
+			email?: string;
+			email_verified?: boolean;
+			given_name?: string;
+			family_name?: string;
+			name?: string;
+			picture?: string;
+			sub?: string;
+		};
     let decoded: Decoded | null = null;
     try {
-      decoded = jwtDecode<Decoded>(token);
+			decoded = decodeToken<Decoded>(token);
     } catch {}
 
-    if (!decoded?.actor_id) {
+		const actorId = decoded?.actor_id;
+		const needsCustomer = actorId === '' || actorId == null;
+		if (needsCustomer) {
       const email = decoded?.email?.toLowerCase()?.trim();
       const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
       const last_name =
