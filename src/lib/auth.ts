@@ -193,9 +193,9 @@ export async function resetPassword(
 // --- Google OAuth (simplified) ---
 // Starts Google OAuth and redirects user to provider if needed.
 export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
+
 	const sdk = getStoreClient() as any;
 	if (!sdk || typeof window === 'undefined') return;
-	
 	try {
 		const origin = window.location.origin;
 		// Persist intended redirect so callback can navigate correctly
@@ -203,33 +203,21 @@ export async function startGoogleOAuth(returnTo: string = '/account'): Promise<v
 			localStorage.setItem('oauth_intended_path', returnTo);
 		} catch { }
 
-		const callbackUrl = new URL('/oauth/google/callback', origin).toString();
-		console.log('Starting Google OAuth with callback URL:', callbackUrl);
-		
-		const res = await sdk.auth.login('customer', 'google', { callbackUrl });
-		
-		console.log('Google OAuth login response:', typeof res, res);
-		
+		const callback = new URL('/oauth/google/callback', origin).toString();
+		const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback });
 		if (res && typeof res === 'object' && 'location' in res && res.location) {
-			console.log('Redirecting to Google:', res.location);
 			window.location.href = res.location as string; // Redirect to Google
 			return;
 		}
 		if (typeof res === 'string') {
-			// User is already authenticated
 			await getCurrentCustomer();
 			window.location.href = returnTo;
 			return;
 		}
-		
-		console.error('Unexpected Google OAuth response:', res);
 		showToast('Unable to start Google authentication', { type: 'error' });
-	} catch (error: any) {
-		console.error('Start Google OAuth error:', error);
+	} catch (error) {
 		logApiError('startGoogleOAuth', error);
-		
-		const errorMessage = error?.response?.data?.message || error?.message || 'Failed to start Google sign-in';
-		showToast(errorMessage, { type: 'error' });
+		showToast('Failed to start Google sign-in', { type: 'error' });
 	}
 }
 
@@ -239,7 +227,6 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 	if (!sdk) return false;
 
 	try {
-		// Convert URLSearchParams to plain object as required by Medusa SDK
 		const query = Object.fromEntries(searchParams.entries());
 
 		if (query.error) {
@@ -251,17 +238,13 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			return false;
 		}
 
-		// 1. Exchange code for token - pass all query parameters from the OAuth callback
+		// 1. Exchange code for token
 		let token: string = '';
 		try {
 			token = await sdk.auth.callback('customer', 'google', query);
-		} catch (err: any) {
-			console.error('OAuth callback error:', err);
+		} catch (err) {
 			logApiError('googleOAuthCallback', err);
-			
-			// Check for specific error messages from Medusa
-			const errorMessage = err?.response?.data?.message || err?.message || 'Authentication failed while exchanging code';
-			showToast(errorMessage, { type: 'error' });
+			showToast('Authentication failed while exchanging code', { type: 'error' });
 			return false;
 		}
 		if (typeof token !== 'string') {
@@ -269,10 +252,10 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			return false;
 		}
 
-		console.log('OAuth callback - received token:', typeof token, token ? 'token received' : 'no token');
+		console.log('Callback response:', typeof token, token?.substring(0, 20) + '...');  // Debug: remove after testing
 
-		if (typeof token !== 'string' || !token) {
-			console.error('Invalid token received:', typeof token, token);
+		if (typeof token !== 'string') {
+			console.error('Invalid token type:', typeof token);  // Debug
 			showToast('Authentication failed: Invalid token response', { type: 'error' });
 			return false;
 		}
