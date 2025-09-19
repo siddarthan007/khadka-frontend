@@ -193,9 +193,9 @@ export async function resetPassword(
 // --- Google OAuth (simplified) ---
 // Starts Google OAuth and redirects user to provider if needed.
 export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
-
 	const sdk = getStoreClient() as any;
 	if (!sdk || typeof window === 'undefined') return;
+	
 	try {
 		const origin = window.location.origin;
 		// Persist intended redirect so callback can navigate correctly
@@ -203,21 +203,33 @@ export async function startGoogleOAuth(returnTo: string = '/account'): Promise<v
 			localStorage.setItem('oauth_intended_path', returnTo);
 		} catch { }
 
-		const callback = new URL('/oauth/google/callback', origin).toString();
-		const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback });
+		const callbackUrl = new URL('/oauth/google/callback', origin).toString();
+		console.log('Starting Google OAuth with callback URL:', callbackUrl);
+		
+		const res = await sdk.auth.login('customer', 'google', { callbackUrl });
+		
+		console.log('Google OAuth login response:', typeof res, res);
+		
 		if (res && typeof res === 'object' && 'location' in res && res.location) {
+			console.log('Redirecting to Google:', res.location);
 			window.location.href = res.location as string; // Redirect to Google
 			return;
 		}
 		if (typeof res === 'string') {
+			// User is already authenticated
 			await getCurrentCustomer();
 			window.location.href = returnTo;
 			return;
 		}
+		
+		console.error('Unexpected Google OAuth response:', res);
 		showToast('Unable to start Google authentication', { type: 'error' });
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Start Google OAuth error:', error);
 		logApiError('startGoogleOAuth', error);
-		showToast('Failed to start Google sign-in', { type: 'error' });
+		
+		const errorMessage = error?.response?.data?.message || error?.message || 'Failed to start Google sign-in';
+		showToast(errorMessage, { type: 'error' });
 	}
 }
 
@@ -227,6 +239,7 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 	if (!sdk) return false;
 
 	try {
+		// Convert URLSearchParams to plain object as required by Medusa SDK
 		const query = Object.fromEntries(searchParams.entries());
 
 		if (query.error) {
@@ -238,16 +251,28 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			return false;
 		}
 
-		// 1. Exchange code for token
+		// 1. Exchange code for token - pass all query parameters from the OAuth callback
 		let token: string = '';
 		try {
 			token = await sdk.auth.callback('customer', 'google', query);
-		} catch (err) {
+		} catch (err: any) {
+			console.error('OAuth callback error:', err);
 			logApiError('googleOAuthCallback', err);
-			showToast('Authentication failed while exchanging code', { type: 'error' });
+			
+			// Check for specific error messages from Medusa
+			const errorMessage = err?.response?.data?.message || err?.message || 'Authentication failed while exchanging code';
+			showToast(errorMessage, { type: 'error' });
 			return false;
 		}
 		if (typeof token !== 'string') {
+			showToast('Authentication failed: Invalid token response', { type: 'error' });
+			return false;
+		}
+
+		console.log('OAuth callback - received token:', typeof token, token ? 'token received' : 'no token');
+
+		if (typeof token !== 'string' || !token) {
+			console.error('Invalid token received:', typeof token, token);
 			showToast('Authentication failed: Invalid token response', { type: 'error' });
 			return false;
 		}
@@ -301,26 +326,13 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			}
 		}
 
-		// 4. Refresh token OR retry login
-		// Refresh token OR force login
-		let refreshed = false;
-		try {
-			await sdk.auth.refresh();
-			refreshed = true;
-		} catch (refreshErr) {
-			logApiError('googleOAuthRefresh', refreshErr);
-		}
-
-		if (!refreshed || !decoded?.actor_id) {
+		// 4. Refresh token only if we just created the customer to bind identity → actor
+		if (needsCustomer) {
 			try {
-				// force login to establish session
-				await sdk.auth.login('customer', 'google', {
-					callbackUrl: window.location.origin + '/oauth/google/callback'
-				});
-			} catch (loginErr) {
-				logApiError('googleOAuthReLogin', loginErr);
-				showToast('Session could not be established', { type: 'error' });
-				return false;
+				await sdk.auth.refresh();
+			} catch (refreshErr) {
+				logApiError('googleOAuthRefresh', refreshErr);
+				// Non-fatal; continue with current session/token
 			}
 		}
 

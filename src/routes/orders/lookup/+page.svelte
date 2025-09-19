@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { Button } from '$lib/components/ui/button';
@@ -16,6 +16,9 @@
 	let loading: boolean = $state(false);
 	let errorMsg: string | null = $state(null);
 	let order: any = $state(null);
+	// Guard auto-lookups to avoid loops and thrash
+	let lastLookupKey: string = $state('');
+	let debounceHandle: any = $state(null);
 	// Stubs for OrderCard props in public view
 	function canCancel(order: any) {
 		// Allow cancellation for guest orders if not already cancelled/completed
@@ -247,25 +250,41 @@
 		}
 	});
 
-	// Auto-lookup when enough parameters are present
+	// Auto-lookup when enough parameters are present, with debounce and key guard
 	$effect(() => {
-		if ($customer) {
-			// Authenticated user: allow multiple lookup methods
-			if (token && !order && !loading) {
-				lookup();
-				return;
-			}
-			if (email && orderNo && !order && !loading) {
-				lookup();
-				return;
-			}
+		const isAuthed = $customer;
+		const hasToken = !!token;
+		const hasEmailOrder = !!email && !!orderNo;
+
+		let key = '';
+		if (isAuthed) {
+			if (hasToken) key = `t:${token}`;
+			else if (hasEmailOrder) key = `eo:${email}|${orderNo}`;
 		} else {
-			// Guest user: only auto-lookup with token
-			if (token && !order && !loading) {
-				lookup();
-				return;
-			}
+			if (hasToken) key = `t:${token}`;
 		}
+
+		// Do not trigger if not enough data or while loading or when order is already present
+		if (!key || loading || order) return;
+
+		// Prevent repeat lookups for the same key (avoids infinite loops)
+		if (key === lastLookupKey) return;
+
+		// Debounce guest input; immediate for authed
+		if (!isAuthed) {
+			if (debounceHandle) clearTimeout(debounceHandle);
+			debounceHandle = setTimeout(() => {
+				lastLookupKey = key;
+				lookup();
+			}, 500);
+		} else {
+			lastLookupKey = key;
+			lookup();
+		}
+	});
+
+	onDestroy(() => {
+		if (debounceHandle) clearTimeout(debounceHandle);
 	});
 
 	async function lookup() {
