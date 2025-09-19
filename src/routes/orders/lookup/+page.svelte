@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { Button } from '$lib/components/ui/button';
@@ -18,7 +18,18 @@
 	let order: any = $state(null);
 	// Guard auto-lookups to avoid loops and thrash
 	let lastLookupKey: string = $state('');
-	let debounceHandle: any = $state(null);
+	let tokenFromUrl: boolean = $state(false); // Track if token came from URL params
+
+	// Reset state when user starts typing in any field
+	function resetLookupState() {
+		if (order) {
+			order = null;
+			errorMsg = null;
+			lastLookupKey = '';
+		}
+		// Mark that token is now from manual input, not URL
+		tokenFromUrl = false;
+	}
 	// Stubs for OrderCard props in public view
 	function canCancel(order: any) {
 		// Allow cancellation for guest orders if not already cancelled/completed
@@ -238,6 +249,7 @@
 			// Guest user: only populate token parameter
 			if (tokenParam) {
 				token = tokenParam;
+				tokenFromUrl = true; // Mark that token came from URL
 			}
 			// Clear other parameters for guest users
 			email = '';
@@ -250,42 +262,46 @@
 		}
 	});
 
-	// Auto-lookup when enough parameters are present, with debounce and key guard
+	// Auto-lookup based on URL parameters and authentication status
 	$effect(() => {
 		const isAuthed = $customer;
-		const hasToken = !!token;
+		const hasToken = !!token && token.length > 2;
 		const hasEmailOrder = !!email && !!orderNo;
 
+		// Early exit conditions to prevent unnecessary processing
+		if (loading || order) return;
+
 		let key = '';
+		let shouldAutoLookup = false;
+
 		if (isAuthed) {
-			if (hasToken) key = `t:${token}`;
-			else if (hasEmailOrder) key = `eo:${email}|${orderNo}`;
+			// Authenticated users: auto-lookup for any valid input
+			if (hasToken) {
+				key = `t:${token}`;
+				shouldAutoLookup = true;
+			} else if (hasEmailOrder) {
+				key = `eo:${email}|${orderNo}`;
+				shouldAutoLookup = true;
+			}
 		} else {
-			if (hasToken) key = `t:${token}`;
+			// Guest users: only auto-lookup if token came from URL parameters
+			if (hasToken && tokenFromUrl) {
+				key = `t:${token}`;
+				shouldAutoLookup = true;
+			}
 		}
 
-		// Do not trigger if not enough data or while loading or when order is already present
-		if (!key || loading || order) return;
+		// Do not trigger if not enough data or shouldn't auto-lookup
+		if (!key || !shouldAutoLookup) return;
 
 		// Prevent repeat lookups for the same key (avoids infinite loops)
 		if (key === lastLookupKey) return;
 
-		// Debounce guest input; immediate for authed
-		if (!isAuthed) {
-			if (debounceHandle) clearTimeout(debounceHandle);
-			debounceHandle = setTimeout(() => {
-				lastLookupKey = key;
-				lookup();
-			}, 500);
-		} else {
-			lastLookupKey = key;
-			lookup();
-		}
+		lastLookupKey = key;
+		lookup();
 	});
 
-	onDestroy(() => {
-		if (debounceHandle) clearTimeout(debounceHandle);
-	});
+
 
 	async function lookup() {
 		errorMsg = null;
@@ -481,6 +497,7 @@
 								type="text"
 								bind:value={token}
 								placeholder="Paste your order token here"
+								oninput={resetLookupState}
 								required
 							/>
 						</label>
