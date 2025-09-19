@@ -187,108 +187,103 @@ export async function resetPassword(
 
 // --- Google OAuth (simplified) ---
 // Starts Google OAuth and redirects user to provider if needed.
-// Start Google OAuth
-export async function startGoogleOAuth(returnTo = '/account') {
-  const sdk = getStoreClient();
-  if (!sdk || typeof window === 'undefined') return;
+export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
+	const sdk = getStoreClient() as any;
+	if (!sdk || typeof window === 'undefined') return;
 
-  try {
-    const callbackUrl = new URL('/oauth/google/callback', window.location.origin).toString();
-    localStorage.setItem('oauth_intended_path', returnTo);
+	try {
+		const callbackUrl = new URL('/oauth/google/callback', window.location.origin).toString();
 
-    const res = await sdk.auth.login('customer', 'google', { callbackUrl });
+		localStorage.setItem('oauth_intended_path', returnTo);
 
-    if (res && typeof res === 'object' && 'location' in res && res.location) {
-      window.location.href = res.location;
-    } else {
-      showToast('Unable to start Google authentication. Please try again.', { type: 'error' });
-    }
-  } catch (error) {
-    logApiError('startGoogleOAuth', error);
-    showToast('Failed to start Google sign-in.', { type: 'error' });
-  }
+		const res = await sdk.auth.login('customer', 'google', { callbackUrl: callbackUrl });
+
+		if (res && typeof res === 'object' && 'location' in res && res.location) {
+			window.location.href = res.location as string;
+		} else {
+			showToast('Unable to start Google authentication. Please try again.', { type: 'error' });
+		}
+	} catch (error) {
+		logApiError('startGoogleOAuth', error);
+		showToast('Failed to start Google sign-in.', { type: 'error' });
+	}
 }
 
-// Handle Google OAuth Callback
-export async function handleGoogleOAuthCallback(searchParams: URLSearchParams) {
-  const sdk = getStoreClient();
-  if (!sdk) return false;
+export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): Promise<boolean> {
+	const sdk = getStoreClient() as any;
+	if (!sdk) return false;
 
-  try {
-    const query = Object.fromEntries(searchParams.entries());
+	try {
+		const query = Object.fromEntries(searchParams.entries());
 
-    if (query.error) {
-      showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
-      return false;
-    }
-    if (!query.code) {
-      showToast('Authentication failed: Missing authorization code.', { type: 'error' });
-      return false;
-    }
+		if (query.error) {
+			showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
+			return false;
+		}
+		if (!query.code) {
+			showToast('Authentication failed: Missing authorization code.', { type: 'error' });
+			return false;
+		}
 
-    let token = '';
-    try {
-      token = await sdk.auth.callback('customer', 'google', query);
-    } catch (err) {
-      logApiError('googleOAuthCallback', err);
-      showToast('Authentication failed while exchanging code. Check backend logs.', { type: 'error' });
-      return false;
-    }
+		let token: string = '';
+		try {
+			token = await sdk.auth.callback('customer', 'google', query);
+		} catch (err) {
+			logApiError('googleOAuthCallback', err);
+			showToast('Authentication failed while exchanging code. Check backend logs.', { type: 'error' });
+			return false;
+		}
 
-    if (typeof token !== 'string') {
-      showToast('Authentication failed: Invalid token response from server.', { type: 'error' });
-      return false;
-    }
+		if (typeof token !== 'string') {
+			showToast('Authentication failed: Invalid token response from server.', { type: 'error' });
+			return false;
+		}
 
-	type DecodedToken = { actor_id?: string; email?: string; given_name?: string; family_name?: string; name?: string; };
+		type DecodedToken = { actor_id?: string; email?: string; given_name?: string; family_name?: string; name?: string; };
+		const decoded = decodeToken<DecodedToken>(token);
+		
+		const needsCustomer = !decoded?.actor_id;
 
-    const decoded = decodeToken<DecodedToken>(token);
-	console.log('Decoded token:', decoded);
-    const needsCustomer = !decoded?.actor_id;
+		if (needsCustomer) {
+			const email = decoded?.email?.toLowerCase()?.trim();
+			if (!email) {
+				showToast('Authentication failed: Provider did not return an email.', { type: 'error' });
+				return false;
+			}
+			
+			const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
+			const last_name = decoded?.family_name || decoded?.name?.split(' ').slice(1).join(' ') || undefined;
 
-    if (needsCustomer) {
-      const email = decoded?.email?.toLowerCase()?.trim();
-      if (!email) {
-        showToast('Authentication failed: Provider did not return an email.', { type: 'error' });
-        return false;
-      }
+			try {
+				await sdk.store.customer.create(
+					{ email, first_name, last_name },
+					{},
+					{ Authorization: `Bearer ${token}` }
+				);
+			} catch (createErr: any) {
+				const msg = createErr?.response?.data?.message || createErr?.message;
+				if (!msg || !/already exists/i.test(msg)) {
+					logApiError('googleOAuthCreateCustomer', createErr);
+					showToast('Failed to create your account.', { type: 'error' });
+					return false;
+				}
+			}
+		}
 
-      const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
-      const last_name = decoded?.family_name || decoded?.name?.split(' ').slice(1).join(' ') || undefined;
+		await getCurrentCustomer();
+		try {
+			const c = get(cart);
+			if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => {});
+		} catch {}
 
-      try {
-        await sdk.store.customer.create({ email, first_name, last_name });
-      } catch (createErr: any) {
-        const msg = createErr?.response?.data?.message || createErr?.message;
-        if (!msg || !/already exists/i.test(msg)) {
-          logApiError('googleOAuthCreateCustomer', createErr);
-          showToast('Failed to create your account.', { type: 'error' });
-          return false;
-        }
-      }
-      try {
-        await sdk.auth.refresh();
-      } catch (refreshErr) {
-        logApiError('googleOAuthRefreshToken', refreshErr);
-        showToast('Failed to refresh authentication after account creation.', { type: 'error' });
-        return false;
-      }
-    }
+		showToast('Signed in with Google', { type: 'success' });
+		return true;
 
-    await getCurrentCustomer();
-    try {
-      const c = get(cart);
-      if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => {});
-    } catch {}
-
-    showToast('Signed in with Google', { type: 'success' });
-    return true;
-
-  } catch (error) {
-    logApiError('handleGoogleOAuthCallback', error);
-    showToast('An unexpected error occurred during Google sign-in.', { type: 'error' });
-    return false;
-  }
+	} catch (error) {
+		logApiError('handleGoogleOAuthCallback', error);
+		showToast('An unexpected error occurred during Google sign-in.', { type: 'error' });
+		return false;
+	}
 }
 
 
