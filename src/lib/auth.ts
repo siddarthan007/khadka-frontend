@@ -230,14 +230,8 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 		let token: string = '';
 		try {
 			token = await sdk.auth.callback('customer', 'google', query);
-			// Debug: Log the returned token (be careful—tokens are sensitive). In dev, print full; in prod, partially mask.
-			const isDev = (import.meta as any)?.env?.DEV ?? false;
-			if (isDev) {
-				console.log('[OAuth] Received token:', token);
-			} else {
-				const masked = token.length > 24 ? `${token.slice(0, 12)}...${token.slice(-12)}` : token;
-				console.log('[OAuth] Received token (masked):', masked, `(len=${token.length})`);
-			}
+
+			console.log('[OAuth] Received token:', token);
 		} catch (err) {
 			logApiError('googleOAuthCallback', err);
 			showToast('Authentication failed while exchanging code. Check backend logs.', { type: 'error' });
