@@ -188,32 +188,11 @@ export async function resetPassword(
 // --- Google OAuth (simplified) ---
 // Starts Google OAuth and redirects user to provider if needed.
 export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
-
-	const sdk = getStoreClient() as any;
-	if (!sdk || typeof window === 'undefined') return;
-	try {
-		const origin = window.location.origin;
-		// Persist intended redirect so callback can navigate correctly
-		try {
-			localStorage.setItem('oauth_intended_path', returnTo);
-		} catch { }
-
-		const callback = new URL('/oauth/google/callback', origin).toString();
-		const res = await sdk.auth.login('customer', 'google', { callbackUrl: callback });
-		if (res && typeof res === 'object' && 'location' in res && res.location) {
-			window.location.href = res.location as string; // Redirect to Google
-			return;
-		}
-		if (typeof res === 'string') {
-			await getCurrentCustomer();
-			window.location.href = returnTo;
-			return;
-		}
-		showToast('Unable to start Google authentication', { type: 'error' });
-	} catch (error) {
-		logApiError('startGoogleOAuth', error);
-		showToast('Failed to start Google sign-in', { type: 'error' });
-	}
+	if (typeof window === 'undefined') return;
+	// Persist intended redirect so callback can navigate correctly as a fallback
+	try { localStorage.setItem('oauth_intended_path', returnTo); } catch {}
+	const params = new URLSearchParams({ return_to: returnTo });
+	window.location.href = `/oauth/google/start?${params.toString()}`;
 }
 
 // Handle callback page: exchange code for token, optionally create customer, refresh token, hydrate store.

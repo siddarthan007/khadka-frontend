@@ -9,9 +9,15 @@
 
   onMount(async () => {
     const url = $page.url;
-    const returnTo = url.searchParams.get('return_to') || '/account';
     const ok = await handleGoogleOAuthCallback(url.searchParams);
     if (ok) {
+      // Prefer intended path from localStorage set by startGoogleOAuth
+      let returnTo = '/account';
+      try {
+        const stored = localStorage.getItem('oauth_intended_path');
+        if (stored && stored.startsWith('/')) returnTo = stored;
+        localStorage.removeItem('oauth_intended_path');
+      } catch {}
       await goto(returnTo);
       return;
     }

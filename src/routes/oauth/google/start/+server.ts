@@ -13,7 +13,8 @@ export const GET: RequestHandler = async (event) => {
 		if (!sdk) return new Response('SDK not initialized', { status: 500 });
 
 		const callback = new URL('/oauth/google/callback', baseUrl);
-		callback.searchParams.set('return_to', returnTo);
+		// Do NOT append return_to to the callback URL; keep it only in cookie to avoid
+		// unexpected params being forwarded to the provider/Medusa callback.
 
 		// Generate and store CSRF state for security
 		const state = randomBytes(32).toString('hex');
