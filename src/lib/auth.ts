@@ -215,6 +215,8 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 
 	try {
 		const query = Object.fromEntries(searchParams.entries());
+		// Debug: Log full query parameters from the callback
+		console.log('[OAuth] Callback query params:', query);
 
 		if (query.error) {
 			showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
@@ -228,6 +230,14 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 		let token: string = '';
 		try {
 			token = await sdk.auth.callback('customer', 'google', query);
+			// Debug: Log the returned token (be careful—tokens are sensitive). In dev, print full; in prod, partially mask.
+			const isDev = (import.meta as any)?.env?.DEV ?? false;
+			if (isDev) {
+				console.log('[OAuth] Received token:', token);
+			} else {
+				const masked = token.length > 24 ? `${token.slice(0, 12)}...${token.slice(-12)}` : token;
+				console.log('[OAuth] Received token (masked):', masked, `(len=${token.length})`);
+			}
 		} catch (err) {
 			logApiError('googleOAuthCallback', err);
 			showToast('Authentication failed while exchanging code. Check backend logs.', { type: 'error' });
@@ -241,13 +251,14 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 
 		type DecodedToken = { actor_id?: string; email?: string; given_name?: string; family_name?: string; name?: string; };
 		const decoded = decodeToken<DecodedToken>(token);
+		// Debug: Log decoded payload
+		console.log('[OAuth] Decoded token payload:', decoded);
 		
 		const needsCustomer = !decoded?.actor_id;
 
 		if (needsCustomer) {
 			const email = decoded?.email?.toLowerCase()?.trim();
 			if (!email) {
-				console.log(decoded);
 				showToast('Authentication failed: Provider did not return an email.', { type: 'error' });
 				return false;
 			}
@@ -268,6 +279,15 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 					showToast('Failed to create your account.', { type: 'error' });
 					return false;
 				}
+			}
+
+			// Refresh token so the identity is bound to the created customer
+			try {
+				await sdk.auth.refresh();
+			} catch (refreshErr) {
+				logApiError('googleOAuthRefreshToken', refreshErr);
+				showToast('Failed to refresh authentication after account creation.', { type: 'error' });
+				return false;
 			}
 		}
 
