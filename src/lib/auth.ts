@@ -225,13 +225,12 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			return false;
 		}
 
-		// 1. Exchange code for token
 		let token: string = '';
 		try {
 			token = await sdk.auth.callback('customer', 'google', query);
 		} catch (err) {
 			logApiError('googleOAuthCallback', err);
-			showToast('Authentication failed while exchanging code. Check backend logs and ensure callback URLs match.', { type: 'error' });
+			showToast('Authentication failed while exchanging code. Check backend logs.', { type: 'error' });
 			return false;
 		}
 
@@ -261,8 +260,6 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 					{},
 					{ Authorization: `Bearer ${token}` }
 				);
-				await sdk.auth.refresh();
-
 			} catch (createErr: any) {
 				const msg = createErr?.response?.data?.message || createErr?.message;
 				if (!msg || !/already exists/i.test(msg)) {
@@ -273,20 +270,18 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			}
 		}
 
-
-		// 5. Hydrate customer + cart
 		await getCurrentCustomer();
 		try {
 			const c = get(cart);
 			if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => {});
 		} catch {}
 
-		// 6. Redirect
 		showToast('Signed in with Google', { type: 'success' });
 		return true;
+
 	} catch (error) {
 		logApiError('handleGoogleOAuthCallback', error);
-		showToast('Google sign-in failed', { type: 'error' });
+		showToast('An unexpected error occurred during Google sign-in.', { type: 'error' });
 		return false;
 	}
 }
