@@ -243,12 +243,23 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 			return false;
 		}
 
-		type DecodedToken = { actor_id?: string; email?: string; given_name?: string; family_name?: string; name?: string; };
+		type DecodedToken = { actor_id?: string; auth_identity_id?: string; email?: string; given_name?: string; family_name?: string; name?: string; };
 		const decoded = decodeToken<DecodedToken>(token);
 		// Debug: Log decoded payload
 		console.log('[OAuth] Decoded token payload:', decoded);
-		
+
 		const needsCustomer = !decoded?.actor_id;
+
+		const retrieveCustomer = async (token: string, identity: string) => {
+			return sdk.client.fetch(`/store/google/auth?auth_identity_id=${identity}`, {
+				headers: {
+					"Content-Type": "application/json",
+					"Authorization": `Bearer ${token}`,
+				},
+			}).then((res: Response) => res.json())
+		}
+
+		console.log(await retrieveCustomer(token, decoded?.auth_identity_id || ''));
 
 		if (needsCustomer) {
 			const email = decoded?.email?.toLowerCase()?.trim();
@@ -256,7 +267,7 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 				showToast('Authentication failed: Provider did not return an email.', { type: 'error' });
 				return false;
 			}
-			
+
 			const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];
 			const last_name = decoded?.family_name || decoded?.name?.split(' ').slice(1).join(' ') || undefined;
 
@@ -288,8 +299,8 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
 		await getCurrentCustomer();
 		try {
 			const c = get(cart);
-			if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => {});
-		} catch {}
+			if (c?.id) await sdk.store.cart.transferCart(c.id).catch(() => { });
+		} catch { }
 
 		showToast('Signed in with Google', { type: 'success' });
 		return true;
