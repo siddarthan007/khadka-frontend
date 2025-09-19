@@ -193,9 +193,6 @@ export async function resetPassword(
 // --- Google OAuth (simplified) ---
 // Starts Google OAuth and redirects user to provider if needed.
 export async function startGoogleOAuth(returnTo: string = '/account'): Promise<void> {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('oauth_intended_path', returnTo);
-    }
 	
 	const sdk = getStoreClient() as any;
     if (!sdk || typeof window === 'undefined') return;
@@ -209,7 +206,6 @@ export async function startGoogleOAuth(returnTo: string = '/account'): Promise<v
             return;
         }
         if (typeof res === 'string') {
-            // Already have a token (user previously authorized) -> just hydrate customer
             await getCurrentCustomer();
             window.location.href = returnTo;
             return;
@@ -227,8 +223,7 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
   if (!sdk) return false;
 
   try {
-    const query: Record<string, string> = {};
-    for (const [k, v] of searchParams.entries()) query[k] = v;
+    const query = Object.fromEntries(searchParams.entries());
 
     if (query.error) {
       showToast(`Authentication failed: ${query.error_description || query.error}`, { type: 'error' });
@@ -260,7 +255,6 @@ export async function handleGoogleOAuthCallback(searchParams: URLSearchParams): 
       decoded = jwtDecode<Decoded>(token);
     } catch {}
 
-    // 3. Ensure customer exists
     if (!decoded?.actor_id) {
       const email = decoded?.email?.toLowerCase()?.trim();
       const first_name = decoded?.given_name || decoded?.name?.split(' ')[0];

@@ -57,3 +57,4 @@ export function normalizeUSPhone(phone: string): string {
 	if (digits.length === 10) return `+1${digits}`;
 	return phone || '';
 }
+
