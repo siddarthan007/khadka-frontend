@@ -430,19 +430,6 @@
 				>
 					<User class="size-5" />
 				</Button>
-				<!-- Quick auth modal trigger (mobile convenience) -->
-				<Button
-					variant="ghost"
-					size="icon"
-					aria-label="Open auth"
-					class="btn btn-ghost md:hidden"
-					onclick={() => {
-						authMode = 'login';
-						authOpen = true;
-					}}
-				>
-					<LogIn class="size-5" />
-				</Button>
 				<!-- Mobile search trigger -->
 				<Button
 					variant="ghost"
@@ -799,102 +786,6 @@
 							{/if}
 						</div>
 					</div>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Auth modal -->
-	{#if authOpen}
-		<div class="fixed inset-0 z-[65]">
-			<button
-				type="button"
-				aria-label="Close"
-				class="absolute inset-0 bg-black/40 backdrop-blur-sm"
-				onclick={() => (authOpen = false)}
-			></button>
-			<div class="absolute inset-x-0 top-16 mx-auto w-full max-w-sm px-4 sm:max-w-md">
-				<div
-					class="card animate-in overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl fade-in slide-in-from-top-4"
-				>
-					<div
-						class="flex items-center justify-between border-b border-base-300 bg-gradient-to-r from-base-200/60 to-base-100/20 p-3 sm:p-4"
-					>
-						<div class="tabs-boxed tabs tabs-sm sm:tabs">
-							<button
-								class="tab text-xs sm:text-sm transition"
-								class:tab-active={authMode === 'login'}
-								onclick={() => {
-									authMode = 'login';
-								}}>Login</button
-							>
-							<button
-								class="tab text-xs sm:text-sm transition"
-								class:tab-active={authMode === 'register'}
-								onclick={() => {
-									authMode = 'register';
-								}}>Register</button
-							>
-						</div>
-						<div class="flex items-center gap-2">
-							{#if authMode === 'login'}<LogIn class="size-4" />{:else}<UserPlus
-									class="size-4"
-								/>{/if}
-						</div>
-					</div>
-					{#key authMode}
-						<Motion variants={authContentVariants} initial="exit" animate="enter" let:motion>
-							<form class="space-y-3 p-3 sm:space-y-4 sm:p-4 transition-all" onsubmit={submitAuth} use:motion>
-								{#if authError}
-									<div class="alert alert-error text-sm"><span>{authError}</span></div>
-								{/if}
-								<label class="form-control w-full">
-									<div class="label"><span class="label-text text-sm">Email</span></div>
-									<input
-										class="input-bordered input w-full border-base-300 input-primary h-10 sm:h-12 text-sm sm:text-base"
-										type="email"
-										placeholder="you@example.com"
-										bind:value={authEmail}
-										required
-									/>
-								</label>
-								<label class="form-control w-full">
-									<div class="label"><span class="label-text text-sm">Password</span></div>
-									<div class="h-10 sm:h-12">
-										<PasswordInput bind:value={authPassword} placeholder="••••••••" />
-									</div>
-								</label>
-								{#if authMode === 'register'}
-									<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-										<input
-											class="input-bordered input border-base-300 input-primary h-10 sm:h-12 text-sm sm:text-base"
-											placeholder="First name"
-											bind:value={authFirst}
-										/>
-										<input
-											class="input-bordered input border-base-300 input-primary h-10 sm:h-12 text-sm sm:text-base"
-											placeholder="Last name"
-											bind:value={authLast}
-										/>
-									</div>
-								{/if}
-								<div class="pt-2">
-									<Button
-										class={'btn w-full btn-primary h-10 sm:h-12 text-sm sm:text-base ' + (authLoading ? 'loading animate-pulse' : '')}
-										disabled={authLoading}
-										type="submit">{authMode === 'login' ? 'Sign in' : 'Create account'}</Button
-									>
-								</div>
-								{#if authMode === 'login'}
-									<div class="text-center">
-										<a href="/orders/lookup" class="link link-primary text-sm" onclick={() => (authOpen = false)}>
-											Track your order
-										</a>
-									</div>
-								{/if}
-							</form>
-						</Motion>
-					{/key}
 				</div>
 			</div>
 		</div>
