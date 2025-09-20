@@ -187,6 +187,42 @@
 			showToast('Unable to copy link', { title: 'Copy failed', type: 'error' });
 		}
 	}
+
+	// Build a single, deduplicated list of promotion codes from both order.promotions and item adjustments
+	const promoBadges = $derived.by(() => {
+		const codeMap = new Map<string, string>(); // normalizedCode -> displayCode
+		const fallbackIds: string[] = []; // for promotions without a code
+
+		const addCode = (raw: unknown) => {
+			if (!raw) return;
+			const display = String(raw).trim();
+			if (!display) return;
+			const norm = display.toLowerCase();
+			if (!codeMap.has(norm)) codeMap.set(norm, display);
+		};
+
+		try {
+			// From order.promotions
+			(order?.promotions || []).forEach((p: any) => {
+				const code = p?.code ?? p?.promo_code ?? '';
+				if (code) addCode(code);
+				else if (p?.id) {
+					// Keep a stable fallback so we don't lose unknown promos; won't collide with codes
+					const id = String(p.id);
+					if (!fallbackIds.includes(id)) fallbackIds.push(id);
+				}
+			});
+
+			// From line-item adjustments
+			(order?.items || []).forEach((item: any) => {
+				(item?.adjustments || []).forEach((adj: any) => addCode(adj?.code));
+			});
+		} catch {
+			// no-op
+		}
+
+		return [...codeMap.values(), ...fallbackIds];
+	});
 </script>
 
 <Accordion.Item
@@ -379,25 +415,16 @@
 			{/if}
 
 			<!-- Promotions -->
-			{#if order.promotions?.length || (order.items?.some((item: any) => item.adjustments?.length))}
+			{#if promoBadges.length}
 				<div class="space-y-1">
 					<div class="text-sm font-semibold tracking-wide text-base-content/70">Promotions</div>
 					<ul class="flex flex-wrap gap-2 text-xs">
-						{#each order.promotions || [] as p (p.id)}
+						{#each promoBadges as code (code)}
 							<li
 								class="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/5 px-2 py-1 font-medium text-primary"
 							>
-								{p.code || p.promo_code || p.id}
+								{code}
 							</li>
-						{/each}
-						{#each order.items?.flatMap((item: any) => item.adjustments || []) || [] as adjustment (adjustment.id)}
-							{#if adjustment.code && !order.promotions?.some((p: any) => p.code === adjustment.code)}
-								<li
-									class="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/5 px-2 py-1 font-medium text-primary"
-								>
-									{adjustment.code}
-								</li>
-							{/if}
 						{/each}
 					</ul>
 				</div>
