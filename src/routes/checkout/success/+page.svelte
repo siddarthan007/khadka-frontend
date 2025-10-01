@@ -43,11 +43,11 @@
           const items = formatOrderItemsForAnalytics(latestOrder.items || []);
           trackPurchase(
             latestOrder.id,
-            (latestOrder.total || 0) / 100,
+            latestOrder.total || 0,
             latestOrder.currency_code?.toUpperCase() || 'USD',
             items,
-            (latestOrder.shipping_total || 0) / 100,
-            (latestOrder.tax_total || 0) / 100
+            latestOrder.shipping_total || 0,
+            latestOrder.tax_total || 0
           );
         } catch (err) {
           logger.warn('Analytics tracking failed:', err);

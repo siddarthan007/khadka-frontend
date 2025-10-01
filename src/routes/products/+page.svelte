@@ -7,6 +7,9 @@
 	import DoubleRange from '$lib/components/DoubleRange.svelte';
 	import { ChevronRight, SearchX } from '@lucide/svelte';
 	import SEO from '$lib/components/SEO.svelte';
+	import { onMount } from 'svelte';
+	import { trackViewItemList, trackEvent } from '$lib/utils/analytics';
+	import { logger } from '$lib/logger';
 	
 	let {
 		data
@@ -42,7 +45,35 @@
 
 	function openQuickView(product: any) {
 		quickViewProduct = product;
+		
+		// Track quick view trigger
+		try {
+			trackEvent('quick_view_trigger', {
+				item_id: product.id,
+				item_name: product.title || 'Unknown Product',
+				source: 'products_page'
+			});
+		} catch (e) {
+			logger.warn('Analytics tracking failed:', e);
+		}
 	}
+	
+	// Track view_item_list event for products page
+	onMount(() => {
+		try {
+			const items = products.map((p: any, index: number) => ({
+				item_id: p.variants?.[0]?.id || p.id,
+				item_name: p.title || 'Unknown Product',
+				price: p.variants?.[0]?.calculated_price?.calculated_amount || 0,
+				quantity: 1,
+				item_category: p.collection?.title || '',
+				index
+			}));
+			trackViewItemList(items, 'All Products', 'products_page');
+		} catch (e) {
+			logger.warn('Analytics tracking failed:', e);
+		}
+	});
 
 	function closeQuickView() {
 		quickViewProduct = null;
@@ -73,6 +104,19 @@
 				offset = products.length;
 			}
 			count = json.count ?? count;
+			
+			// Track filter application
+			try {
+				trackEvent('products_filter', {
+					categories_count: selectedCategories.length,
+					collections_count: selectedCollections.length,
+					price_range: `${priceMin}-${priceMax}`,
+					results_count: count,
+					has_search: q.trim().length > 0
+				});
+			} catch (e) {
+				logger.warn('Analytics tracking failed:', e);
+			}
 		} finally {
 			loading = false;
 		}

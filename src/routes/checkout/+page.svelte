@@ -571,8 +571,8 @@
 					const order = completion.order;
 					const items = formatCartItemsForAnalytics(order.items || c.items || []);
 					const value = calculateCartValue(order);
-					const shipping = (order.shipping_total || 0) / 100;
-					const tax = (order.tax_total || 0) / 100;
+					const shipping = order.shipping_total || 0;
+					const tax = order.tax_total || 0;
 					trackPurchase(
 						order.id,
 						value,

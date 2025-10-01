@@ -7,6 +7,7 @@
   import { onDestroy } from "svelte";
   import { logger } from "$lib/logger";
   import OptimizedImage from "$lib/components/OptimizedImage.svelte";
+  import { trackAddToCart, trackRemoveFromCart, trackSelectItem } from "$lib/utils/analytics";
 
   type CalculatedPrice = {
     calculated_amount?: number;
@@ -96,6 +97,21 @@
     isUpdating = true;
     try {
       await addLine(variantId, 1);
+      
+      // Track add_to_cart event
+      try {
+        const priceValue = typeof price === 'string' ? 0 : (price?.calculated_amount || price?.amount || 0);
+        trackAddToCart({
+          id: variantId,
+          name: title || 'Unknown Product',
+          price: priceValue,
+          quantity: 1,
+          currency: typeof price === 'string' ? 'USD' : (price?.currency_code?.toUpperCase() || 'USD')
+        });
+      } catch (e) {
+        logger.warn('Analytics tracking failed:', e);
+      }
+      
       const m = await import('$lib/stores/toast');
       m.showToast('Added to cart', { type: 'success' });
     } catch (error) {
@@ -135,6 +151,19 @@
         await updateLine(item.id, item.quantity - 1);
       } else {
         await removeLine(item.id);
+        
+        // Track remove_from_cart event when quantity reaches 0
+        try {
+          trackRemoveFromCart({
+            id: variantId,
+            name: title || 'Unknown Product',
+            price: item.unit_price || 0,
+            quantity: 1,
+            currency: $cart?.currency_code?.toUpperCase() || 'USD'
+          });
+        } catch (e) {
+          logger.warn('Analytics tracking failed:', e);
+        }
       }
     } catch (error) {
       logger.error("Failed to update cart:", error);

@@ -273,6 +273,39 @@ export function trackShare(contentType: string, itemId: string): void {
 }
 
 /**
+ * Track link clicks with source information
+ */
+export function trackLinkClick(linkUrl: string, linkText: string, source?: string): void {
+	trackEvent('link_click', {
+		link_url: linkUrl,
+		link_text: linkText,
+		...(source && { source })
+	});
+}
+
+/**
+ * Track view_item_list (product listing pages)
+ */
+export function trackViewItemList(items: GA4Item[], listName: string, listId?: string): void {
+	trackEvent('view_item_list', {
+		item_list_name: listName,
+		...(listId && { item_list_id: listId }),
+		items
+	});
+}
+
+/**
+ * Track select_item (clicking on product from list)
+ */
+export function trackSelectItem(item: GA4Item, listName: string, index?: number): void {
+	trackEvent('select_item', {
+		item_list_name: listName,
+		...(index !== undefined && { index }),
+		items: [item]
+	});
+}
+
+/**
  * Set user properties
  */
 export function setUserProperties(props: Record<string, any>): void {
@@ -295,16 +328,14 @@ export function setUserId(userId: string): void {
 /**
  * Helper to format cart items for GA4 e-commerce events
  * 
- * NOTE: Medusa stores prices in minor units (cents).
- * We divide by 100 to convert to major units (dollars) for GA4.
- * This matches the pattern used throughout the codebase in cart.ts and product pages.
+ * NOTE: Prices are already in dollars (Medusa calculated_price is in major units).
  */
 export function formatCartItemsForAnalytics(cartItems: AnalyticsCartItem[]): GA4Item[] {
 	return cartItems.map((item) => ({
 		item_id: item.variant?.id || item.variant_id || 'unknown',
 		item_name: item.title || item.variant?.title || 'Unknown Product',
 		item_variant: item.variant?.title || '',
-		price: (item.unit_price || 0) / 100, // Medusa uses minor units (cents) → convert to dollars
+		price: item.unit_price || 0,
 		quantity: item.quantity || 1,
 		item_category: item.product?.collection?.title || (item.product?.categories?.[0] as any)?.name || '',
 		item_brand: '' // Can be added if product has brand field
@@ -314,8 +345,7 @@ export function formatCartItemsForAnalytics(cartItems: AnalyticsCartItem[]): GA4
 /**
  * Helper to format order items for GA4 e-commerce events
  * 
- * NOTE: Medusa stores prices in minor units (cents).
- * We divide by 100 to convert to major units (dollars) for GA4.
+ * NOTE: Prices are already in dollars (Medusa calculated_price is in major units).
  * Order items have a different structure than cart items, so we need a separate formatter.
  */
 export function formatOrderItemsForAnalytics(orderItems: HttpTypes.StoreOrderLineItem[]): GA4Item[] {
@@ -323,7 +353,7 @@ export function formatOrderItemsForAnalytics(orderItems: HttpTypes.StoreOrderLin
 		item_id: item.variant?.id || item.variant_id || 'unknown',
 		item_name: item.title || item.variant?.product?.title || 'Unknown Product',
 		item_variant: item.variant?.title || '',
-		price: (item.unit_price || 0) / 100, // Medusa uses minor units (cents) → convert to dollars
+		price: item.unit_price || 0,
 		quantity: item.quantity || 1,
 		item_category: '', // Order items don't include full product data
 		item_brand: '' // Can be added if product has brand field
@@ -333,13 +363,12 @@ export function formatOrderItemsForAnalytics(orderItems: HttpTypes.StoreOrderLin
 /**
  * Helper to calculate cart total value in dollars
  * 
- * NOTE: Medusa stores totals in minor units (cents).
- * We divide by 100 to convert to major units (dollars) for GA4.
+ * NOTE: Prices are already in dollars (Medusa calculated_price is in major units).
  */
 export function calculateCartValue(cart: AnalyticsCart | null | undefined): number {
 	if (!cart) return 0;
 	const total = cart.total || cart.subtotal || 0;
-	return total / 100; // Medusa uses minor units (cents) → convert to dollars
+	return total;
 }
 
 /**

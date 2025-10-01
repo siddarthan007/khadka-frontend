@@ -8,6 +8,8 @@
 	import { addLine, ensureCart } from '$lib/cart';
 	import { formatCurrency } from '$lib/utils';
 	import type { HttpTypes } from '@medusajs/types';
+	import { trackEvent, trackAddToCart } from '$lib/utils/analytics';
+	import { logger } from '$lib/logger';
 
 	interface Props {
 		product: HttpTypes.StoreProduct;
@@ -37,6 +39,16 @@
 		updateSelectedVariant();
 		// Initialize active image
 		activeImage = product.thumbnail || product.images?.[0]?.url || null;
+		
+		// Track quick view event
+		try {
+			trackEvent('quick_view', {
+				item_id: product.id,
+				item_name: product.title || 'Unknown Product'
+			});
+		} catch (e) {
+			logger.warn('Analytics tracking failed:', e);
+		}
 	});
 
 	function updateSelectedVariant() {
@@ -79,6 +91,26 @@
 		try {
 			await ensureCart();
 			await addLine(selectedVariant.id, quantity);
+			
+			// Track add_to_cart event from quick view
+			try {
+				trackAddToCart({
+					id: selectedVariant.id,
+					name: product.title || 'Unknown Product',
+					price: selectedVariant.calculated_price?.calculated_amount || 0,
+					quantity,
+					currency: selectedVariant.calculated_price?.currency_code?.toUpperCase() || 'USD',
+					category: product.collection?.title || ''
+				});
+				trackEvent('add_to_cart_quick_view', {
+					item_id: selectedVariant.id,
+					item_name: product.title,
+					source: 'quick_view'
+				});
+			} catch (e) {
+				logger.warn('Analytics tracking failed:', e);
+			}
+			
 			showToast('Added to cart!', { type: 'success' });
 			onClose();
 		} catch (err: any) {

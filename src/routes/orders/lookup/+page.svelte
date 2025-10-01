@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
 	import { getStoreClient, logApiError, lookupOrder } from '$lib/medusa';
 	import OrderCard from '$lib/components/OrderCard.svelte';
@@ -261,7 +261,7 @@
 		}
 
 		// Auto-populate from URL parameters
-		const urlParams = new URLSearchParams($page.url.search);
+		const urlParams = new URLSearchParams(page.url.search);
 		const orderParam = urlParams.get('order');
 		const emailParam = urlParams.get('email');
 		const tokenParam = urlParams.get('token');

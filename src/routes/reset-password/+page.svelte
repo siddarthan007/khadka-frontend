@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { resetPassword } from '$lib/auth';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import PasswordInput from '$lib/components/ui/password-input.svelte';
 	import SEO from '$lib/components/SEO.svelte';
@@ -16,7 +16,7 @@
 		e.preventDefault();
 		errorMsg = null;
 		info = null;
-		const url = $page.url;
+		const url = page.url;
 		const token = url.searchParams.get('token') || '';
 		const email = url.searchParams.get('email') || '';
 		if (!token || !email) {

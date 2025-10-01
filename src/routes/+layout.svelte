@@ -42,18 +42,17 @@
 	import { cart } from '$lib/stores/cart';
 	import { customer } from '$lib/stores/customer';
 	import { ensureCart, removeLine } from '$lib/cart';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { User } from '@lucide/svelte';
 	import { getCurrentCustomer } from '$lib/auth';
-	import { get } from 'svelte/store';
 	import { LogIn, UserPlus } from '@lucide/svelte';
 	import { login, register } from '$lib/auth';
 	import { sanitizeSearchQuery } from '$lib/security';
 	import PasswordInput from '$lib/components/ui/password-input.svelte';
 	import ToastContainer from '$lib/components/ToastContainer.svelte';
 	import StickyMobileCart from '$lib/components/StickyMobileCart.svelte';
-	import { initGoogleAnalytics, trackPageView } from '$lib/utils/analytics';
+	import { initGoogleAnalytics, trackPageView, trackSearch, trackLinkClick, trackSelectItem } from '$lib/utils/analytics';
 
 	onMount(() => {
 		// fire and forget; keep customer store fresh when layout mounts
@@ -71,7 +70,7 @@
 	});
 
 	function onAccountClick() {
-		const me = get(customer);
+		const me = $customer;
 		goto(me ? '/account' : '/login');
 	}
 
@@ -321,8 +320,8 @@
 	<!-- Canonical & Icons -->
 	<link rel="icon" href={favicon} />
 	<link rel="apple-touch-icon" href="{favicon}" />
-	{#if $page}
-		<link rel="canonical" href={`${$page.url.origin}${$page.url.pathname}`} />
+	{#if page}
+		<link rel="canonical" href={`${page.url.origin}${page.url.pathname}`} />
 	{/if}
 
 	<!-- Primary Meta -->
@@ -335,9 +334,9 @@
 	<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 
 	<!-- Robots (dynamic per-route) -->
-	{#if $page}
-		{#key $page.url.pathname}
-			{#if (() => { const p = $page.url.pathname; const noindexPaths = [
+	{#if page}
+		{#key page.url.pathname}
+			{#if (() => { const p = page.url.pathname; const noindexPaths = [
 				'/cart', '/checkout', '/login', '/register', '/account', '/orders/lookup', '/oauth', '/password-reset', '/reset-password'
 			]; return noindexPaths.some(x => p === x || p.startsWith(`${x}/`)); })()}
 				<meta name="robots" content="noindex,nofollow,noarchive" />
@@ -350,8 +349,8 @@
 	<!-- Open Graph -->
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content={storeMetadata.title ?? 'KhadkaFoods'} />
-	{#if $page}
-		<meta property="og:url" content={`${$page.url.origin}${$page.url.pathname}`} />
+	{#if page}
+		<meta property="og:url" content={`${page.url.origin}${page.url.pathname}`} />
 	{/if}
 	<meta property="og:title" content={storeMetadata.title ?? 'KhadkaFoods'} />
 	<meta property="og:description" content={storeMetadata.description ?? 'Shop curated collections at KhadkaFoods.'} />
@@ -368,12 +367,12 @@
 	<meta name="twitter:image" content="/hero.png" />
 
 	<!-- JSON-LD: Organization -->
-	{#if $page}
+	{#if page}
 		{@const org = {
 			'@context': 'https://schema.org',
 			'@type': 'Organization',
 			name: storeMetadata.title ?? 'KhadkaFoods',
-			url: `${$page.url.origin}`,
+			url: `${page.url.origin}`,
 			logo: '/favicon.svg',
 			sameAs: [
 				storeMetadata.instagram ? `https://instagram.com/${storeMetadata.instagram}` : null,
@@ -693,6 +692,13 @@
 										onclick={async (e) => {
 											e.preventDefault();
 											const href = `/collections/${item.handle}`;
+											
+											// Track navigation link click
+											try {
+												trackLinkClick(href, item.title, 'mobile_menu');
+											} catch (err) {
+												logger.warn('Analytics tracking failed:', err);
+											}
 
 											// Use SvelteKit navigation with invalidateAll to ensure data reloads
 											await goto(href, { invalidateAll: true });
@@ -756,12 +762,10 @@
 	</header>
 
 	<main class="flex-1">
-		{#key $page.url.pathname}
+		{#key page.url.pathname}
 			{@render children?.()}
 		{/key}
-	</main>
-
-	<!-- Search modal -->
+	</main>	<!-- Search modal -->
 	{#if isSearchOpen}
 		<div class="fixed inset-0 z-[60]">
 			<!-- Backdrop -->
@@ -816,11 +820,28 @@
 									<div>
 										<h3 class="px-2 pb-1 text-xs uppercase opacity-60">Products</h3>
 										<ul class="grid gap-2">
-											{#each searchResults.products as p}
+											{#each searchResults.products as p, index}
 												<li>
 													<a
 														href={`/products/${p.handle}`}
 														class="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-base-200"
+														onclick={() => {
+															try {
+																trackSelectItem(
+																	{
+																		item_id: p.id,
+																		item_name: p.title,
+																		price: 0,
+																		quantity: 1
+																	},
+																	'Search Results',
+																	index
+																);
+																trackLinkClick(`/products/${p.handle}`, p.title, 'search_results');
+															} catch (e) {
+																logger.warn('Analytics tracking failed:', e);
+															}
+														}}
 													>
 														<img
 															src={p.thumbnail ?? ''}
@@ -846,6 +867,13 @@
 													<a
 														href={`/categories/${c.handle}`}
 														class="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-base-200"
+														onclick={() => {
+															try {
+																trackLinkClick(`/categories/${c.handle}`, c.name, 'search_results');
+															} catch (e) {
+																logger.warn('Analytics tracking failed:', e);
+															}
+														}}
 													>
 														<div class="min-w-0">
 															<p class="truncate font-medium">{c.name}</p>

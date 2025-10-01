@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { handleGoogleOAuthCallback } from '$lib/auth';
   import SEO from '$lib/components/SEO.svelte';
@@ -9,7 +9,7 @@
   let errorMsg: string | null = $state(null);
 
   onMount(async () => {
-    const url = $page.url;
+    const url = page.url;
     const ok = await handleGoogleOAuthCallback(url.searchParams);
     if (ok) {
       // Prefer intended path from localStorage set by startGoogleOAuth

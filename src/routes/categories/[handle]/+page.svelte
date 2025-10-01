@@ -7,10 +7,11 @@
 	import { cn } from '$lib/utils';
 	import { listProductsByCategoryIds } from '$lib/medusa';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { tick } from 'svelte';
 	import { logger } from '$lib/logger';
+	import { trackViewItemList } from '$lib/utils/analytics';
 	let {
 		data
 	}: {
@@ -48,11 +49,26 @@
 	const structuredData = [generateBreadcrumbStructuredData(breadcrumbs)];
 
 	onMount(() => {
-		const qs = new URLSearchParams($page.url.search);
+		const qs = new URLSearchParams(page.url.search);
 		const sub = qs.get('sub');
 		if (sub && sub !== 'all') {
 			selected = sub;
 			loadFor(sub);
+		}
+		
+		// Track view_item_list event for category page
+		try {
+			const items = products.map((p: any, index: number) => ({
+				item_id: p.variants?.[0]?.id || p.id,
+				item_name: p.title || 'Unknown Product',
+				price: p.variants?.[0]?.calculated_price?.calculated_amount || 0,
+				quantity: 1,
+				item_category: category?.name || '',
+				index
+			}));
+			trackViewItemList(items, `Category: ${category?.name || 'Unknown'}`, category?.id);
+		} catch (e) {
+			logger.warn('Analytics tracking failed:', e);
 		}
 	});
 
@@ -104,7 +120,7 @@
 
 	async function onSelect(id: string) {
 		selected = id;
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		if (id === 'all') url.searchParams.delete('sub');
 		else url.searchParams.set('sub', id);
 		await goto(`${url.pathname}${url.search}`, { replaceState: true, noScroll: true });

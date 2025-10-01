@@ -41,7 +41,7 @@
 				trackViewItem({
 					id: product.id,
 					name: product.title,
-					price: price / 100,
+					price: price,
 					currency: currency.toUpperCase(),
 					category: product.collection?.title || product.categories?.[0]?.name,
 					brand: 'KhadkaFoods'
@@ -71,7 +71,7 @@
 				name: product.title,
 				description: product.description || '',
 				image: activeImage || product.thumbnail || `${baseUrl}/logo.png`,
-				price: price / 100,
+				price: price,
 				currency: currency.toUpperCase(),
 				availability: isInStock(variant) ? 'InStock' : 'OutOfStock',
 				brand: 'KhadkaFoods'

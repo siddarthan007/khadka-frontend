@@ -4,6 +4,9 @@
 	import { generateBreadcrumbStructuredData } from '$lib/seo';
 	import { cn } from '$lib/utils';
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
+	import { trackViewItemList } from '$lib/utils/analytics';
+	import { logger } from '$lib/logger';
 
 	let { data }: { data?: { collection: any; products: any[]; total: number } } = $props();
 	const collection = data?.collection;
@@ -33,6 +36,23 @@
 		{ name: collection?.title || 'Collection', url: `${baseUrl}/collections/${collection?.handle || ''}` }
 	];
 	const structuredData = [generateBreadcrumbStructuredData(breadcrumbs)];
+	
+	// Track view_item_list event for collection page
+	onMount(() => {
+		try {
+			const items = products.map((p: any, index: number) => ({
+				item_id: p.variants?.[0]?.id || p.id,
+				item_name: p.title || 'Unknown Product',
+				price: p.variants?.[0]?.calculated_price?.calculated_amount || 0,
+				quantity: 1,
+				item_category: collection?.title || '',
+				index
+			}));
+			trackViewItemList(items, `Collection: ${collection?.title || 'Unknown'}`, collection?.id);
+		} catch (e) {
+			logger.warn('Analytics tracking failed:', e);
+		}
+	});
 </script>
 
 {#if collection}

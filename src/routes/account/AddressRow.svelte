@@ -10,10 +10,19 @@
 	import type { HttpTypes } from '@medusajs/types';
 	import { Motion } from 'svelte-motion';
 	import { getCurrentCustomer } from '$lib/auth';
-	import { createEventDispatcher } from 'svelte';
 	import { Pencil, Trash2 } from '@lucide/svelte';
 
-	const dispatch = createEventDispatcher<{ updated: void; deleted: void }>();
+	let {
+		a,
+		me = $bindable(),
+		onupdated,
+		ondeleted
+	}: {
+		a: HttpTypes.StoreCustomerAddress;
+		me: HttpTypes.StoreCustomer | null;
+		onupdated?: () => void;
+		ondeleted?: () => void;
+	} = $props();
 
 	function startEdit() {
 		local = {
@@ -33,11 +42,6 @@
 		isDefaultBilling = !!(a as any).is_default_billing;
 		editing = true;
 	}
-
-	let {
-		a,
-		me = $bindable()
-	}: { a: HttpTypes.StoreCustomerAddress; me: HttpTypes.StoreCustomer | null } = $props();
 
 	let editing: boolean = $state(false);
 	let local = $state({
@@ -100,7 +104,7 @@
 			showToast('Address updated', { type: 'success' });
 			editing = false;
 			try {
-				dispatch('updated');
+				onupdated?.();
 			} catch {}
 		} catch {
 			showToast('Failed to update address', { type: 'error' });
@@ -113,7 +117,7 @@
 			me = await getCurrentCustomer();
 			showToast('Address removed', { type: 'success' });
 			try {
-				dispatch('deleted');
+				ondeleted?.();
 			} catch {}
 		} catch {}
 	}

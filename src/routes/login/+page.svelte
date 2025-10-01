@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { login, getCurrentCustomer } from '$lib/auth';
 	import { Button } from '$lib/components/ui/button';
@@ -29,7 +29,7 @@
 		await loadRecaptcha().catch(logger.warn);
 
 		// Handle OAuth error messages from URL parameters
-		const url = $page.url;
+		const url = page.url;
 		const auth = url.searchParams.get('auth');
 		const message = url.searchParams.get('message');
 

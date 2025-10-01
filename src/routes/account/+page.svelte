@@ -4,7 +4,7 @@ import SEO from '$lib/components/SEO.svelte';
 import EmptyState from '$lib/components/EmptyState.svelte';
 import VirtualScroll from '$lib/components/VirtualScroll.svelte';
 import { goto } from '$app/navigation';
-import { page } from '$app/stores';
+import { page } from '$app/state';
 import { Button } from '$lib/components/ui/button';
 import { logger } from '$lib/logger';
 import { getCurrentCustomer, logout, updateProfile } from '$lib/auth';
@@ -43,7 +43,7 @@ let address = $state({
 function setActiveTab(tab: string) {
 	if (tab === activeTab) return;
 	activeTab = tab;
-	const url = new URL($page.url);
+	const url = new URL(page.url);
 	url.searchParams.set('page', tab);
 	goto(url.pathname + '?' + url.searchParams.toString(), { replaceState: true, noScroll: true });
 	if (tab === 'orders') loadOrders();
@@ -127,16 +127,16 @@ async function loadOrders() {
 }
 
 onMount(async () => {
-	const initial = $page.url.searchParams.get('page');
+	const initial = page.url.searchParams.get('page');
 	if (initial && ['account','orders'].includes(initial)) activeTab = initial;
 
 	// Handle OAuth success message
-	const auth = $page.url.searchParams.get('auth');
-	const provider = $page.url.searchParams.get('provider');
+	const auth = page.url.searchParams.get('auth');
+	const provider = page.url.searchParams.get('provider');
 	if (auth === 'success' && provider === 'google') {
 		showToast('Successfully signed in with Google!', { type: 'success' });
 		// Clean up URL
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		url.searchParams.delete('auth');
 		url.searchParams.delete('provider');
 		goto(url.pathname + url.search, { replaceState: true });
@@ -253,7 +253,7 @@ async function saveProfile(){ if(!me) return; profileSaving=true; const updated=
 									</h2>
 									<div class="space-y-3">
 										{#each (me as any).shipping_addresses ?? [] as a (a.id)}
-											<AddressRow bind:me {a} on:updated={refreshAddresses} on:deleted={refreshAddresses} />
+											<AddressRow bind:me {a} onupdated={refreshAddresses} ondeleted={refreshAddresses} />
 										{/each}
 										{#if ((me as any).shipping_addresses ?? []).length === 0}
 											<div class="text-center py-8 text-base-content/60">

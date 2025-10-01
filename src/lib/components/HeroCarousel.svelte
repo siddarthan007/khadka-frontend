@@ -26,31 +26,32 @@
 	};
 
 	// --- PROPS ---
-	export let slides: Slide[] = [];
-	export let intervalMs: number = 5000;
+	let { slides = [], intervalMs = 5000 }: { slides?: Slide[]; intervalMs?: number } = $props();
 
 	// --- STATE ---
-	let current = 0;
-	let hovering = false;
-	let isMobile = false;
-	let prefersReducedMotion = false;
-	let imageLoadingErrors = new Set<number>();
+	let current = $state(0);
+	let hovering = $state(false);
+	let isMobile = $state(false);
+	let prefersReducedMotion = $state(false);
+	let imageLoadingErrors = $state(new Set<number>());
 	let timer: ReturnType<typeof setInterval> | null = null;
 	let touchStartX: number | null = null;
-	let touchDeltaX = 0;
-	let containerWidth = 0;
+	let touchDeltaX = $state(0);
+	let containerWidth = $state(0);
 	let containerRef: HTMLDivElement;
 
 	// --- COMPUTED STATE ---
-	$: activeSlides = (slides || []).filter((s) => s && s.image && s.title);
+	const activeSlides = $derived((slides || []).filter((s) => s && s.image && s.title));
 
 	// keep `current` in-range when slides change
-	$: if (activeSlides && activeSlides.length > 0) {
-		// normalize current to valid range
-		if (current < 0)
-			current = ((current % activeSlides.length) + activeSlides.length) % activeSlides.length;
-		else if (current >= activeSlides.length) current = current % activeSlides.length;
-	}
+	$effect(() => {
+		if (activeSlides && activeSlides.length > 0) {
+			// normalize current to valid range
+			if (current < 0)
+				current = ((current % activeSlides.length) + activeSlides.length) % activeSlides.length;
+			else if (current >= activeSlides.length) current = current % activeSlides.length;
+		}
+	});
 
 	// --- LIFECYCLE & EVENT HANDLING ---
 	function updateMediaFlags() {
@@ -123,7 +124,6 @@
 
 	function handleImageError(index: number) {
 		imageLoadingErrors.add(index);
-		imageLoadingErrors = new Set(imageLoadingErrors);
 	}
 
 	function shouldShowSlide(index: number) {
@@ -131,11 +131,13 @@
 	}
 
 	// Autoplay management: react to changes in slides or preference without resetting timer unnecessarily
-	$: if (browser) {
-		const shouldRun = activeSlides.length > 1 && !prefersReducedMotion;
-		if (shouldRun) start();
-		else stop();
-	}
+	$effect(() => {
+		if (browser) {
+			const shouldRun = activeSlides.length > 1 && !prefersReducedMotion;
+			if (shouldRun) start();
+			else stop();
+		}
+	});
 
 	// --- TOUCH HANDLING ---
 	function onTouchStart(e: TouchEvent) {
@@ -286,11 +288,11 @@
 				role="region"
 				aria-roledescription="carousel"
 				aria-label={'Hero carousel with ' + (activeSlides.length || 0) + ' slides'}
-				on:mouseenter={() => (hovering = true)}
-				on:mouseleave={() => (hovering = false)}
-				on:touchstart={onTouchStart}
-				on:touchmove={onTouchMove}
-				on:touchend={onTouchEnd}
+				onmouseenter={() => (hovering = true)}
+				onmouseleave={() => (hovering = false)}
+				ontouchstart={onTouchStart}
+				ontouchmove={onTouchMove}
+				ontouchend={onTouchEnd}
 			>
 				<!-- Background mask and floor glow removed -->
 				<!-- Loading state -->
@@ -336,7 +338,7 @@
 													class="h-full w-full object-cover object-center transition-opacity duration-300"
 													loading={i === current ? 'eager' : 'lazy'}
 													decoding="async"
-													on:error={() => handleImageError(i)}
+													onerror={() => handleImageError(i)}
 												/>
 											</figure>
 										{:else}
@@ -430,7 +432,7 @@
 				<!-- Navigation Controls -->
 				{#if activeSlides.length > 1}
 					<button
-						on:click={prev}
+						onclick={prev}
 						class="absolute top-1/2 left-4 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:left-8 md:flex md:left-12 sm:h-12 sm:w-12 lg:h-14 lg:w-14"
 						aria-label="Previous slide"
 					>
@@ -444,7 +446,7 @@
 						</svg>
 					</button>
 					<button
-						on:click={next}
+						onclick={next}
 						class="absolute top-1/2 right-4 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:right-8 md:flex md:right-12 sm:h-12 sm:w-12 lg:h-14 lg:w-14"
 						aria-label="Next slide"
 					>
@@ -464,7 +466,7 @@
 					<div class="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2 sm:bottom-6 sm:gap-3">
 						{#each activeSlides as _, i (i)}
 							<button
-								on:click={() => (current = i)}
+								onclick={() => (current = i)}
 								class={`h-2.5 w-2.5 rounded-full transition-all duration-200 focus:ring-2 focus:ring-white/50 focus:outline-none sm:h-3 sm:w-3 ${
 									i === current ? 'scale-125 bg-white' : 'bg-white/50 hover:bg-white/80'
 								}`}
