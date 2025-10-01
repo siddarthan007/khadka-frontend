@@ -4,13 +4,13 @@
 </script>
 
 <SEO
-	title="Terms of Service - KhadkaFoods"
-	description="Read our Terms of Service to understand the rules and regulations for using KhadkaFoods services."
+	title="Terms of Service - Khadka Foods"
+	description="Read our Terms of Service to understand the rules and regulations for using Khadka Foods services."
 	keywords={[
 		"terms of service",
 		"terms and conditions",
 		"user agreement",
-		"KhadkaFoods",
+		"Khadka Foods",
 	]}
 	canonical="https://khadkafoods.com/tos"
 />
@@ -29,7 +29,7 @@
 						></div>
 						<img
 							src={logo}
-							alt="KhadkaFoods Logo"
+							alt="Khadka Foods Logo"
 							class="relative h-20 w-20 rounded-full shadow-xl ring-4 ring-base-100"
 						/>
 					</div>
@@ -60,7 +60,7 @@
 					<div class="prose prose-lg mx-auto max-w-3xl">
 						<h2>1. Acceptance of Terms</h2>
 						<p>
-							By accessing and using KhadkaFoods ("we," "us," or
+							By accessing and using Khadka Foods ("we," "us," or
 							"our"), you accept and agree to be bound by the
 							terms and provision of this agreement. If you do not
 							agree to abide by the above, please do not use this
@@ -70,7 +70,7 @@
 						<h2>2. Use License</h2>
 						<p>
 							Permission is granted to temporarily download one
-							copy of the materials on KhadkaFoods for personal,
+							copy of the materials on Khadka Foods for personal,
 							non-commercial transitory viewing only. This is the
 							grant of a license, not a transfer of title, and
 							under this license you may not:
@@ -83,7 +83,7 @@
 							</li>
 							<li>
 								Attempt to decompile or reverse engineer any
-								software contained on KhadkaFoods
+								software contained on Khadka Foods
 							</li>
 							<li>
 								Remove any copyright or other proprietary
@@ -142,17 +142,17 @@
 						<p>
 							Your privacy is important to us. Please review our
 							Privacy Policy, which also governs your use of
-							KhadkaFoods, to understand our practices.
+							Khadka Foods, to understand our practices.
 						</p>
 
 						<h2>9. Limitation of Liability</h2>
 						<p>
-							In no event shall KhadkaFoods or its suppliers be
+							In no event shall Khadka Foods or its suppliers be
 							liable for any damages (including, without
 							limitation, damages for loss of data or profit, or
 							due to business interruption) arising out of the use
-							or inability to use the materials on KhadkaFoods,
-							even if KhadkaFoods or a KhadkaFoods authorized
+							or inability to use the materials on Khadka Foods,
+							even if Khadka Foods or a Khadka Foods authorized
 							representative has been notified orally or in
 							writing of the possibility of such damage.
 						</p>

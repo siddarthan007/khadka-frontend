@@ -257,7 +257,7 @@
 
 	onMount(() => {
 		if (typeof document !== 'undefined') {
-			document.title = 'Track your order • KhadkaFoods';
+			document.title = 'Track your order • Khadka Foods';
 		}
 
 		// Auto-populate from URL parameters
@@ -416,8 +416,8 @@
 </script>
 
 <SEO
-	title="Track Your Order • KhadkaFoods - Order Lookup"
-	description="Track your KhadkaFoods order status. Enter your order details to view order status, shipping information, and delivery updates."
+	title="Track Your Order • Khadka Foods - Order Lookup"
+	description="Track your Khadka Foods order status. Enter your order details to view order status, shipping information, and delivery updates."
 	keywords={["track order", "order status", "order lookup", "shipping status", "delivery tracking", "order history"]}
 	canonical="https://khadkafoods.com/orders/lookup"
 	noindex={true}

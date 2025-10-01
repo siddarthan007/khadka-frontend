@@ -48,9 +48,9 @@
 </script>
 
 <SEO
-	title="Set New Password - KhadkaFoods"
-	description="Set a new password for your KhadkaFoods account."
-	keywords={['reset password', 'new password', 'change password', 'KhadkaFoods']}
+	title="Set New Password - Khadka Foods"
+	description="Set a new password for your Khadka Foods account."
+	keywords={['reset password', 'new password', 'change password', 'Khadka Foods']}
 	canonical="https://khadkafoods.com/reset-password"
 />
 

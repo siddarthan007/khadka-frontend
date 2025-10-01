@@ -103,8 +103,8 @@
 </script>
 
 <SEO
-	title="Login • KhadkaFoods"
-	description="Sign in to your KhadkaFoods account to access your orders, saved addresses, and personalized shopping experience."
+	title="Login • Khadka Foods"
+	description="Sign in to your Khadka Foods account to access your orders, saved addresses, and personalized shopping experience."
 	keywords={['login', 'sign in', 'account', 'customer login']}
 	canonical="https://khadkafoods.com/login"
 	ogType="website"

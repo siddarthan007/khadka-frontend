@@ -4,7 +4,11 @@
 	import LabeledSeparator from '$lib/components/LabeledSeparator.svelte';
 	import ProductCard from '$lib/components/ProductCard.svelte';
 	import SEO from '$lib/components/SEO.svelte';
-	import { generateOrganizationStructuredData, generateWebsiteStructuredData } from '$lib/seo';
+	import { 
+		generateOrganizationStructuredData, 
+		generateWebsiteStructuredData,
+		generateItemListStructuredData 
+	} from '$lib/seo';
 	
 	let {
 		data
@@ -25,35 +29,95 @@
 
 	const baseUrl = 'https://khadkafoods.com';
 	
-	// Combine organization and website structured data
+	// Enhanced structured data with ItemList
 	const structuredData = [
 		generateOrganizationStructuredData({
-			name: 'KhadkaFoods',
+			name: 'Khadka Foods',
 			url: baseUrl,
 			logo: `${baseUrl}/logo.png`,
-			socialLinks: []
+			description: 'Premium quality groceries, fresh produce, and international foods delivered to your door. Shop authentic products from around the world.',
+			socialLinks: [
+				// Add your social media links here
+				// 'https://facebook.com/khadkafoods',
+				// 'https://twitter.com/khadkafoods',
+				// 'https://instagram.com/khadkafoods'
+			],
+			contactPoint: {
+				telephone: '+1-555-123-4567', // Update with real phone
+				contactType: 'Customer Service',
+				email: 'support@khadkafoods.com' // Update with real email
+			}
 		}),
 		generateWebsiteStructuredData({
-			name: 'KhadkaFoods',
+			name: 'Khadka Foods',
 			url: baseUrl,
 			searchUrl: `${baseUrl}/products`
+		}),
+		// Add ItemList for featured products
+		generateItemListStructuredData({
+			name: 'Featured Products',
+			items: products.slice(0, 10).map((p, index) => ({
+				position: index + 1,
+				name: p.title || 'Product',
+				url: `${baseUrl}/products/${p.handle}`,
+				image: p.thumbnail || p.images?.[0]?.url
+			}))
 		})
 	];
 </script>
 
 <SEO
-	title="KhadkaFoods - Premium Quality Products & Fresh Groceries"
-	description="Discover premium quality products and fresh groceries at KhadkaFoods. Shop our curated collection of groceries, fresh produce, and household essentials with fast delivery."
-	keywords={['groceries', 'fresh produce', 'household essentials', 'online grocery store', 'premium products', 'food delivery', 'KhadkaFoods']}
+	title="Khadka Foods - Premium Quality Groceries & Fresh Produce Online"
+	description="Shop premium quality groceries, fresh produce, and authentic international foods at Khadka Foods. ✓ Fast delivery ✓ Quality guaranteed ✓ Wide selection. Order now!"
+	keywords={[
+		'online grocery shopping',
+		'fresh produce delivery',
+		'international foods online',
+		'ethnic grocery store',
+		'premium groceries',
+		'food delivery',
+		'Khadka Foods',
+		'authentic ingredients',
+		'grocery delivery near me'
+	]}
 	canonical={baseUrl}
 	ogImage={`${baseUrl}/logo.png`}
 	ogType="website"
+	ogLocale="en_US"
+	ogSiteName="Khadka Foods"
+	twitterSite="@khadkafoods"
+	twitterCreator="@khadkafoods"
 	structuredData={structuredData}
+	maxImagePreview="large"
+	maxSnippet={-1}
+	maxVideoPreview={-1}
 />
 
 <!-- Full-width carousel touching the sides -->
 <section class="w-full py-4 sm:py-8">
 	<HeroCarousel {slides} />
+</section>
+
+<!-- SEO-optimized intro section with H1 -->
+<section class="w-full py-8 sm:py-12 bg-base-200/30">
+	<div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+		<h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-primary mb-6">
+			Premium Quality Groceries & Fresh Produce
+		</h1>
+		<p class="text-lg sm:text-xl text-base-content/80 max-w-3xl mx-auto leading-relaxed">
+			Welcome to Khadka Foods, your trusted source for authentic international groceries and fresh produce. 
+			We bring you premium quality products from around the world, delivered fresh to your doorstep. 
+			Discover a wide selection of ethnic ingredients, specialty items, and everyday essentials—all at competitive prices with fast, reliable delivery.
+		</p>
+		<div class="mt-8 flex flex-wrap justify-center gap-4">
+			<a href="/products" class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+				Shop All Products →
+			</a>
+			<a href="/collections" class="btn btn-outline btn-lg rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
+				Browse Collections
+			</a>
+		</div>
+	</div>
 </section>
 
 <LabeledSeparator gradient class="my-12" />

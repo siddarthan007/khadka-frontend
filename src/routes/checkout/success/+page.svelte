@@ -65,7 +65,7 @@
 </script>
 
 <SEO
-  title="Order Confirmed • KhadkaFoods"
+  title="Order Confirmed • Khadka Foods"
   description="Thank you for your order! Your payment has been processed successfully."
   canonical="https://khadkafoods.com/checkout/success"
   ogType="website"

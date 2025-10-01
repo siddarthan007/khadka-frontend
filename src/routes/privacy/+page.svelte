@@ -4,14 +4,14 @@
 </script>
 
 <SEO
-	title="Privacy Policy - KhadkaFoods"
-	description="Read our Privacy Policy to understand how we collect, use, and protect your personal information at KhadkaFoods."
+	title="Privacy Policy - Khadka Foods"
+	description="Read our Privacy Policy to understand how we collect, use, and protect your personal information at Khadka Foods."
 	keywords={[
 		"privacy policy",
 		"data protection",
 		"GDPR",
 		"privacy",
-		"KhadkaFoods",
+		"Khadka Foods",
 	]}
 	canonical="https://khadkafoods.com/privacy"
 />
@@ -30,7 +30,7 @@
 						></div>
 						<img
 							src={logo}
-							alt="KhadkaFoods Logo"
+							alt="Khadka Foods Logo"
 							class="relative h-20 w-20 rounded-full shadow-xl ring-4 ring-base-100"
 						/>
 					</div>

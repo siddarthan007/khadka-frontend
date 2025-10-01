@@ -5,7 +5,12 @@
 	import ProductCard from '$lib/components/ProductCard.svelte';
 	import OptimizedImage from '$lib/components/OptimizedImage.svelte';
 	import SEO from '$lib/components/SEO.svelte';
-	import { generateProductStructuredData, generateBreadcrumbStructuredData } from '$lib/seo';
+	import { 
+		generateProductStructuredData, 
+		generateBreadcrumbStructuredData,
+		generateOptimizedTitle,
+		generateOptimizedDescription
+	} from '$lib/seo';
 	import { ShoppingCart } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { trackViewItem } from '$lib/utils/analytics';
@@ -44,7 +49,7 @@
 					price: price,
 					currency: currency.toUpperCase(),
 					category: product.collection?.title || product.categories?.[0]?.name,
-					brand: 'KhadkaFoods'
+					brand: 'Khadka Foods'
 				});
 			} catch (e) {
 				logger.warn('Analytics tracking failed:', e);
@@ -66,18 +71,59 @@
 		const price = variant?.calculated_price?.calculated_amount || variant?.prices?.[0]?.amount || 0;
 		const currency = variant?.calculated_price?.currency_code || variant?.prices?.[0]?.currency_code || 'USD';
 		
+		// Check if product has multiple variants for aggregate offer
+		const hasMultipleVariants = (product.variants?.length || 0) > 1;
+		const variantPrices = product.variants?.map((v: any) => 
+			v?.calculated_price?.calculated_amount || v?.prices?.[0]?.amount || 0
+		).filter((p: number) => p > 0) || [];
+		
+		const productSchema = generateProductStructuredData({
+			name: product.title,
+			description: product.description || `Shop ${product.title} at Khadka Foods. Premium quality, fast delivery.`,
+			image: activeImage || product.thumbnail || `${baseUrl}/logo.png`,
+			price: price / 100, // Convert from cents
+			currency: currency.toUpperCase(),
+			availability: isInStock(variant) ? 'InStock' : 'OutOfStock',
+			brand: 'Khadka Foods',
+			sku: variant?.sku || product.id,
+			// Add aggregate offer data if multiple variants
+			...(hasMultipleVariants && variantPrices.length > 1 ? {
+				lowPrice: Math.min(...variantPrices) / 100,
+				highPrice: Math.max(...variantPrices) / 100,
+				offerCount: product.variants.length
+			} : {})
+		});
+		
 		return [
-			generateProductStructuredData({
-				name: product.title,
-				description: product.description || '',
-				image: activeImage || product.thumbnail || `${baseUrl}/logo.png`,
-				price: price,
-				currency: currency.toUpperCase(),
-				availability: isInStock(variant) ? 'InStock' : 'OutOfStock',
-				brand: 'KhadkaFoods'
-			}),
+			productSchema,
 			generateBreadcrumbStructuredData(breadcrumbItems)
 		];
+	});
+	
+	// Generate optimized title and description
+	const seoTitle = $derived(() => {
+		if (!product) return 'Product | Khadka Foods';
+		const category = product.collection?.title || product.categories?.[0]?.name;
+		return generateOptimizedTitle(product.title, category, 'product');
+	});
+	
+	const seoDescription = $derived(() => {
+		if (!product) return '';
+		const variant = selectedVariant();
+		const price = variant?.calculated_price?.calculated_amount || variant?.prices?.[0]?.amount || 0;
+		const currency = variant?.calculated_price?.currency_code || variant?.prices?.[0]?.currency_code || 'USD';
+		const priceFormatted = formatCalculatedPrice({ calculated_amount: price, currency_code: currency });
+		
+		return generateOptimizedDescription(
+			product.title,
+			{
+				price: priceFormatted,
+				availability: isInStock(variant) ? 'instock' : 'outofstock',
+				category: product.collection?.title || product.categories?.[0]?.name,
+				usps: ['Premium Quality', 'Fast Shipping', 'Secure Checkout'],
+				type: 'product'
+			}
+		);
 	});
 
 	// Initialize default selections for each option
@@ -198,10 +244,44 @@
 
 {#if product}
 	<SEO
-		title={`${product.title} • KhadkaFoods`}
-		description={product.description || `Buy ${product.title} at KhadkaFoods. Premium quality products with fast delivery.`}
-		keywords={[`buy ${product.title}`, `${product.title} online`, 'groceries', 'fresh products', 'KhadkaFoods']}
+		title={seoTitle()}
+		description={seoDescription()}
+		keywords={[
+			`buy ${product.title}`,
+			`${product.title} online`,
+			product.collection?.title || '',
+			product.categories?.[0]?.name || '',
+			'groceries online',
+			'international foods',
+			'Khadka Foods'
+		].filter(Boolean)}
 		canonical={`${baseUrl}/products/${product.handle}`}
+		ogType="product"
+		ogImage={activeImage || product.thumbnail || `${baseUrl}/logo.png`}
+		ogLocale="en_US"
+		ogSiteName="Khadka Foods"
+		twitterSite="@khadkafoods"
+		twitterCreator="@khadkafoods"
+		twitterCard="summary_large_image"
+		productPrice={(() => {
+			const variant = selectedVariant();
+			const price = variant?.calculated_price?.calculated_amount || variant?.prices?.[0]?.amount || 0;
+			return (price / 100).toFixed(2);
+		})()}
+		productCurrency={(() => {
+			const variant = selectedVariant();
+			return (variant?.calculated_price?.currency_code || variant?.prices?.[0]?.currency_code || 'USD').toUpperCase();
+		})()}
+		productAvailability={(() => {
+			const variant = selectedVariant();
+			return isInStock(variant) ? 'instock' : 'outofstock';
+		})()}
+		productBrand="Khadka Foods"
+		productCondition="new"
+		structuredData={structuredData()}
+		maxImagePreview="large"
+		maxSnippet={-1}
+	/>
 		ogImage={activeImage || product.thumbnail || `${baseUrl}/logo.png`}
 		ogType="product"
 		structuredData={structuredData()}

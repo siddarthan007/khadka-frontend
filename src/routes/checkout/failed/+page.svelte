@@ -4,7 +4,7 @@
 </script>
 
 <SEO
-	title="Payment Failed • KhadkaFoods"
+	title="Payment Failed • Khadka Foods"
 	description="Payment could not be processed. Please try again or use a different payment method."
 	canonical="https://khadkafoods.com/checkout/failed"
 	ogType="website"

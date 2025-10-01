@@ -658,9 +658,9 @@
 </script>
 
 <SEO
-	title="Checkout - KhadkaFoods"
-	description="Complete your order securely at KhadkaFoods. Fast checkout with multiple payment options."
-	keywords={['checkout', 'payment', 'order', 'KhadkaFoods']}
+	title="Checkout - Khadka Foods"
+	description="Complete your order securely at Khadka Foods. Fast checkout with multiple payment options."
+	keywords={['checkout', 'payment', 'order', 'Khadka Foods']}
 	canonical="https://khadkafoods.com/checkout"
 /><section class="w-full py-10">
 	<div class="container mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">

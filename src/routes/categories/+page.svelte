@@ -10,8 +10,8 @@
 </script>
 
 <SEO
-	title="Categories • KhadkaFoods"
-	description="Browse all product categories at KhadkaFoods. Find fresh produce, groceries, household essentials, and more organized by category."
+	title="Categories • Khadka Foods"
+	description="Browse all product categories at Khadka Foods. Find fresh produce, groceries, household essentials, and more organized by category."
 	keywords={['categories', 'product categories', 'groceries categories', 'fresh produce', 'household essentials', 'food categories']}
 	canonical="https://khadkafoods.com/categories"
 	ogType="website"

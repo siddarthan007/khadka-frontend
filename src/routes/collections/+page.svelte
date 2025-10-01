@@ -17,28 +17,28 @@
 
 	$effect(() => {
 		if (typeof document !== 'undefined') {
-			document.title = 'Collections • KhadkaFoods';
+			document.title = 'Collections • Khadka Foods';
 		}
 	});
 </script>
 
 <SEO
-	title="Collections • KhadkaFoods"
-	description="Explore our carefully curated product collections at KhadkaFoods. Find themed collections of premium groceries, fresh produce, and household essentials."
+	title="Collections • Khadka Foods"
+	description="Explore our carefully curated product collections at Khadka Foods. Find themed collections of premium groceries, fresh produce, and household essentials."
 	keywords={['collections', 'product collections', 'curated products', 'groceries collections', 'household essentials', 'themed products']}
 	canonical="https://khadkafoods.com/collections"
 	ogType="website"
 />
 
 <svelte:head>
-	<meta property="og:title" content="Collections • KhadkaFoods - Curated Product Collections" />
-	<meta property="og:description" content="Explore our carefully curated product collections at KhadkaFoods. Find themed collections of premium groceries and essentials." />
+	<meta property="og:title" content="Collections • Khadka Foods - Curated Product Collections" />
+	<meta property="og:description" content="Explore our carefully curated product collections at Khadka Foods. Find themed collections of premium groceries and essentials." />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://khadkafoods.com/collections" />
 	<meta property="og:image" content="/logo.png" />
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="Collections • KhadkaFoods - Curated Product Collections" />
-	<meta name="twitter:description" content="Explore our carefully curated product collections at KhadkaFoods. Find themed collections of premium groceries and essentials." />
+	<meta name="twitter:title" content="Collections • Khadka Foods - Curated Product Collections" />
+	<meta name="twitter:description" content="Explore our carefully curated product collections at Khadka Foods. Find themed collections of premium groceries and essentials." />
 	<meta name="twitter:image" content="/logo.png" />
 	<link rel="canonical" href="https://khadkafoods.com/collections" />
 </svelte:head>

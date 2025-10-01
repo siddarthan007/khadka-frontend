@@ -11,12 +11,28 @@ export interface SEOMetadata {
   ogDescription?: string;
   ogImage?: string;
   ogType?: string;
+  ogLocale?: string;
+  ogSiteName?: string;
   twitterCard?: 'summary' | 'summary_large_image' | 'app' | 'player';
   twitterTitle?: string;
   twitterDescription?: string;
   twitterImage?: string;
-  structuredData?: Record<string, any>;
+  twitterSite?: string;
+  twitterCreator?: string;
+  fbAppId?: string;
+  // Product-specific metadata
+  productPrice?: string;
+  productCurrency?: string;
+  productAvailability?: 'instock' | 'outofstock' | 'preorder';
+  productBrand?: string;
+  productCondition?: 'new' | 'refurbished' | 'used';
+  // Advanced SEO
+  structuredData?: Record<string, any> | Array<Record<string, any>>;
+  languageAlternates?: Array<{ hreflang: string; href: string }>;
   noindex?: boolean;
+  maxImagePreview?: 'none' | 'standard' | 'large';
+  maxSnippet?: number;
+  maxVideoPreview?: number;
 }
 
 export interface ProductSEO {
@@ -25,20 +41,36 @@ export interface ProductSEO {
   image: string;
   price: number;
   currency: string;
-  availability: 'InStock' | 'OutOfStock' | 'PreOrder';
+  availability: 'InStock' | 'OutOfStock' | 'PreOrder' | 'Discontinued' | 'LimitedAvailability';
   brand?: string;
   sku?: string;
   gtin?: string;
+  mpn?: string;
   rating?: {
     value: number;
     count: number;
+    bestRating?: number;
+    worstRating?: number;
   };
+  reviews?: Array<{
+    author: string;
+    datePublished: string;
+    reviewBody: string;
+    reviewRating: number;
+  }>;
+  // For variants/multiple offers
+  lowPrice?: number;
+  highPrice?: number;
+  offerCount?: number;
 }
 
 /**
  * Generate structured data for a product (Schema.org)
  */
 export function generateProductStructuredData(product: ProductSEO) {
+  const hasVariants = product.offerCount && product.offerCount > 1;
+  const hasReviews = product.reviews && product.reviews.length > 0;
+  
   return {
     '@context': 'https://schema.org/',
     '@type': 'Product',
@@ -49,21 +81,49 @@ export function generateProductStructuredData(product: ProductSEO) {
       '@type': 'Brand',
       name: product.brand
     } : undefined,
-    offers: {
+    offers: hasVariants ? {
+      '@type': 'AggregateOffer',
+      url: typeof window !== 'undefined' ? window.location.href : '',
+      priceCurrency: product.currency,
+      lowPrice: product.lowPrice || product.price,
+      highPrice: product.highPrice || product.price,
+      offerCount: product.offerCount,
+      availability: `https://schema.org/${product.availability}`,
+      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    } : {
       '@type': 'Offer',
       url: typeof window !== 'undefined' ? window.location.href : '',
       priceCurrency: product.currency,
       price: product.price,
       availability: `https://schema.org/${product.availability}`,
-      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      itemCondition: 'https://schema.org/NewCondition'
     },
     sku: product.sku,
     gtin: product.gtin,
+    mpn: product.mpn,
     aggregateRating: product.rating ? {
       '@type': 'AggregateRating',
       ratingValue: product.rating.value,
-      reviewCount: product.rating.count
-    } : undefined
+      reviewCount: product.rating.count,
+      bestRating: product.rating.bestRating || 5,
+      worstRating: product.rating.worstRating || 1
+    } : undefined,
+    review: hasReviews ? product.reviews!.map(review => ({
+      '@type': 'Review',
+      reviewRating: {
+        '@type': 'Rating',
+        ratingValue: review.reviewRating,
+        bestRating: 5,
+        worstRating: 1
+      },
+      author: {
+        '@type': 'Person',
+        name: review.author
+      },
+      datePublished: review.datePublished,
+      reviewBody: review.reviewBody
+    })) : undefined
   };
 }
 
@@ -262,4 +322,154 @@ export function generateRobotsTag(config: {
   if (config.nosnippet) tags.push('nosnippet');
   
   return tags.join(', ');
+}
+
+/**
+ * Generate optimized title for CTR (Click-Through Rate)
+ */
+export function generateOptimizedTitle(
+  productName: string, 
+  category?: string, 
+  template: 'product' | 'category' | 'collection' | 'home' = 'product'
+): string {
+  const maxLength = 60;
+  const brand = 'Khadka Foods';
+  
+  switch (template) {
+    case 'product':
+      const productTitle = category 
+        ? `${productName} - ${category} | ${brand}`
+        : `${productName} | ${brand}`;
+      return productTitle.length > maxLength 
+        ? `${productName} | ${brand}` 
+        : productTitle;
+    
+    case 'category':
+      return `${productName} - Shop Premium Quality | ${brand}`;
+    
+    case 'collection':
+      return `${productName} Collection - Authentic Products | ${brand}`;
+    
+    case 'home':
+      return `${brand} - Premium Quality Groceries & Fresh Produce Online`;
+    
+    default:
+      return `${productName} | ${brand}`;
+  }
+}
+
+/**
+ * Generate optimized meta description for CTR
+ */
+export function generateOptimizedDescription(
+  productName: string,
+  options: {
+    price?: string;
+    availability?: string;
+    category?: string;
+    usps?: string[]; // Unique Selling Points
+    type?: 'product' | 'category' | 'collection';
+  } = {}
+): string {
+  const maxLength = 155;
+  const { price, availability, category, usps = [], type = 'product' } = options;
+  
+  let description = '';
+  
+  if (type === 'product') {
+    const parts = [`Shop ${productName}`];
+    if (category) parts.push(`in ${category}`);
+    if (price) parts.push(`for ${price}`);
+    parts.push('at Khadka Foods.');
+    if (availability === 'instock') parts.push('✓ In Stock');
+    if (usps.length > 0) parts.push(usps.join(' • '));
+    parts.push('Fast delivery available.');
+    
+    description = parts.join(' ');
+  } else if (type === 'category') {
+    description = `Discover premium ${productName.toLowerCase()} at Khadka Foods. ${usps.join(' • ')}. Shop now with fast delivery.`;
+  } else {
+    description = `Explore our ${productName} collection. Authentic products, premium quality. ${usps.join(' • ')}. Order online today.`;
+  }
+  
+  return description.length > maxLength 
+    ? description.substring(0, maxLength - 3) + '...' 
+    : description;
+}
+
+/**
+ * Generate ItemList structured data for product listings
+ */
+export function generateItemListStructuredData(config: {
+  name: string;
+  items: Array<{
+    position: number;
+    name: string;
+    url: string;
+    image?: string;
+  }>;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: config.name,
+    itemListElement: config.items.map(item => ({
+      '@type': 'ListItem',
+      position: item.position,
+      item: {
+        '@type': 'Product',
+        name: item.name,
+        url: item.url,
+        image: item.image
+      }
+    }))
+  };
+}
+
+/**
+ * Generate CollectionPage structured data
+ */
+export function generateCollectionPageStructuredData(config: {
+  name: string;
+  description: string;
+  url: string;
+  hasPart?: Array<{ url: string; name: string }>;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: config.name,
+    description: config.description,
+    url: config.url,
+    hasPart: config.hasPart?.map(part => ({
+      '@type': 'Product',
+      url: part.url,
+      name: part.name
+    }))
+  };
+}
+
+/**
+ * Generate VideoObject structured data
+ */
+export function generateVideoStructuredData(config: {
+  name: string;
+  description: string;
+  thumbnailUrl: string;
+  uploadDate: string;
+  contentUrl?: string;
+  embedUrl?: string;
+  duration?: string; // ISO 8601 duration (e.g., PT1M30S)
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: config.name,
+    description: config.description,
+    thumbnailUrl: config.thumbnailUrl,
+    uploadDate: config.uploadDate,
+    contentUrl: config.contentUrl,
+    embedUrl: config.embedUrl,
+    duration: config.duration
+  };
 }

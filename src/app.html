@@ -8,17 +8,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     
-    <!-- Favicon -->
+    <!-- Favicon with multiple sizes -->
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="%sveltekit.assets%/logo.png" />
+    <link rel="manifest" href="/manifest.json" />
     
     <!-- Theme Color -->
     <meta name="theme-color" content="#10b981" />
+    <meta name="msapplication-TileColor" content="#10b981" />
     
     <!-- DNS Prefetch for external resources -->
     <link rel="dns-prefetch" href="https://js.stripe.com" />
     <link rel="dns-prefetch" href="https://www.google.com" />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" href="%sveltekit.assets%/logo.png" as="image" type="image/png" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="referrer" content="origin-when-cross-origin" />
     
     %sveltekit.head%
   </head>

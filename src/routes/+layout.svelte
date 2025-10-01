@@ -325,10 +325,10 @@
 	{/if}
 
 	<!-- Primary Meta -->
-	<title>{storeMetadata.title ?? 'KhadkaFoods'}</title>
+	<title>{storeMetadata.title ?? 'Khadka Foods'}</title>
 	<meta
 		name="description"
-		content={storeMetadata.description ?? 'Discover and shop curated products at KhadkaFoods. Fast checkout, secure payments, and great collections.'}
+		content={storeMetadata.description ?? 'Discover and shop curated products at Khadka Foods. Fast checkout, secure payments, and great collections.'}
 	/>
 	<meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
 	<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
@@ -348,12 +348,12 @@
 
 	<!-- Open Graph -->
 	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content={storeMetadata.title ?? 'KhadkaFoods'} />
+	<meta property="og:site_name" content={storeMetadata.title ?? 'Khadka Foods'} />
 	{#if page}
 		<meta property="og:url" content={`${page.url.origin}${page.url.pathname}`} />
 	{/if}
-	<meta property="og:title" content={storeMetadata.title ?? 'KhadkaFoods'} />
-	<meta property="og:description" content={storeMetadata.description ?? 'Shop curated collections at KhadkaFoods.'} />
+	<meta property="og:title" content={storeMetadata.title ?? 'Khadka Foods'} />
+	<meta property="og:description" content={storeMetadata.description ?? 'Shop curated collections at Khadka Foods.'} />
 	<meta property="og:image" content="/hero.png" />
 	<meta property="og:locale" content="en_US" />
 
@@ -362,8 +362,8 @@
 	{#if storeMetadata.x}
 		<meta name="twitter:site" content={`@${storeMetadata.x}`} />
 	{/if}
-	<meta name="twitter:title" content={storeMetadata.title ?? 'KhadkaFoods'} />
-	<meta name="twitter:description" content={storeMetadata.description ?? 'Shop curated collections at KhadkaFoods.'} />
+	<meta name="twitter:title" content={storeMetadata.title ?? 'Khadka Foods'} />
+	<meta name="twitter:description" content={storeMetadata.description ?? 'Shop curated collections at Khadka Foods.'} />
 	<meta name="twitter:image" content="/hero.png" />
 
 	<!-- JSON-LD: Organization -->
@@ -371,7 +371,7 @@
 		{@const org = {
 			'@context': 'https://schema.org',
 			'@type': 'Organization',
-			name: storeMetadata.title ?? 'KhadkaFoods',
+			name: storeMetadata.title ?? 'Khadka Foods',
 			url: `${page.url.origin}`,
 			logo: '/favicon.svg',
 			sameAs: [
@@ -396,7 +396,7 @@
 			<!-- Left: logo + dropdown -->
 			<div class="flex flex-1 items-center gap-2">
 				<a href="/" class="btn gap-3 px-2 btn-ghost">
-					<img src={logo} alt="KhadkaFoods" class="h-30 w-auto" />
+					<img src={logo} alt="Khadka Foods" class="h-30 w-auto" />
 				</a>
 				<div class="relative hidden md:block" bind:this={countriesContainer}>
 					<button
@@ -678,8 +678,8 @@
 							<SheetHeader>
 								<SheetTitle>
 									<div class="flex items-center gap-3">
-										<img src={logo} alt="KhadkaFoods" class="h-8 w-auto" />
-										<span class="font-semibold">KhadkaFoods</span>
+										<img src={logo} alt="Khadka Foods" class="h-8 w-auto" />
+										<span class="font-semibold">Khadka Foods</span>
 									</div>
 								</SheetTitle>
 							</SheetHeader>
@@ -905,8 +905,8 @@
 				<!-- Brand Section -->
 				<div class="space-y-4">
 					<div class="flex items-center gap-3">
-						<img src={logo} alt="KhadkaFoods" class="h-10 w-10 rounded-lg shadow-md" />
-						<span class="text-xl font-bold text-primary">KhadkaFoods</span>
+						<img src={logo} alt="Khadka Foods" class="h-10 w-10 rounded-lg shadow-md" />
+						<span class="text-xl font-bold text-primary">Khadka Foods</span>
 					</div>
 					<p class="text-sm text-base-content/70 leading-relaxed">
 						{storeMetadata.tagline || "Authentic Nepali groceries delivered to your doorstep. Quality products, fresh ingredients."}
@@ -1006,7 +1006,7 @@
 			<div
 				class="mx-auto flex max-w-7xl flex-col sm:flex-row items-center justify-between gap-4 px-4 py-6 text-sm md:px-6"
 			>
-				<span class="text-base-content/70">© {new Date().getFullYear()} <span class="font-semibold text-primary">KhadkaFoods</span>. All rights reserved.</span>
+				<span class="text-base-content/70">© {new Date().getFullYear()} <span class="font-semibold text-primary">Khadka Foods</span>. All rights reserved.</span>
 				<div class="flex gap-6">
 					<a href="/privacy" class="link link-hover hover:text-primary transition-colors">Privacy Policy</a>
 					<a href="/tos" class="link link-hover hover:text-primary transition-colors">Terms of Service</a>

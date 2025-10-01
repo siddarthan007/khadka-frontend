@@ -15,9 +15,9 @@
 </script>
 
 <SEO
-	title="About Us - KhadkaFoods"
-	description="Learn about KhadkaFoods - your trusted source for premium quality groceries and fresh produce. Discover our story, mission, and commitment to excellence."
-	keywords={['about', 'company', 'KhadkaFoods', 'grocery store', 'about us', 'our story']}
+	title="About Us - Khadka Foods"
+	description="Learn about Khadka Foods - your trusted source for premium quality groceries and fresh produce. Discover our story, mission, and commitment to excellence."
+	keywords={['about', 'company', 'Khadka Foods', 'grocery store', 'about us', 'our story']}
 	canonical="https://khadkafoods.com/about"
 	ogType="website"
 />
@@ -31,11 +31,11 @@
 				<div class="mb-8 flex justify-center">
 					<div class="relative">
 						<div class="absolute inset-0 rounded-full bg-primary/10 opacity-30 blur-xl"></div>
-						<img src={logo} alt="KhadkaFoods Logo" class="relative h-32 w-32 rounded-full shadow-2xl ring-4 ring-base-100" />
+						<img src={logo} alt="Khadka Foods Logo" class="relative h-32 w-32 rounded-full shadow-2xl ring-4 ring-base-100" />
 					</div>
 				</div>
 				<h1 class="mb-6 text-5xl font-bold tracking-tight text-primary md:text-7xl">
-					About KhadkaFoods
+					About Khadka Foods
 				</h1>
 				<p class="mx-auto max-w-3xl text-xl text-base-content/70 md:text-2xl leading-relaxed">
 					{storeMetadata.tagline || "Modern, thoughtful experiences for your storefront."}
@@ -55,7 +55,7 @@
 						</p>
 					{:else}
 						<p class="text-lg leading-relaxed text-base-content/70">
-							Welcome to KhadkaFoods, where we believe in providing exceptional quality products
+							Welcome to Khadka Foods, where we believe in providing exceptional quality products
 							with a focus on customer satisfaction. Our mission is to deliver modern, thoughtful
 							experiences that make shopping enjoyable and convenient for everyone.
 						</p>

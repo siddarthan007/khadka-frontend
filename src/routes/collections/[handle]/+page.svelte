@@ -1,7 +1,13 @@
 <script lang="ts">
 	import ProductCard from '$lib/components/ProductCard.svelte';
 	import SEO from '$lib/components/SEO.svelte';
-	import { generateBreadcrumbStructuredData } from '$lib/seo';
+	import { 
+		generateBreadcrumbStructuredData,
+		generateCollectionPageStructuredData,
+		generateItemListStructuredData,
+		generateOptimizedTitle,
+		generateOptimizedDescription
+	} from '$lib/seo';
 	import { cn } from '$lib/utils';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -35,7 +41,41 @@
 		{ name: 'Collections', url: `${baseUrl}/collections` },
 		{ name: collection?.title || 'Collection', url: `${baseUrl}/collections/${collection?.handle || ''}` }
 	];
-	const structuredData = [generateBreadcrumbStructuredData(breadcrumbs)];
+	
+	// Enhanced structured data
+	const structuredData = [
+		generateBreadcrumbStructuredData(breadcrumbs),
+		generateCollectionPageStructuredData({
+			name: collection?.title || 'Collection',
+			description: collection?.metadata?.description as string || `Explore our ${collection?.title} collection of premium products.`,
+			url: `${baseUrl}/collections/${collection?.handle}`,
+			hasPart: products.slice(0, 10).map(p => ({
+				url: `${baseUrl}/products/${p.handle}`,
+				name: p.title
+			}))
+		}),
+		generateItemListStructuredData({
+			name: `${collection?.title} Collection`,
+			items: products.slice(0, 20).map((p, index) => ({
+				position: index + 1,
+				name: p.title,
+				url: `${baseUrl}/products/${p.handle}`,
+				image: p.thumbnail || p.images?.[0]?.url
+			}))
+		})
+	];
+	
+	// Generate optimized SEO content
+	const seoTitle = collection?.title 
+		? generateOptimizedTitle(collection.title, undefined, 'collection')
+		: 'Collection | Khadka Foods';
+	
+	const seoDescription = collection?.title
+		? generateOptimizedDescription(collection.title, {
+				type: 'collection',
+				usps: ['Authentic Products', 'Premium Quality', 'Fast Shipping', 'Best Selection']
+			})
+		: 'Browse our collection of premium products at Khadka Foods.';
 	
 	// Track view_item_list event for collection page
 	onMount(() => {
@@ -57,12 +97,26 @@
 
 {#if collection}
 	<SEO
-		title={`${collection.title} - KhadkaFoods`}
-		description={collection.description || `Browse our ${collection.title} collection of quality products at KhadkaFoods.`}
-		keywords={['collection', collection.title, 'groceries', 'premium products', 'KhadkaFoods']}
+		title={seoTitle}
+		description={seoDescription}
+		keywords={[
+			collection.title,
+			`${collection.title} collection`,
+			`buy ${collection.title}`,
+			'authentic products',
+			'international foods',
+			'Khadka Foods'
+		]}
 		canonical={`${baseUrl}/collections/${collection.handle}`}
 		ogImage={`${baseUrl}/logo.png`}
+		ogType="website"
+		ogLocale="en_US"
+		ogSiteName="Khadka Foods"
+		twitterSite="@khadkafoods"
+		twitterCreator="@khadkafoods"
 		structuredData={structuredData}
+		maxImagePreview="large"
+		maxSnippet={-1}
 	/>
 {/if}
 

@@ -28,7 +28,7 @@
 </script>
 
 <SEO 
-	title="Authenticating - KhadkaFoods"
+	title="Authenticating - Khadka Foods"
 	description="Completing your Google authentication"
   noindex={true}
 />

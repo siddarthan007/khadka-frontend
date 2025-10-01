@@ -3,7 +3,13 @@
 	import ProductCard from '$lib/components/ProductCard.svelte';
 	import LabeledSeparator from '$lib/components/LabeledSeparator.svelte';
 	import SEO from '$lib/components/SEO.svelte';
-	import { generateBreadcrumbStructuredData } from '$lib/seo';
+	import { 
+		generateBreadcrumbStructuredData,
+		generateCollectionPageStructuredData,
+		generateItemListStructuredData,
+		generateOptimizedTitle,
+		generateOptimizedDescription
+	} from '$lib/seo';
 	import { cn } from '$lib/utils';
 	import { listProductsByCategoryIds } from '$lib/medusa';
 	import { onMount } from 'svelte';
@@ -46,7 +52,41 @@
 		{ name: 'Categories', url: `${baseUrl}/categories` },
 		{ name: category?.name || 'Category', url: `${baseUrl}/categories/${category?.handle || ''}` }
 	];
-	const structuredData = [generateBreadcrumbStructuredData(breadcrumbs)];
+	
+	// Enhanced structured data
+	const structuredData = [
+		generateBreadcrumbStructuredData(breadcrumbs),
+		generateCollectionPageStructuredData({
+			name: category?.name || 'Category',
+			description: category?.description || `Explore our ${category?.name} category with premium quality products.`,
+			url: `${baseUrl}/categories/${category?.handle}`,
+			hasPart: products.slice(0, 10).map(p => ({
+				url: `${baseUrl}/products/${p.handle}`,
+				name: p.title
+			}))
+		}),
+		generateItemListStructuredData({
+			name: `${category?.name} Products`,
+			items: products.slice(0, 20).map((p, index) => ({
+				position: index + 1,
+				name: p.title,
+				url: `${baseUrl}/products/${p.handle}`,
+				image: p.thumbnail || p.images?.[0]?.url
+			}))
+		})
+	];
+	
+	// Generate optimized SEO content
+	const seoTitle = category?.name 
+		? generateOptimizedTitle(category.name, undefined, 'category')
+		: 'Category | Khadka Foods';
+	
+	const seoDescription = category?.name
+		? generateOptimizedDescription(category.name, {
+				type: 'category',
+				usps: ['Premium Quality', 'Wide Selection', 'Fast Delivery', 'Best Prices']
+			})
+		: 'Browse our category of premium products at Khadka Foods.';
 
 	onMount(() => {
 		const qs = new URLSearchParams(page.url.search);
@@ -131,12 +171,26 @@
 
 {#if category}
 	<SEO
-		title={`${category.name} - KhadkaFoods`}
-		description={category.description || `Shop ${category.name} at KhadkaFoods. Browse our selection of quality products.`}
-		keywords={['category', category.name, 'groceries', 'products', 'KhadkaFoods']}
+		title={seoTitle}
+		description={seoDescription}
+		keywords={[
+			category.name,
+			`${category.name} products`,
+			`buy ${category.name}`,
+			'groceries online',
+			'international foods',
+			'Khadka Foods'
+		]}
 		canonical={`${baseUrl}/categories/${category.handle}`}
 		ogImage={category.thumbnail || `${baseUrl}/logo.png`}
+		ogType="website"
+		ogLocale="en_US"
+		ogSiteName="Khadka Foods"
+		twitterSite="@khadkafoods"
+		twitterCreator="@khadkafoods"
 		structuredData={structuredData}
+		maxImagePreview="large"
+		maxSnippet={-1}
 	/>
 {/if}
 

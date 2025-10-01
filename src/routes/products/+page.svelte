@@ -80,7 +80,7 @@
 	}
 
 	$effect(() => {
-		if (typeof document !== 'undefined') document.title = 'Products • KhadkaFoods';
+		if (typeof document !== 'undefined') document.title = 'Products • Khadka Foods';
 	});
 
 	async function applyFilters(reset = true) {
@@ -144,7 +144,7 @@
 </script>
 
 <SEO
-	title="Products • KhadkaFoods"
+	title="Products • Khadka Foods"
 	description="Browse our wide selection of premium groceries, fresh produce, and household essentials. Find quality products at great prices."
 	keywords={['products', 'groceries', 'fresh produce', 'household essentials', 'shop online']}
 	canonical="https://khadkafoods.com/products"
@@ -152,19 +152,19 @@
 />
 
 <svelte:head>
-	<title>All Products • KhadkaFoods - Premium Quality Groceries & Essentials</title>
-	<meta name="description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at KhadkaFoods. Find everything you need with fast delivery." />
+	<title>All Products • Khadka Foods - Premium Quality Groceries & Essentials</title>
+	<meta name="description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at Khadka Foods. Find everything you need with fast delivery." />
 	<meta name="keywords" content="products, groceries, fresh food, household essentials, premium products, online shopping, food delivery" />
 	<meta name="robots" content="index, follow" />
-	<meta name="author" content="KhadkaFoods" />
-	<meta property="og:title" content="All Products • KhadkaFoods - Premium Quality Groceries & Essentials" />
-	<meta property="og:description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at KhadkaFoods." />
+	<meta name="author" content="Khadka Foods" />
+	<meta property="og:title" content="All Products • Khadka Foods - Premium Quality Groceries & Essentials" />
+	<meta property="og:description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at Khadka Foods." />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://khadkafoods.com/products" />
 	<meta property="og:image" content="/logo.png" />
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="All Products • KhadkaFoods - Premium Quality Groceries & Essentials" />
-	<meta name="twitter:description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at KhadkaFoods." />
+	<meta name="twitter:title" content="All Products • Khadka Foods - Premium Quality Groceries & Essentials" />
+	<meta name="twitter:description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at Khadka Foods." />
 	<meta name="twitter:image" content="/logo.png" />
 	<link rel="canonical" href="https://khadkafoods.com/products" />
 </svelte:head>

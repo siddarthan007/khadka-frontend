@@ -107,9 +107,9 @@
 </script>
 
 <SEO
-	title="Register - KhadkaFoods"
-	description="Create your KhadkaFoods account to start shopping premium organic products with exclusive member benefits."
-	keywords={['register', 'sign up', 'create account', 'join', 'KhadkaFoods']}
+	title="Register - Khadka Foods"
+	description="Create your Khadka Foods account to start shopping premium organic products with exclusive member benefits."
+	keywords={['register', 'sign up', 'create account', 'join', 'Khadka Foods']}
 	canonical="https://khadkafoods.com/register"
 />
 

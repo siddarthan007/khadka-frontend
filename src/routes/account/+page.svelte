@@ -165,9 +165,9 @@ async function saveProfile(){ if(!me) return; profileSaving=true; const updated=
 </script>
 
 <SEO
-	title="My Account - KhadkaFoods"
-	description="Manage your KhadkaFoods account, view orders, and update your profile information."
-	keywords={['account', 'profile', 'orders', 'my account', 'KhadkaFoods']}
+	title="My Account - Khadka Foods"
+	description="Manage your Khadka Foods account, view orders, and update your profile information."
+	keywords={['account', 'profile', 'orders', 'my account', 'Khadka Foods']}
 	canonical="https://khadkafoods.com/account"
 />
 

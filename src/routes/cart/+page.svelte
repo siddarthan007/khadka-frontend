@@ -345,8 +345,8 @@
 </script>
 
 <SEO
-	title="Shopping Cart • KhadkaFoods - Review Your Order"
-	description="Review your shopping cart at KhadkaFoods. Check your selected products, apply coupons, and proceed to checkout for fast delivery."
+	title="Shopping Cart • Khadka Foods - Review Your Order"
+	description="Review your shopping cart at Khadka Foods. Check your selected products, apply coupons, and proceed to checkout for fast delivery."
 	keywords={["shopping cart", "cart", "checkout", "order review", "groceries cart", "online shopping cart"]}
 	canonical="https://khadkafoods.com/cart"
 	noindex={true}
