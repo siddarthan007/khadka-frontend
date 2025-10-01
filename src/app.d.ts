@@ -17,11 +17,14 @@ declare global {
         stripeKey: string;
         meilisearchUrl: string;
         meilisearchApiKey: string;
+        recaptchaSiteKey: string;
+        googleAnalyticsId: string;
 
         // private vars
         revalidateSecret: string;
         medusaStoreId: string;
         medusaAdminApiKey: string;
+        recaptchaSecretKey: string;
       };
     }
   }

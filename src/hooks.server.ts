@@ -31,11 +31,14 @@ const configMiddleware: Handle = async ({ event, resolve }) => {
     stripeKey: publicEnv.PUBLIC_STRIPE_KEY!,
     meilisearchUrl: publicEnv.PUBLIC_MEILISEARCH_URL!,
     meilisearchApiKey: publicEnv.PUBLIC_MEILISEARCH_API_KEY!,
+    recaptchaSiteKey: publicEnv.PUBLIC_RECAPTCHA_SITE_KEY!,
+    googleAnalyticsId: publicEnv.PUBLIC_GOOGLE_ANALYTICS_ID!,
 
     // private
     revalidateSecret: privateEnv.REVALIDATE_SECRET!,
     medusaStoreId: privateEnv.MEDUSA_STORE_ID!,
     medusaAdminApiKey: privateEnv.MEDUSA_ADMIN_API_KEY!,
+    recaptchaSecretKey: privateEnv.RECAPTCHA_SECRET_KEY!,
   };
 
   return resolve(event);

@@ -1,9 +1,24 @@
 import { browser } from '$app/environment';
 import { env as publicEnv } from '$env/dynamic/public';
+import type { HttpTypes } from '@medusajs/types';
 
 /**
  * Google Analytics 4 Integration
  */
+
+// TypeScript interfaces using Medusa types
+export type AnalyticsCartItem = HttpTypes.StoreCartLineItem;
+export type AnalyticsCart = HttpTypes.StoreCart;
+
+export interface GA4Item {
+	item_id: string;
+	item_name: string;
+	item_variant?: string;
+	price: number;
+	quantity: number;
+	item_category?: string;
+	item_brand?: string;
+}
 
 declare global {
 	interface Window {
@@ -12,16 +27,22 @@ declare global {
 	}
 }
 
-const GA_ID = publicEnv.PUBLIC_GOOGLE_ANALYTICS_ID || publicEnv.PUBLIC_GA_MEASUREMENT_ID || '';
+const GA_ID = publicEnv.PUBLIC_GOOGLE_ANALYTICS_ID || '';
+let isInitialized = false;
 
 /**
  * Initialize Google Analytics
  */
 export function initGoogleAnalytics(): void {
 	if (!browser) return;
-	
+
 	if (!GA_ID) {
-		// Google Analytics not configured - skip initialization (silent in dev)
+		console.warn('[GA4] Google Analytics ID not configured');
+		return;
+	}
+
+	if (isInitialized) {
+		console.log('[GA4] Already initialized');
 		return;
 	}
 
@@ -29,29 +50,48 @@ export function initGoogleAnalytics(): void {
 	const script = document.createElement('script');
 	script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
 	script.async = true;
+	script.onerror = () => {
+		console.error('[GA4] Failed to load gtag.js script');
+		isInitialized = false;
+	};
 	document.head.appendChild(script);
 
-	// Initialize dataLayer
-	window.dataLayer = window.dataLayer || [];
-	window.gtag = function () {
-		window.dataLayer.push(arguments);
+	script.onload = () => {
+		if (!window.gtag) {
+			window.dataLayer = window.dataLayer || [];
+			window.gtag = function () { window.dataLayer.push(arguments); };
+		}
+		window.gtag('js', new Date());
+		window.gtag('config', GA_ID, { send_page_view: false });
+		isInitialized = true;
+		console.log('[GA4] Initialized successfully:', GA_ID);
 	};
-	window.gtag('js', new Date());
-	window.gtag('config', GA_ID, {
-		send_page_view: false // We'll manually send page views
-	});
 }
 
 /**
  * Track page view
+ * 
+ * NOTE: For SvelteKit SPA navigation, use this with afterNavigate:
+ * 
+ * import { afterNavigate } from '$app/navigation';
+ * afterNavigate((nav) => {
+ *   trackPageView(nav.to?.url.pathname, document.title);
+ * });
  */
 export function trackPageView(url: string, title?: string): void {
-	if (!browser || !window.gtag) return;
+	if (!browser) return;
+
+	if (!isInitialized || !window.gtag) {
+		console.warn('[GA4] Cannot track page view - not initialized');
+		return;
+	}
 
 	window.gtag('event', 'page_view', {
 		page_path: url,
 		page_title: title || document.title
 	});
+
+	console.log('[GA4] Page view tracked:', url);
 }
 
 /**
@@ -61,9 +101,15 @@ export function trackEvent(
 	eventName: string,
 	eventParams?: Record<string, any>
 ): void {
-	if (!browser || !window.gtag) return;
+	if (!browser) return;
+
+	if (!isInitialized || !window.gtag) {
+		console.warn('[GA4] Cannot track event - not initialized:', eventName);
+		return;
+	}
 
 	window.gtag('event', eventName, eventParams);
+	console.log('[GA4] Event tracked:', eventName, eventParams);
 }
 
 /**
@@ -86,8 +132,8 @@ export function trackViewItem(item: {
 				item_id: item.id,
 				item_name: item.name,
 				price: item.price,
-				item_category: item.category,
-				item_brand: item.brand
+				item_category: item.category || '',
+				item_brand: item.brand || ''
 			}
 		]
 	});
@@ -110,7 +156,7 @@ export function trackAddToCart(item: {
 				item_name: item.name,
 				price: item.price,
 				quantity: item.quantity,
-				item_category: item.category
+				item_category: item.category || ''
 			}
 		]
 	});
@@ -247,23 +293,57 @@ export function setUserId(userId: string): void {
 
 /**
  * Helper to format cart items for GA4 e-commerce events
+ * 
+ * NOTE: Medusa stores prices in minor units (cents).
+ * We divide by 100 to convert to major units (dollars) for GA4.
+ * This matches the pattern used throughout the codebase in cart.ts and product pages.
  */
-export function formatCartItemsForAnalytics(cartItems: any[]): any[] {
+export function formatCartItemsForAnalytics(cartItems: AnalyticsCartItem[]): GA4Item[] {
 	return cartItems.map((item) => ({
-		item_id: item.variant?.id || item.variant_id,
+		item_id: item.variant?.id || item.variant_id || 'unknown',
 		item_name: item.title || item.variant?.title || 'Unknown Product',
-		item_variant: item.variant?.title,
-		price: (item.unit_price || 0) / 100, // Convert cents to dollars
+		item_variant: item.variant?.title || '',
+		price: (item.unit_price || 0) / 100, // Medusa uses minor units (cents) → convert to dollars
 		quantity: item.quantity || 1,
-		item_category: item.product?.collection?.title || item.product?.categories?.[0]?.name
+		item_category: item.product?.collection?.title || (item.product?.categories?.[0] as any)?.name || '',
+		item_brand: '' // Can be added if product has brand field
+	}));
+}
+
+/**
+ * Helper to format order items for GA4 e-commerce events
+ * 
+ * NOTE: Medusa stores prices in minor units (cents).
+ * We divide by 100 to convert to major units (dollars) for GA4.
+ * Order items have a different structure than cart items, so we need a separate formatter.
+ */
+export function formatOrderItemsForAnalytics(orderItems: HttpTypes.StoreOrderLineItem[]): GA4Item[] {
+	return orderItems.map((item) => ({
+		item_id: item.variant?.id || item.variant_id || 'unknown',
+		item_name: item.title || item.variant?.product?.title || 'Unknown Product',
+		item_variant: item.variant?.title || '',
+		price: (item.unit_price || 0) / 100, // Medusa uses minor units (cents) → convert to dollars
+		quantity: item.quantity || 1,
+		item_category: '', // Order items don't include full product data
+		item_brand: '' // Can be added if product has brand field
 	}));
 }
 
 /**
  * Helper to calculate cart total value in dollars
+ * 
+ * NOTE: Medusa stores totals in minor units (cents).
+ * We divide by 100 to convert to major units (dollars) for GA4.
  */
-export function calculateCartValue(cart: any): number {
+export function calculateCartValue(cart: AnalyticsCart | null | undefined): number {
 	if (!cart) return 0;
 	const total = cart.total || cart.subtotal || 0;
-	return total / 100; // Convert cents to dollars
+	return total / 100; // Medusa uses minor units (cents) → convert to dollars
+}
+
+/**
+ * Check if Google Analytics is initialized
+ */
+export function isGA4Initialized(): boolean {
+	return isInitialized && !!window.gtag;
 }

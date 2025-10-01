@@ -8,7 +8,7 @@
   import { goto } from '$app/navigation';
   import SEO from '$lib/components/SEO.svelte';
   import { logger } from '$lib/logger';
-  import { trackPurchase, formatCartItemsForAnalytics } from '$lib/utils/analytics';
+  import { trackPurchase, formatOrderItemsForAnalytics } from '$lib/utils/analytics';
 
   let message: string = $state('Thanks! If your payment was successful, your order details are below.');
   let latestOrder: HttpTypes.StoreOrder | null = $state(null);
@@ -40,7 +40,7 @@
       // Track purchase event for analytics
       if (latestOrder) {
         try {
-          const items = formatCartItemsForAnalytics(latestOrder.items || []);
+          const items = formatOrderItemsForAnalytics(latestOrder.items || []);
           trackPurchase(
             latestOrder.id,
             (latestOrder.total || 0) / 100,

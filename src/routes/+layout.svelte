@@ -2,6 +2,7 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import { throttle } from '$lib/utils';
 	import { logger } from '$lib/logger';
 
@@ -60,13 +61,12 @@
 		
 		// Initialize Google Analytics
 		initGoogleAnalytics();
-		trackPageView($page.url.pathname);
 	});
 	
-	// Track page views on navigation
-	$effect(() => {
-		if ($page.url.pathname) {
-			trackPageView($page.url.pathname);
+	// Track page views on SPA navigation (SvelteKit doesn't reload pages)
+	afterNavigate((nav) => {
+		if (nav.to?.url) {
+			trackPageView(nav.to.url.pathname, document.title);
 		}
 	});
 

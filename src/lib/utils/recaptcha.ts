@@ -4,12 +4,26 @@ import { env as publicEnv } from '$env/dynamic/public';
 
 /**
  * Google reCAPTCHA v3 Integration
+ * 
+ * IMPORTANT: This file is for CLIENT-SIDE use only.
+ * Server-side verification is handled by /api/verify-recaptcha
+ * 
+ * SECURITY NOTE: 
+ * - PUBLIC_RECAPTCHA_SITE_KEY is safe for client-side (public key)
+ * - RECAPTCHA_SECRET_KEY is NEVER imported here (server-only)
+ * - Token verification happens server-side in /api/verify-recaptcha
  */
 
 declare global {
 	interface Window {
-		grecaptcha: any;
+		grecaptcha: Grecaptcha;
 	}
+}
+
+interface Grecaptcha {
+  ready: (callback: () => void) => void;
+  execute: (siteKey: string, options: { action: string }) => Promise<string>;
+  reset: () => void;
 }
 
 const RECAPTCHA_SITE_KEY = publicEnv.PUBLIC_RECAPTCHA_SITE_KEY || '';
@@ -71,9 +85,9 @@ export async function getRecaptchaToken(action: string = 'submit'): Promise<stri
 	await loadRecaptcha();
 
 	return new Promise((resolve, reject) => {
-		if (!window.grecaptcha || !window.grecaptcha.ready) {
-			reject(new Error('reCAPTCHA not ready'));
-			return;
+		if (!window.grecaptcha || typeof window.grecaptcha.ready !== 'function') {
+  			reject(new Error('reCAPTCHA not ready'));
+  			return;
 		}
 
 		window.grecaptcha.ready(() => {
@@ -87,7 +101,22 @@ export async function getRecaptchaToken(action: string = 'submit'): Promise<stri
 
 /**
  * Verify reCAPTCHA token on server
- * This should be called from your server-side code
+ * 
+ * ⚠️ DEPRECATED: Use /api/verify-recaptcha endpoint instead.
+ * 
+ * This function should ONLY be called from server-side code (+server.ts files)
+ * with the secret key from event.locals.config.recaptchaSecretKey
+ * 
+ * Better approach:
+ * ```typescript
+ * const response = await fetch('/api/verify-recaptcha', {
+ *   method: 'POST',
+ *   body: JSON.stringify({ token, action: 'login' })
+ * });
+ * const result = await response.json();
+ * ```
+ * 
+ * @deprecated Use /api/verify-recaptcha API route
  */
 export async function verifyRecaptchaToken(
 	token: string,
