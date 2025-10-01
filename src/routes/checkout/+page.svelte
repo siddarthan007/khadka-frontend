@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import SEO from '$lib/components/SEO.svelte';
 	import { cart as cartStore } from '$lib/stores/cart';
 	import { ensureCart, getCart, clearCart } from '$lib/cart';
 	import { Button } from '$lib/components/ui/button';
@@ -9,12 +10,22 @@
 	import { getStoreClient } from '$lib/medusa';
 	import { showToast } from '$lib/stores/toast';
 	import { US_STATES } from '$lib/us';
+	import { isValidEmail, sanitizeInput } from '$lib/security';
 	import type { HttpTypes } from '@medusajs/types';
 	import { env as publicEnv } from '$env/dynamic/public';
 	import { loadStripe } from '@stripe/stripe-js';
 	import StripePaymentElement from '$lib/components/StripePaymentElement.svelte';
 	import { Motion, AnimateSharedLayout } from 'svelte-motion';
 	import { formatCurrency } from '$lib/utils';
+	import { logger } from '$lib/logger';
+	import {
+		trackBeginCheckout,
+		trackAddShippingInfo,
+		trackAddPaymentInfo,
+		trackPurchase,
+		formatCartItemsForAnalytics,
+		calculateCartValue
+	} from '$lib/utils/analytics';
 
 	let email: string = $state('');
 	let shipping = $state({
@@ -169,6 +180,18 @@
 				saveAddress = !isDefaultShippingSelected;
 			}
 		}
+
+		// Track begin_checkout event
+		const c = get(cartStore);
+		if (c && c.items && c.items.length > 0) {
+			try {
+				const items = formatCartItemsForAnalytics(c.items as any[]);
+				const value = calculateCartValue(c);
+				trackBeginCheckout(value, c.currency_code?.toUpperCase() || 'USD', items);
+			} catch (e) {
+				logger.warn('Analytics tracking failed:', e);
+			}
+		}
 	});
 
 	async function continueToShipping() {
@@ -190,7 +213,7 @@
 			});
 			shippingOptions = shipping_options || [];
 		} catch (err: any) {
-			console.error('Failed to fetch shipping options:', err);
+			logger.error('Failed to fetch shipping options:', err);
 			showToast('Failed to load shipping options', { type: 'error' });
 			shippingOptions = [];
 		} finally {
@@ -201,9 +224,42 @@
 	async function continueToPayment() {
 		const applied = await applyShippingMethod();
 		if (!applied) return;
+		
+		// Track add_shipping_info event
+		try {
+			const c = get(cartStore);
+			if (c && c.items && c.items.length > 0) {
+				const items = formatCartItemsForAnalytics(c.items as any[]);
+				const value = calculateCartValue(c);
+				const selectedOption = shippingOptions.find(opt => opt.id === selectedShippingOptionId);
+				trackAddShippingInfo(
+					value,
+					c.currency_code?.toUpperCase() || 'USD',
+					items,
+					selectedOption?.name || 'Standard Shipping'
+				);
+			}
+		} catch (e) {
+			logger.warn('Analytics tracking failed:', e);
+		}
+		
 		step = 'payment';
 		const ok = await setupPayment();
 		if (!ok && paymentError) showToast(paymentError, { type: 'error' });
+		
+		// Track add_payment_info event
+		if (ok) {
+			try {
+				const c = get(cartStore);
+				if (c && c.items && c.items.length > 0) {
+					const items = formatCartItemsForAnalytics(c.items as any[]);
+					const value = calculateCartValue(c);
+					trackAddPaymentInfo(value, c.currency_code?.toUpperCase() || 'USD', items, 'card');
+				}
+			} catch (e) {
+				logger.warn('Analytics tracking failed:', e);
+			}
+		}
 	}
 
 	async function applyShippingMethod() {
@@ -224,7 +280,7 @@
 			await getCart();
 			return true;
 		} catch (err: any) {
-			console.error('Failed to apply shipping method:', err);
+			logger.error('Failed to apply shipping method:', err);
 			showToast('Failed to apply shipping method', { type: 'error' });
 			return false;
 		}
@@ -288,7 +344,7 @@
 					.then((inst) => {
 						stripeInstance = inst;
 					})
-					.catch((e) => console.error('[checkout] loadStripe failed', e));
+					.catch((e) => logger.error('[checkout] loadStripe failed', e));
 			}
 
 			let providerId: string | null = null;
@@ -322,7 +378,7 @@
 					data: { setup_future_usage: 'off_session' }
 				});
 			} catch (e: any) {
-				console.error('[checkout] initiatePaymentSession failed', {
+				logger.error('[checkout] initiatePaymentSession failed', {
 					cartId: c.id,
 					providerId,
 					message: e?.message,
@@ -349,7 +405,7 @@
 			}
 
 			if (!paymentCollection) {
-				console.error('[checkout] payment_collection still missing after initiation', {
+				logger.error('[checkout] payment_collection still missing after initiation', {
 					cartId: c.id,
 					providerId,
 					initiateKeys: Object.keys(initiateResp || {})
@@ -364,7 +420,7 @@
 				(s.provider_id || '').toLowerCase().includes('stripe')
 			);
 			if (!stripeSession) {
-				console.error('[checkout] no stripe session in payment_collection', {
+				logger.error('[checkout] no stripe session in payment_collection', {
 					cartId: c.id,
 					providerId,
 					paymentCollectionId: paymentCollection?.id,
@@ -384,7 +440,7 @@
 				null;
 
 			if (!paymentClientSecret) {
-				console.error('[checkout] stripe session missing client secret', {
+				logger.error('[checkout] stripe session missing client secret', {
 					stripeSessionId: stripeSession?.id,
 					stripeSessionDataKeys: Object.keys(stripeSession?.data || {})
 				});
@@ -415,7 +471,7 @@
 				if ((cart as any)?.completed_at) {
 					showToast('Order placed successfully', { type: 'success' });
 					// Clear cart after successful order placement
-					try { await clearCart(); } catch (e) { console.warn('Failed to clear cart:', e); }
+					try { await clearCart(); } catch (e) { logger.warn('Failed to clear cart:', e); }
 					window.location.href = '/checkout/success';
 				} else {
 					errorMsg = 'Failed to complete free order. Please contact support.';
@@ -472,7 +528,7 @@
 					redirect: 'if_required'
 				});
 				if (error) {
-					console.error('[checkout] confirmPayment error', {
+					logger.error('[checkout] confirmPayment error', {
 						code: error.type,
 						message: error.message,
 						cartId: c.id
@@ -503,16 +559,40 @@
 			try {
 				completion = await sdk.store.cart.complete(c.id);
 			} catch (e: any) {
-				console.error('[checkout] cart.complete threw', e?.message, e);
+				logger.error('[checkout] cart.complete threw', e?.message, e);
 				throw new Error(e?.message || 'Failed to finalize order after payment');
 			}
 
 			if (completion?.type === 'order' && completion.order) {
 				showToast('Order placed successfully', { type: 'success' });
+				
+				// Track purchase event
+				try {
+					const order = completion.order;
+					const items = formatCartItemsForAnalytics(order.items || c.items || []);
+					const value = calculateCartValue(order);
+					const shipping = (order.shipping_total || 0) / 100;
+					const tax = (order.tax_total || 0) / 100;
+					trackPurchase(
+						order.id,
+						value,
+						order.currency_code?.toUpperCase() || c.currency_code?.toUpperCase() || 'USD',
+						items,
+						shipping,
+						tax
+					);
+				} catch (e) {
+					logger.warn('Analytics tracking failed:', e);
+				}
+				
 				// Optionally store order id for success page usage
 				try {
 					localStorage.setItem('last_order_id', completion.order.id);
 				} catch {}
+				
+				// Clear cart after successful order
+				try { await clearCart(); } catch (e) { logger.warn('Failed to clear cart:', e); }
+				
 				window.location.href = '/checkout/success';
 				return;
 			}
@@ -521,7 +601,7 @@
 			if (completion?.type === 'cart') {
 				const compCart = completion.cart;
 				const backendError = completion.error || compCart?.metadata?.completion_error;
-				console.error('[checkout] completion returned cart (not order)', {
+				logger.error('[checkout] completion returned cart (not order)', {
 					cartId: compCart?.id,
 					backendError,
 					paymentCollection: compCart?.payment_collection?.id,
@@ -553,7 +633,7 @@
 				if (polledOrder?.completed_at) {
 					showToast('Order placed successfully', { type: 'success' });
 					// Clear cart after successful order placement
-					try { await clearCart(); } catch (e) { console.warn('Failed to clear cart:', e); }
+					try { await clearCart(); } catch (e) { logger.warn('Failed to clear cart:', e); }
 					window.location.href = '/checkout/success';
 					return;
 				}
@@ -565,37 +645,24 @@
 			}
 
 			// Unknown shape
-			console.error('[checkout] unexpected completion response', completion);
+			logger.error('[checkout] unexpected completion response', completion);
 			throw new Error('Unexpected checkout completion response');
 		} catch (e) {
 			errorMsg = paymentError || (e as any)?.message || 'Checkout failed.';
 			showToast(errorMsg as string, { type: 'error' });
-		} finally {
-			loading = false;
-			overlay = false;
-		}
+	} finally {
+		loading = false;
+		overlay = false;
 	}
+}
 </script>
 
-<svelte:head>
-	<title>Checkout • KhadkaFoods - Complete Your Order</title>
-	<meta name="description" content="Complete your order at KhadkaFoods. Secure checkout with multiple payment options, fast delivery, and order tracking." />
-	<meta name="keywords" content="checkout, payment, order completion, secure checkout, online payment, delivery" />
-	<meta name="robots" content="noindex, nofollow" />
-	<meta name="author" content="KhadkaFoods" />
-	<meta property="og:title" content="Checkout • KhadkaFoods - Complete Your Order" />
-	<meta property="og:description" content="Complete your order at KhadkaFoods. Secure checkout with multiple payment options." />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://khadkafoods.com/checkout" />
-	<meta property="og:image" content="/logo.png" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="Checkout • KhadkaFoods - Complete Your Order" />
-	<meta name="twitter:description" content="Complete your order at KhadkaFoods. Secure checkout with multiple payment options." />
-	<meta name="twitter:image" content="/logo.png" />
-	<link rel="canonical" href="https://khadkafoods.com/checkout" />
-</svelte:head>
-
-<section class="w-full py-10">
+<SEO
+	title="Checkout - KhadkaFoods"
+	description="Complete your order securely at KhadkaFoods. Fast checkout with multiple payment options."
+	keywords={['checkout', 'payment', 'order', 'KhadkaFoods']}
+	canonical="https://khadkafoods.com/checkout"
+/><section class="w-full py-10">
 	<div class="container mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
 		{#if overlay}
 			<div
@@ -1042,16 +1109,16 @@
 					{:else if paymentClientSecret && paymentReady}
 						<div class="min-h-20 rounded-lg border border-base-300 p-3">
 							{#if stripeInstance}
-								<StripePaymentElement
-									stripe={stripeInstance}
-									clientSecret={paymentClientSecret}
-									bind:elements
-									bind:paymentElementRef
-									bind:ready
-									on:change={() => {
-										/* could track completion state */
-									}}
-								/>
+						<StripePaymentElement
+							stripe={stripeInstance}
+							clientSecret={paymentClientSecret}
+							bind:elements
+							bind:paymentElementRef
+							bind:ready
+							onchange={() => {
+								/* could track completion state */
+							}}
+						/>
 							{:else}
 								<div class="flex items-center gap-2 text-sm opacity-70">
 									<span class="loading loading-sm loading-spinner"></span> Loading Stripe...

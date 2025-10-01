@@ -2,6 +2,8 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { onMount } from 'svelte';
+	import { throttle } from '$lib/utils';
+	import { logger } from '$lib/logger';
 
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -39,19 +41,33 @@
 	import { cart } from '$lib/stores/cart';
 	import { customer } from '$lib/stores/customer';
 	import { ensureCart, removeLine } from '$lib/cart';
-	import { toasts } from '$lib/stores/toast';
 	import { page } from '$app/stores';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { User } from '@lucide/svelte';
 	import { getCurrentCustomer } from '$lib/auth';
 	import { get } from 'svelte/store';
-	import { LogIn, UserPlus, CheckCircle2, AlertTriangle, Info } from '@lucide/svelte';
+	import { LogIn, UserPlus } from '@lucide/svelte';
 	import { login, register } from '$lib/auth';
+	import { sanitizeSearchQuery } from '$lib/security';
 	import PasswordInput from '$lib/components/ui/password-input.svelte';
+	import ToastContainer from '$lib/components/ToastContainer.svelte';
+	import StickyMobileCart from '$lib/components/StickyMobileCart.svelte';
+	import { initGoogleAnalytics, trackPageView } from '$lib/utils/analytics';
 
 	onMount(() => {
 		// fire and forget; keep customer store fresh when layout mounts
 		getCurrentCustomer().catch(() => {});
+		
+		// Initialize Google Analytics
+		initGoogleAnalytics();
+		trackPageView($page.url.pathname);
+	});
+	
+	// Track page views on navigation
+	$effect(() => {
+		if ($page.url.pathname) {
+			trackPageView($page.url.pathname);
+		}
 	});
 
 	function onAccountClick() {
@@ -182,6 +198,9 @@
 		scrolled = typeof window !== 'undefined' ? window.scrollY > 6 : false;
 	}
 
+	// Throttled version to prevent excessive updates
+	const throttledHandleScroll = throttle(handleScroll, 100);
+
 	onMount(() => {
 		initTheme();
 		handleScroll();
@@ -189,7 +208,7 @@
 		let onKey: ((e: KeyboardEvent) => void) | null = null;
 		let onCountriesClick: ((e: MouseEvent) => void) | null = null;
 		if (typeof window !== 'undefined') {
-			window.addEventListener('scroll', handleScroll, { passive: true });
+			window.addEventListener('scroll', throttledHandleScroll, { passive: true });
 			onDocClick = (e: MouseEvent) => {
 				if (!isCountriesOpen) return;
 				const target = e.target as Node | null;
@@ -219,7 +238,7 @@
 		}
 		return () => {
 			if (typeof window !== 'undefined') {
-				window.removeEventListener('scroll', handleScroll);
+				window.removeEventListener('scroll', throttledHandleScroll);
 				if (onDocClick) window.removeEventListener('click', onDocClick, true);
 				if (onKey) window.removeEventListener('keydown', onKey);
 				countriesContainer?.removeEventListener('click', onCountriesClick as any, true);
@@ -265,18 +284,19 @@
 	} = $state({ products: [], categories: [] });
 	async function onSearchInput(e: Event) {
 		const value = (e.target as HTMLInputElement).value;
-		searchQuery = value;
+		const sanitized = sanitizeSearchQuery(value);
+		searchQuery = sanitized;
 		if (typingTimer) clearTimeout(typingTimer);
-		if (value.trim().length > 0) {
+		if (sanitized.trim().length > 0) {
 			isSearchOpen = true;
 			overlayOpacity = 1;
 			typingTimer = setTimeout(async () => {
 				try {
-					const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=6`);
+					const res = await fetch(`/api/search?q=${encodeURIComponent(sanitized)}&limit=6`);
 					const data = await res.json();
 					searchResults = { products: data.products ?? [], categories: data.categories ?? [] };
 				} catch (err) {
-					console.error('Search failed', err);
+					logger.error('Search failed', err);
 					searchResults = { products: [], categories: [] };
 				}
 			}, 200);
@@ -365,7 +385,7 @@
 	{/if}
 </svelte:head>
 
-<div class="flex min-h-svh flex-col">
+<div class="flex min-h-svh flex-col max-w-[100vw]">
 	<header
 		class="sticky top-0 z-50 backdrop-blur transition-colors duration-300"
 		class:bg-base-100={scrolled}
@@ -529,7 +549,7 @@
 					</Button>
 					{#if cartOpen}
 						<div
-							class="dropdown-content z-[55] mt-2 w-80 rounded-xl border border-base-300 bg-base-100 shadow-xl"
+							class="dropdown-content z-[55] mt-2 w-80 sm:w-96 rounded-2xl border-2 border-base-300/50 bg-base-100 shadow-2xl"
 							role="dialog"
 							tabindex="-1"
 							onclick={(e) => e.stopPropagation()}
@@ -539,81 +559,98 @@
 								}
 							}}
 						>
+							<div class="px-4 py-3 border-b border-base-300">
+								<h3 class="text-lg font-bold flex items-center gap-2">
+									<ShoppingCart class="size-5 text-primary" />
+									Your Cart
+									<span class="ml-auto">{$cart?.items?.length ?? 0}</span>
+								</h3>
+							</div>
 							<div class="max-h-96 space-y-2 overflow-auto p-3">
 								{#if ($cart?.items?.length ?? 0) === 0}
-									<div class="p-6 text-center opacity-70">Your cart is empty</div>
+									<div class="flex flex-col items-center justify-center py-12 text-center">
+										<svg class="w-16 h-16 text-base-content/30 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+										<p class="text-base-content/60 font-medium">Your cart is empty</p>
+										<a href="/products" class="btn btn-primary btn-sm rounded-xl mt-4" onclick={() => cartOpen = false}>Start Shopping</a>
+									</div>
 								{:else}
 									{#each $cart?.items ?? [] as li}
-										<div class="flex items-center gap-3 rounded-lg border border-base-300 p-2">
-											<div class="relative h-12 w-12 shrink-0 overflow-hidden rounded bg-base-200">
+										<div class="flex items-center gap-3 rounded-xl border-2 border-base-300/50 p-3 hover:border-primary/30 transition-all bg-base-100">
+											<div class="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-base-200">
 												<img
 													src={(li as any)?.variant?.metadata?.thumbnail ??
 														(li as any)?.variant?.product?.thumbnail ??
 														li.thumbnail ??
 														''}
 													alt={li.title}
-													class="h-full w-full object-cover"
+													loading="lazy"
+													class="h-full w-full object-contain"
 												/>
-												{#if (li as any)?.variant?.title}
-													<span
-														class="absolute inset-x-0 bottom-0 truncate bg-base-100/70 px-1.5 py-0.5 text-[10px] leading-none text-base-content/75"
-														>{(li as any).variant.title}</span
-													>
-												{/if}
 											</div>
-											<div class="min-w-0 flex-1">
-												<div class="truncate font-medium">
+											<div class="min-w-0 flex-1 space-y-2">
+												<div class="font-semibold text-sm line-clamp-2 leading-tight">
 													{li.title}
-													{#if (li as any)?.variant?.title || (li as any)?.variant_title}<span
-															class="text-xs opacity-60"
-															>({(li as any)?.variant?.title ?? (li as any).variant_title})</span
-														>{/if}
 												</div>
-												<div class="mt-1">
-													<div class="join h-8 overflow-hidden rounded-full border border-base-300">
-														<Button
-															variant="ghost"
-															size="sm"
-															class="join-item btn-xs"
+												{#if (li as any)?.variant?.title || (li as any)?.variant_title}
+													<div class="text-xs text-base-content/60">
+														{(li as any)?.variant?.title ?? (li as any).variant_title}
+													</div>
+												{/if}
+												<div class="flex items-center gap-2">
+													<div class="join h-8 overflow-hidden rounded-lg border-2 border-base-300 bg-base-100">
+														<button
+															type="button"
+															class="join-item h-8 w-8 flex items-center justify-center text-sm font-bold hover:bg-base-200 active:bg-base-300 transition-colors"
 															onclick={async (e) => { e.stopPropagation(); if ((li.quantity ?? 0) > 1) { const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) - 1); } else { const m = await import('$lib/cart'); await m.removeLine(li.id); } }}
-															aria-label="Decrease quantity">-</Button
+															aria-label="Decrease quantity"
 														>
+															<span class="leading-none">−</span>
+														</button>
 														<input
-															class="pointer-events-none join-item w-10 border-0 bg-transparent text-center"
+															class="pointer-events-none join-item w-10 border-0 bg-transparent text-center text-sm font-bold focus:outline-none"
 															value={li.quantity}
 															readonly
 															aria-live="polite"
 															aria-label="Quantity"
 														/>
-														<Button
-															variant="ghost"
-															size="sm"
-															class="join-item btn-xs"
+														<button
+															type="button"
+															class="join-item h-8 w-8 flex items-center justify-center text-sm font-bold hover:bg-base-200 active:bg-base-300 transition-colors"
 															onclick={async (e) => { e.stopPropagation(); const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) + 1); }}
-															aria-label="Increase quantity">+</Button
+															aria-label="Increase quantity"
 														>
+															<span class="leading-none">+</span>
+														</button>
 													</div>
+													<button
+														class="btn btn-ghost btn-xs h-8 w-8 p-0 rounded-lg hover:bg-error/10 hover:text-error transition-all"
+														title="Remove"
+														aria-label="Remove item"
+														onclick={() => removeLine(li.id)}
+													>
+														<Trash class="size-4" />
+													</button>
 												</div>
 											</div>
-											<button
-												class="btn btn-ghost btn-xs"
-												title="Remove"
-												onclick={() => removeLine(li.id)}
-											>
-												<Trash class="size-3" />
-											</button>
 										</div>
 									{/each}
 								{/if}
 							</div>
-							<div class="flex items-center justify-between border-t border-base-300 p-3">
-								<a href="/cart" class="btn btn-sm btn-primary">View cart</a>
-								<button
-									class="btn btn-sm btn-error"
-									onclick={async () => { const m = await import('$lib/cart'); await m.clearCart(); }}
-									>Clear all</button
-								>
-							</div>
+							{#if ($cart?.items?.length ?? 0) > 0}
+								<div class="flex items-center justify-between gap-2 border-t border-base-300 p-4">
+									<a href="/cart" class="btn btn-primary flex-1 rounded-xl hover:shadow-lg transition-all" onclick={() => cartOpen = false}>
+										<ShoppingCart class="size-4" />
+										View Cart
+									</a>
+									<button
+										class="btn btn-error rounded-xl hover:shadow-lg transition-all"
+										aria-label="Clear cart"
+										onclick={async () => { const m = await import('$lib/cart'); await m.clearCart(); }}
+									>
+										<Trash class="size-4" />
+									</button>
+								</div>
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -722,28 +759,6 @@
 		{#key $page.url.pathname}
 			{@render children?.()}
 		{/key}
-		<!-- Toast host -->
-		<div class="fixed right-4 bottom-4 z-[70] w-80 space-y-2">
-			{#each $toasts as t (t.id)}
-				<div
-					class="alert shadow-lg transition-all"
-					class:alert-success={t.type === 'success'}
-					class:alert-error={t.type === 'error'}
-					class:alert-info={t.type === 'info'}
-				>
-					<div>
-						{#if t.type === 'success'}
-							<CheckCircle2 class="size-4" />
-						{:else if t.type === 'error'}
-							<AlertTriangle class="size-4" />
-						{:else}
-							<Info class="size-4" />
-						{/if}
-					</div>
-					<span>{t.message}</span>
-				</div>
-			{/each}
-		</div>
 	</main>
 
 	<!-- Search modal -->
@@ -855,26 +870,29 @@
 		</div>
 	{/if}
 
-	<footer class="border-t border-base-300 bg-base-100/70">
-		<div class="mx-auto max-w-7xl px-4 py-10 md:px-6">
+	<!-- Footer -->
+	<footer class="border-t-2 backdrop-blur-sm">
+		<div class="mx-auto max-w-7xl px-4 py-12 md:px-6">
 			<div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
 				<!-- Brand Section -->
 				<div class="space-y-4">
 					<div class="flex items-center gap-3">
-						<img src={logo} alt="KhadkaFoods" class="h-8 w-8" />
-						<span class="font-semibold text-lg">KhadkaFoods</span>
+						<img src={logo} alt="KhadkaFoods" class="h-10 w-10 rounded-lg shadow-md" />
+						<span class="text-xl font-bold text-primary">KhadkaFoods</span>
 					</div>
-					<p class="text-sm opacity-70">{storeMetadata.tagline || "Modern, thoughtful experiences for your storefront."}</p>
+					<p class="text-sm text-base-content/70 leading-relaxed">
+						{storeMetadata.tagline || "Authentic Nepali groceries delivered to your doorstep. Quality products, fresh ingredients."}
+					</p>
 					<div class="flex gap-2">
 						{#if storeMetadata.instagram}
 							<a
 								href={`https://instagram.com/${storeMetadata.instagram}`}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="btn btn-primary btn-circle"
+								class="btn btn-circle btn-sm bg-base-100 hover:bg-primary hover:text-primary-content border-2 border-base-300 transition-all duration-300 hover:scale-110 hover:shadow-lg"
 								aria-label="Instagram"
 							>
-								<SiInstagram />
+								<SiInstagram size={16} />
 							</a>
 						{/if}
 						{#if storeMetadata.facebook}
@@ -882,10 +900,10 @@
 								href={`https://facebook.com/${storeMetadata.facebook}`}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="btn btn-primary btn-circle"
+								class="btn btn-circle btn-sm bg-base-100 hover:bg-primary hover:text-primary-content border-2 border-base-300 transition-all duration-300 hover:scale-110 hover:shadow-lg"
 								aria-label="Facebook"
 							>
-								<SiFacebook />
+								<SiFacebook size={16} />
 							</a>
 						{/if}
 						{#if storeMetadata.x}
@@ -893,10 +911,10 @@
 								href={`https://x.com/${storeMetadata.x}`}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="btn btn-primary btn-circle"
+								class="btn btn-circle btn-sm bg-base-100 hover:bg-primary hover:text-primary-content border-2 border-base-300 transition-all duration-300 hover:scale-110 hover:shadow-lg"
 								aria-label="X (Twitter)"
 							>
-								<SiX />
+								<SiX size={16} />
 							</a>
 						{/if}
 					</div>
@@ -904,45 +922,48 @@
 
 				<!-- Shop Links -->
 				<div>
-					<h3 class="footer-title mb-3 text-base font-semibold">Shop</h3>
-					<ul class="space-y-2 text-sm">
-						<li><a class="link link-hover" href="/products">All Products</a></li>
-						<li><a class="link link-hover" href="/collections">Collections</a></li>
+					<h3 class="footer-title mb-4 text-base font-bold text-primary">Shop</h3>
+					<ul class="space-y-3 text-sm">
+						<li><a class="link link-hover hover:text-primary transition-colors flex items-center gap-2" href="/products"><ChevronRight class="w-3 h-3" />All Products</a></li>
+						<li><a class="link link-hover hover:text-primary transition-colors flex items-center gap-2" href="/collections"><ChevronRight class="w-3 h-3" />Collections</a></li>
+						<li><a class="link link-hover hover:text-primary transition-colors flex items-center gap-2" href="/categories"><ChevronRight class="w-3 h-3" />Categories</a></li>
 					</ul>
 				</div>
 
 				<!-- Company Links -->
 				<div>
-					<h3 class="footer-title mb-3 text-base font-semibold">Company</h3>
-					<ul class="space-y-2 text-sm">
-						<li><a class="link link-hover" href="/about">About</a></li>
+					<h3 class="footer-title mb-4 text-base font-bold text-primary">Company</h3>
+					<ul class="space-y-3 text-sm">
+						<li><a class="link link-hover hover:text-primary transition-colors flex items-center gap-2" href="/about"><ChevronRight class="w-3 h-3" />About Us</a></li>
+						<li><a class="link link-hover hover:text-primary transition-colors flex items-center gap-2" href="/orders/lookup"><ChevronRight class="w-3 h-3" />Track Order</a></li>
+						<li><a class="link link-hover hover:text-primary transition-colors flex items-center gap-2" href="/account"><ChevronRight class="w-3 h-3" />My Account</a></li>
 					</ul>
 				</div>
 
 				<!-- Contact Info -->
 				<div>
-					<h3 class="footer-title mb-3 text-base font-semibold">Contact</h3>
-					<div class="space-y-2 text-sm">
+					<h3 class="footer-title mb-4 text-base font-bold text-primary">Contact Us</h3>
+					<div class="space-y-3 text-sm">
 						{#if storeMetadata.phone}
-							<p class="flex items-center gap-2">
-								<Phone class="w-4 h-4 opacity-70" />
+							<p class="flex items-center gap-2 hover:text-primary transition-colors">
+								<Phone class="w-4 h-4 text-primary" />
 								<a href={`tel:${storeMetadata.phone}`} class="link link-hover">{storeMetadata.phone}</a>
 							</p>
 						{/if}
 						{#if storeMetadata.email}
-							<p class="flex items-center gap-2">
-								<Mail class="w-4 h-4 opacity-70" />
+							<p class="flex items-center gap-2 hover:text-primary transition-colors">
+								<Mail class="w-4 h-4 text-primary" />
 								<a href={`mailto:${storeMetadata.email}`} class="link link-hover">{storeMetadata.email}</a>
 							</p>
 						{/if}
 						{#if storeMetadata.address}
-							<p class="flex items-start gap-2">
-								<MapPin class="w-4 h-4 opacity-70 mt-0.5" />
+							<p class="flex items-start gap-2 hover:text-primary transition-colors">
+								<MapPin class="w-4 h-4 text-primary mt-0.5" />
 								<a
 									href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeMetadata.address)}`}
 									target="_blank"
 									rel="noopener noreferrer"
-									class="link link-hover opacity-80 hover:opacity-100 transition-opacity"
+									class="link link-hover"
 									aria-label="Open location in Google Maps"
 								>
 									{storeMetadata.address}
@@ -953,28 +974,20 @@
 				</div>
 			</div>
 		</div>
-		<div class="border-t border-base-300">
+		<div class="border-t-2">
 			<div
-				class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 text-xs opacity-70 md:px-6"
+				class="mx-auto flex max-w-7xl flex-col sm:flex-row items-center justify-between gap-4 px-4 py-6 text-sm md:px-6"
 			>
-				<span>© {new Date().getFullYear()} KhadkaFoods. All rights reserved.</span>
-				<div class="space-x-4">
-					<a href="/privacy" class="link link-hover">Privacy</a>
-					<a href="/tos" class="link link-hover">Terms</a>
+				<span class="text-base-content/70">© {new Date().getFullYear()} <span class="font-semibold text-primary">KhadkaFoods</span>. All rights reserved.</span>
+				<div class="flex gap-6">
+					<a href="/privacy" class="link link-hover hover:text-primary transition-colors">Privacy Policy</a>
+					<a href="/tos" class="link link-hover hover:text-primary transition-colors">Terms of Service</a>
 				</div>
 			</div>
 		</div>
-		<!-- Mobile Track Order Button -->
-		<div class="border-t border-base-300 md:hidden">
-			<div class="mx-auto max-w-7xl px-4 py-4">
-				<a
-					href="/orders/lookup"
-					class="btn btn-primary btn-block flex items-center justify-center gap-2"
-				>
-					<Search class="w-4 h-4" />
-					Track Your Order
-				</a>
-			</div>
-		</div>
 	</footer>
+	
+	<!-- Global Components -->
+	<ToastContainer />
+	<StickyMobileCart />
 </div>

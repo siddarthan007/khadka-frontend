@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Pill from '$lib/components/Pill.svelte';
+	import SEO from '$lib/components/SEO.svelte';
 	let {
 		data
 	}: {
@@ -21,12 +22,15 @@
 	});
 </script>
 
+<SEO
+	title="Collections • KhadkaFoods"
+	description="Explore our carefully curated product collections at KhadkaFoods. Find themed collections of premium groceries, fresh produce, and household essentials."
+	keywords={['collections', 'product collections', 'curated products', 'groceries collections', 'household essentials', 'themed products']}
+	canonical="https://khadkafoods.com/collections"
+	ogType="website"
+/>
+
 <svelte:head>
-	<title>Collections • KhadkaFoods - Curated Product Collections</title>
-	<meta name="description" content="Explore our carefully curated product collections at KhadkaFoods. Find themed collections of premium groceries, fresh produce, and household essentials." />
-	<meta name="keywords" content="collections, product collections, curated products, groceries collections, household essentials, themed products" />
-	<meta name="robots" content="index, follow" />
-	<meta name="author" content="KhadkaFoods" />
 	<meta property="og:title" content="Collections • KhadkaFoods - Curated Product Collections" />
 	<meta property="og:description" content="Explore our carefully curated product collections at KhadkaFoods. Find themed collections of premium groceries and essentials." />
 	<meta property="og:type" content="website" />

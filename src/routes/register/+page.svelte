@@ -7,6 +7,10 @@
 	import { normalizeUSPhone } from '$lib/us';
 	import { SiGoogle } from '@icons-pack/svelte-simple-icons';
 	import { startGoogleOAuth } from '$lib/auth';
+	import { loadRecaptcha, getRecaptchaToken } from '$lib/utils/recaptcha';
+	import SEO from '$lib/components/SEO.svelte';
+	import { trackSignUp } from '$lib/utils/analytics';
+	import { logger } from '$lib/logger';
 
 	let first_name: string = $state('');
 	let last_name: string = $state('');
@@ -17,11 +21,21 @@
 	let showPassword: boolean = $state(false);
 	let errorMsg: string | null = $state(null);
 	let phone: string = $state('');
+	let recaptchaReady: boolean = $state(false);
 
 	onMount(async () => {
 		const me = await getCurrentCustomer();
 		if (me) {
 			await goto('/account');
+		}
+
+		// Load reCAPTCHA if configured
+		try {
+			await loadRecaptcha();
+			recaptchaReady = true;
+		} catch (error) {
+			// reCAPTCHA not configured, registration will work without it
+			recaptchaReady = false;
 		}
 	});
 
@@ -33,18 +47,49 @@
 			return;
 		}
 		loading = true;
-		const me = await register({
-			first_name,
-			last_name,
-			email,
-			password,
-			phone: normalizeUSPhone(phone)
-		});
-		loading = false;
-		if (me) {
-			await goto('/account');
-		} else {
-			errorMsg = 'Registration failed';
+
+		try {
+			// Execute reCAPTCHA if ready
+			let recaptchaToken: string | undefined;
+			if (recaptchaReady) {
+				recaptchaToken = await getRecaptchaToken('register');
+				
+				// Verify reCAPTCHA token server-side
+				if (recaptchaToken) {
+					const verifyResponse = await fetch('/api/verify-recaptcha', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ token: recaptchaToken, action: 'register' })
+					});
+
+					const verifyResult = await verifyResponse.json();
+					if (!verifyResult.success) {
+						errorMsg = 'Security verification failed. Please try again.';
+						loading = false;
+						return;
+					}
+				}
+			}
+
+			const me = await register({
+				first_name,
+				last_name,
+				email,
+				password,
+				phone: normalizeUSPhone(phone)
+			}, recaptchaToken);
+
+			if (me) {
+				trackSignUp('email');
+				await goto('/account');
+			} else {
+				errorMsg = 'Registration failed';
+			}
+		} catch (error) {
+			logger.error('Registration error:', error);
+			errorMsg = 'An error occurred. Please try again.';
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -53,6 +98,7 @@
 		errorMsg = null;
 		try {
 			await startGoogleOAuth('/account');
+			trackSignUp('google');
 		} catch (e) {
 			googleLoading = false;
 			errorMsg = 'Unable to start Google sign-in';
@@ -60,65 +106,58 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Register • KhadkaFoods - Create Your Account</title>
-	<meta name="description" content="Create your KhadkaFoods account to enjoy personalized shopping, order tracking, and exclusive deals on premium groceries and essentials." />
-	<meta name="keywords" content="register, sign up, create account, customer registration, join KhadkaFoods, account creation" />
-	<meta name="robots" content="noindex, nofollow" />
-	<meta name="author" content="KhadkaFoods" />
-	<meta property="og:title" content="Register • KhadkaFoods - Create Your Account" />
-	<meta property="og:description" content="Create your KhadkaFoods account to enjoy personalized shopping and exclusive deals." />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://khadkafoods.com/register" />
-	<meta property="og:image" content="/logo.png" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="Register • KhadkaFoods - Create Your Account" />
-	<meta name="twitter:description" content="Create your KhadkaFoods account to enjoy personalized shopping and exclusive deals." />
-	<meta name="twitter:image" content="/logo.png" />
-	<link rel="canonical" href="https://khadkafoods.com/register" />
-</svelte:head>
+<SEO
+	title="Register - KhadkaFoods"
+	description="Create your KhadkaFoods account to start shopping premium organic products with exclusive member benefits."
+	keywords={['register', 'sign up', 'create account', 'join', 'KhadkaFoods']}
+	canonical="https://khadkafoods.com/register"
+/>
 
-<section class="w-full py-10">
+<section class="w-full min-h-screen flex items-center justify-center py-12">
 	<div class="container mx-auto max-w-md px-4 sm:px-6 lg:px-8">
-		<h1
-			class="mb-6 bg-gradient-to-r from-secondary to-primary bg-clip-text text-3xl font-bold tracking-tight text-transparent"
-		>
-			Create account
-		</h1>
+		<div class="text-center mb-8">
+			<h1 class="mb-3 text-4xl font-black tracking-tight text-primary">
+				Join Us Today
+			</h1>
+			<p class="text-base-content/60">Create your account and start shopping</p>
+		</div>
 		<form
-			class="card border border-base-300 bg-base-100/80 shadow-xl backdrop-blur transition-all hover:shadow-2xl"
+			class="card border-2 border-base-300/50 bg-base-100 shadow-2xl backdrop-blur-sm hover:shadow-3xl transition-all duration-500 rounded-3xl"
 			onsubmit={onSubmit}
 		>
-			<div class="card-body space-y-3">
+			<div class="card-body space-y-5 p-6 sm:p-8">
 				{#if errorMsg}
-					<div class="alert alert-error">
+					<div class="alert alert-error shadow-lg rounded-xl">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
 						<span>{errorMsg}</span>
 					</div>
 				{/if}
-				<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 					<label class="form-control w-full">
-						<div class="label"><span class="label-text">First name</span></div>
+						<div class="label"><span class="label-text font-semibold">First Name</span></div>
 						<input
-							class="input-bordered input w-full input-primary"
+							class="input input-bordered input-primary w-full bg-base-100 border-2 focus:border-primary focus:outline-none transition-all rounded-xl"
 							type="text"
 							bind:value={first_name}
 							autocomplete="given-name"
+							placeholder="John"
 						/>
 					</label>
 					<label class="form-control w-full">
-						<div class="label"><span class="label-text">Last name</span></div>
+						<div class="label"><span class="label-text font-semibold">Last Name</span></div>
 						<input
-							class="input-bordered input w-full input-primary"
+							class="input input-bordered input-primary w-full bg-base-100 border-2 focus:border-primary focus:outline-none transition-all rounded-xl"
 							type="text"
 							bind:value={last_name}
 							autocomplete="family-name"
+							placeholder="Doe"
 						/>
 					</label>
 				</div>
 				<label class="form-control w-full">
-					<div class="label"><span class="label-text">Email</span></div>
+					<div class="label"><span class="label-text font-semibold">Email Address</span></div>
 					<input
-						class="input-bordered input w-full border-base-300 input-primary"
+						class="input input-bordered input-primary w-full bg-base-100 border-2 focus:border-primary focus:outline-none transition-all rounded-xl"
 						type="email"
 						placeholder="you@example.com"
 						bind:value={email}
@@ -127,9 +166,9 @@
 					/>
 				</label>
 				<label class="form-control w-full">
-					<div class="label"><span class="label-text">Mobile</span></div>
+					<div class="label"><span class="label-text font-semibold">Phone Number</span></div>
 					<input
-						class="input-bordered input w-full border-base-300 input-primary"
+						class="input input-bordered input-primary w-full bg-base-100 border-2 focus:border-primary focus:outline-none transition-all rounded-xl"
 						type="tel"
 						inputmode="numeric"
 						pattern="[0-9\-\+\(\)\s]*"
@@ -139,29 +178,35 @@
 					/>
 				</label>
 				<label class="form-control w-full">
-					<div class="label"><span class="label-text">Password</span></div>
+					<div class="label"><span class="label-text font-semibold">Password</span></div>
 					<PasswordInput bind:value={password} />
 				</label>
-				<div class="flex items-center gap-2 pt-2">
-					<Button
-						class={'btn btn-primary ' + (loading ? 'loading' : '')}
-						disabled={loading}
-						type="submit">Create account</Button
-					>
-					<a class="link" href="/login">Already have an account?</a>
-				</div>
-				<div class="divider text-sm">or</div>
 				<Button
-					class="btn w-full btn-primary"
+					class={'btn btn-primary w-full rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ' + (loading ? 'loading' : '')}
+					disabled={loading}
+					type="submit">
+					{#if loading}
+						<span class="loading loading-spinner"></span>
+					{:else}
+						Create Account
+					{/if}
+				</Button>
+				<div class="text-center text-sm text-base-content/70">
+					Already have an account? <a class="link link-hover link-primary font-semibold" href="/login">Sign in</a>
+				</div>
+				<div class="divider text-sm text-base-content/50">OR CONTINUE WITH</div>
+				<Button
+					class="btn btn-outline btn-neutral w-full rounded-xl border-2 hover:border-base-content hover:bg-base-content hover:text-base-100 transition-all duration-300 shadow-md hover:shadow-lg"
 					type="button"
 					disabled={googleLoading}
 					onclick={handleGoogleRegister}
 				>
 					{#if googleLoading}
 						<span class="loading loading-sm loading-spinner"></span>
+					{:else}
+						<span class="mr-2"><SiGoogle size={20} /></span>
+						Continue with Google
 					{/if}
-					<span class="mr-1"><SiGoogle size={18} /></span>
-					Continue with Google
 				</Button>
 			</div>
 		</form>

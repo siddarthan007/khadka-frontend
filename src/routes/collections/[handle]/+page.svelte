@@ -1,5 +1,7 @@
 <script lang="ts">
 	import ProductCard from '$lib/components/ProductCard.svelte';
+	import SEO from '$lib/components/SEO.svelte';
+	import { generateBreadcrumbStructuredData } from '$lib/seo';
 	import { cn } from '$lib/utils';
 	import { page } from '$app/state';
 
@@ -24,31 +26,25 @@
 		return p?.variants?.[0]?.id ?? null;
 	}
 
-	$effect(() => {
-		if (typeof document !== 'undefined') {
-			const c = collection as any;
-			document.title = `${c?.title ?? c?.handle ?? 'Collection'} • KhadkaFoods`;
-		}
-	});
+	const baseUrl = 'https://khadkafoods.com';
+	const breadcrumbs = [
+		{ name: 'Home', url: baseUrl },
+		{ name: 'Collections', url: `${baseUrl}/collections` },
+		{ name: collection?.title || 'Collection', url: `${baseUrl}/collections/${collection?.handle || ''}` }
+	];
+	const structuredData = [generateBreadcrumbStructuredData(breadcrumbs)];
 </script>
 
-<svelte:head>
-	<title>{collection?.title ? `${collection.title} • KhadkaFoods` : 'Collection • KhadkaFoods'}</title>
-	<meta name="description" content={collection?.description ? `${collection.description.slice(0, 150)}${collection.description.length > 150 ? '...' : ''}` : `Browse our ${collection?.title ?? 'premium'} collection of quality products at KhadkaFoods.`} />
-	<meta name="keywords" content={`collection, ${collection?.title ?? 'products'}, groceries, premium products, KhadkaFoods collections`} />
-	<meta name="robots" content="index, follow" />
-	<meta name="author" content="KhadkaFoods" />
-	<meta property="og:title" content={collection?.title ?? 'Collection'} />
-	<meta property="og:description" content={collection?.description ?? `Browse our premium collection at KhadkaFoods`} />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content={`https://khadkafoods.com/collections/${collection?.handle ?? ''}`} />
-	<meta property="og:image" content="/logo.png" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content={collection?.title ?? 'Collection'} />
-	<meta name="twitter:description" content={collection?.description ?? `Browse our premium collection at KhadkaFoods`} />
-	<meta name="twitter:image" content="/logo.png" />
-	<link rel="canonical" href={`https://khadkafoods.com/collections/${collection?.handle ?? ''}`} />
-</svelte:head>
+{#if collection}
+	<SEO
+		title={`${collection.title} - KhadkaFoods`}
+		description={collection.description || `Browse our ${collection.title} collection of quality products at KhadkaFoods.`}
+		keywords={['collection', collection.title, 'groceries', 'premium products', 'KhadkaFoods']}
+		canonical={`${baseUrl}/collections/${collection.handle}`}
+		ogImage={`${baseUrl}/logo.png`}
+		structuredData={structuredData}
+	/>
+{/if}
 
 {#key collection?.id ?? collection?.handle ?? 'unknown'}
 	<section class="w-full py-8">

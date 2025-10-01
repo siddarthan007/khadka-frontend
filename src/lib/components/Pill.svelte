@@ -4,18 +4,27 @@
 
 	type Thumbnail = { src: string; alt?: string };
 
-	export let label: string;
-	export let href: string = '#';
-	export let emoji: string | null = null;
-	export let thumbnail: Thumbnail | null = null;
-	export let className: string = '';
-	export { className as class };
-
-	export let size: 'sm' | 'md' | 'lg' | 'xl' = 'md';
-
-	export let gradientSize: number = 200;
-	export let gradientColor: string = 'rgba(134,120,249,0.35)';
-	export let gradientOpacity: number = 0.6;
+	let {
+		label,
+		href = '#',
+		emoji = null,
+		thumbnail = null,
+		class: className = '',
+		size = 'md',
+		gradientSize = 200,
+		gradientColor = 'rgba(134,120,249,0.35)',
+		gradientOpacity = 0.6
+	}: {
+		label: string;
+		href?: string;
+		emoji?: string | null;
+		thumbnail?: Thumbnail | null;
+		class?: string;
+		size?: 'sm' | 'md' | 'lg' | 'xl';
+		gradientSize?: number;
+		gradientColor?: string;
+		gradientOpacity?: number;
+	} = $props();
 
 	let gradSize = useMotionValue(gradientSize);
 	let gradColor = useMotionValue(gradientColor);
@@ -32,6 +41,14 @@
 		mouseX.set(-gradientSize);
 		mouseY.set(-gradientSize);
 	}
+
+	// Cleanup motion values with $effect instead of onDestroy
+	$effect(() => {
+		return () => {
+			mouseX.set(-gradientSize);
+			mouseY.set(-gradientSize);
+		};
+	});
 
 	const sizeClass = () => {
 		switch (size) {
@@ -67,8 +84,8 @@
 		<div
 			role="button"
 			tabindex="0"
-			on:mousemove={handleMouseMove}
-			on:mouseleave={handleMouseLeave}
+			onmousemove={handleMouseMove}
+			onmouseleave={handleMouseLeave}
 			class={cn(
 				'relative grid place-items-center overflow-hidden rounded-full border bg-base-100/80 text-base-content/90 shadow-xl backdrop-blur transition-all duration-300 supports-[backdrop-filter]:bg-base-100/70',
 				'group-hover:scale-105 group-hover:shadow-2xl hover:border-primary/40',

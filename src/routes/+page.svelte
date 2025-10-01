@@ -3,6 +3,9 @@
 	import Pill from '$lib/components/Pill.svelte';
 	import LabeledSeparator from '$lib/components/LabeledSeparator.svelte';
 	import ProductCard from '$lib/components/ProductCard.svelte';
+	import SEO from '$lib/components/SEO.svelte';
+	import { generateOrganizationStructuredData, generateWebsiteStructuredData } from '$lib/seo';
+	
 	let {
 		data
 	}: {
@@ -20,47 +23,57 @@
 	let products: any[] = $state((data?.initialProducts ?? []).slice(0, 16));
 	let totalCount: number = $state(data?.initialCount ?? products.length);
 
-	$effect(() => {
-		if (typeof document !== 'undefined') {
-			document.title = 'KhadkaFoods';
-		}
-	});
+	const baseUrl = 'https://khadkafoods.com';
+	
+	// Combine organization and website structured data
+	const structuredData = [
+		generateOrganizationStructuredData({
+			name: 'KhadkaFoods',
+			url: baseUrl,
+			logo: `${baseUrl}/logo.png`,
+			socialLinks: []
+		}),
+		generateWebsiteStructuredData({
+			name: 'KhadkaFoods',
+			url: baseUrl,
+			searchUrl: `${baseUrl}/products`
+		})
+	];
 </script>
 
-<svelte:head>
-	<title>KhadkaFoods - Premium Quality Products & Fresh Groceries</title>
-	<meta name="description" content="Discover premium quality products and fresh groceries at KhadkaFoods. Shop our curated collection of groceries, fresh produce, and household essentials with fast delivery." />
-	<meta name="keywords" content="groceries, fresh produce, household essentials, online grocery store, premium products, food delivery" />
-	<meta name="robots" content="index, follow" />
-	<meta name="author" content="KhadkaFoods" />
-	<meta property="og:title" content="KhadkaFoods - Premium Quality Products & Fresh Groceries" />
-	<meta property="og:description" content="Discover premium quality products and fresh groceries at KhadkaFoods. Shop our curated collection with fast delivery." />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://khadkafoods.com" />
-	<meta property="og:image" content="/logo.png" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="KhadkaFoods - Premium Quality Products & Fresh Groceries" />
-	<meta name="twitter:description" content="Discover premium quality products and fresh groceries at KhadkaFoods. Shop our curated collection with fast delivery." />
-	<meta name="twitter:image" content="/logo.png" />
-	<link rel="canonical" href="https://khadkafoods.com" />
-</svelte:head>
+<SEO
+	title="KhadkaFoods - Premium Quality Products & Fresh Groceries"
+	description="Discover premium quality products and fresh groceries at KhadkaFoods. Shop our curated collection of groceries, fresh produce, and household essentials with fast delivery."
+	keywords={['groceries', 'fresh produce', 'household essentials', 'online grocery store', 'premium products', 'food delivery', 'KhadkaFoods']}
+	canonical={baseUrl}
+	ogImage={`${baseUrl}/logo.png`}
+	ogType="website"
+	structuredData={structuredData}
+/>
 
-<!-- Full-width carousel on the homepage -->
-<section class="w-full py-4 sm:py-6">
+<!-- Full-width carousel touching the sides -->
+<section class="w-full py-4 sm:py-8">
 	<HeroCarousel {slides} />
 </section>
 
-<LabeledSeparator gradient class="my-10" />
+<LabeledSeparator gradient class="my-12" />
 
 <!-- Shop by Countries -->
 {#if collections.length > 0}
-	<section aria-labelledby="countries-heading" class="w-full py-6 sm:py-14">
+	<section aria-labelledby="countries-heading" class="w-full py-8 sm:py-16">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
-			<header class="mb-6 flex items-end justify-between">
-				<h2 id="countries-heading" class="text-2xl font-bold tracking-tight">Shop by countries</h2>
-				<a class="btn btn-outline btn-sm btn-primary" href="/collections">View all →</a>
+			<header class="mb-8 flex items-end justify-between">
+				<div>
+					<h2 id="countries-heading" class="text-3xl sm:text-4xl font-extrabold tracking-tight text-primary">
+						Shop by Countries
+					</h2>
+					<p class="mt-2 text-base-content/60">Explore authentic flavors from around the world</p>
+				</div>
+				<a class="btn btn-outline btn-primary rounded-xl shadow-md hover:shadow-lg transition-all duration-300" href="/collections">
+					View all →
+				</a>
 			</header>
-			<div class="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+			<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 				{#each collections as c}
 					<Pill
 						href={`/collections/${c.handle}`}
@@ -74,19 +87,24 @@
 	</section>
 {/if}
 
-<LabeledSeparator gradient class="my-10" />
+<LabeledSeparator gradient class="my-12" />
 
 <!-- Shop by Categories -->
 {#if categories.length > 0}
-	<section aria-labelledby="categories-heading" class="w-full py-6 sm:py-14">
+	<section aria-labelledby="categories-heading" class="w-full py-8 sm:py-16">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
-			<header class="mb-6 flex items-end justify-between">
-				<h2 id="categories-heading" class="text-2xl font-bold tracking-tight">
-					Shop by categories
-				</h2>
-				<a class="btn btn-outline btn-sm btn-primary" href="/categories">View all →</a>
+			<header class="mb-8 flex items-end justify-between">
+				<div>
+					<h2 id="categories-heading" class="text-3xl sm:text-4xl font-extrabold tracking-tight text-primary">
+						Shop by Categories
+					</h2>
+					<p class="mt-2 text-base-content/60">Find exactly what you're looking for</p>
+				</div>
+				<a class="btn btn-outline btn-primary rounded-xl shadow-md hover:shadow-lg transition-all duration-300" href="/categories">
+					View all →
+				</a>
 			</header>
-			<div class="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4">
+			<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 				{#each categories as c}
 					<Pill
 						size="xl"
@@ -101,16 +119,23 @@
 	</section>
 {/if}
 
-<LabeledSeparator gradient class="my-10" />
+<LabeledSeparator gradient class="my-12" />
 
 <!-- General products -->
-<section class="w-full py-6 sm:py-14">
+<section class="w-full py-8 sm:py-16">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
-		<header class="mb-6 flex items-end justify-between">
-			<h2 class="text-2xl font-bold tracking-tight">Just for you</h2>
-			<a class="btn btn-outline btn-sm btn-primary" href="/products">View all →</a>
+		<header class="mb-8 flex items-end justify-between">
+			<div>
+				<h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-primary">
+					Just for You
+				</h2>
+				<p class="mt-2 text-base-content/60">Handpicked products we think you'll love</p>
+			</div>
+			<a class="btn btn-outline btn-primary rounded-xl shadow-md hover:shadow-lg transition-all duration-300" href="/products">
+				View all →
+			</a>
 		</header>
-		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 			{#each products as p}
 				<ProductCard
 					href={`/products/${p.handle}`}

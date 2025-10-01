@@ -1,205 +1,240 @@
 <script lang="ts">
-	import { Motion, useMotionValue, useMotionTemplate } from 'svelte-motion';
-	import { cn, formatCalculatedPrice } from '$lib/utils';
-	import { addLine, updateLine, removeLine, getCart } from '$lib/cart';
-	import { cart } from '$lib/stores/cart';
-	import { ShoppingCart } from '@lucide/svelte';
-	import { Button } from '$lib/components/ui/button';
+  import { Motion, useMotionValue, useMotionTemplate } from "svelte-motion";
+  import { cn, formatCalculatedPrice } from "$lib/utils";
+  import { addLine, updateLine, removeLine } from "$lib/cart";
+  import { cart } from "$lib/stores/cart";
+  import { ShoppingCart, Eye } from "@lucide/svelte";
+  import { onDestroy } from "svelte";
+  import { logger } from "$lib/logger";
+  import OptimizedImage from "$lib/components/OptimizedImage.svelte";
 
-	type CalculatedPrice = {
-		calculated_amount?: number;
-		amount?: number;
-		currency_code?: string;
-	} | null;
+  type CalculatedPrice = {
+    calculated_amount?: number;
+    amount?: number;
+    currency_code?: string;
+  } | null;
 
-	let {
-		title = null,
-		price = '',
-		image = '',
-		badge = null,
-		href = '#',
-		variantId = null,
-		createdAt = null,
-		gradientSize = 280,
-		gradientColor = 'rgba(134,120,249,0.45)',
-		gradientOpacity = 0.55,
-		class: className = ''
-	}: {
-		title?: string | null;
-		price?: string | CalculatedPrice;
-		image?: string;
-		badge?: string | null;
-		href?: string;
-		variantId?: string | null;
-		createdAt?: string | null;
-		gradientSize?: number;
-		gradientColor?: string;
-		gradientOpacity?: number;
-		class?: string;
-	} = $props();
+  let {
+    title = null,
+    price = "",
+    image = "",
+    badge = null,
+    href = "#",
+    variantId = null,
+    createdAt = null,
+    gradientSize = 280,
+    gradientColor = "rgba(134,120,249,0.45)",
+    gradientOpacity = 0.55,
+    class: className = "",
+    onQuickView = undefined,
+  }: {
+    title?: string | null;
+    price?: string | CalculatedPrice;
+    image?: string;
+    badge?: string | null;
+    href?: string;
+    variantId?: string | null;
+    createdAt?: string | null;
+    gradientSize?: number;
+    gradientColor?: string;
+    gradientOpacity?: number;
+    class?: string;
+    onQuickView?: (() => void) | undefined;
+  } = $props();
 
-	let gradSize = useMotionValue(gradientSize);
-	let gradColor = useMotionValue(gradientColor);
-	let mouseX = useMotionValue(-gradientSize);
-	let mouseY = useMotionValue(-gradientSize);
-	let bg = useMotionTemplate`radial-gradient(${gradSize}px circle at ${mouseX}px ${mouseY}px, ${gradColor}, transparent 100%)`;
+  let gradSize = useMotionValue(gradientSize);
+  let gradColor = useMotionValue(gradientColor);
+  let mouseX = useMotionValue(-gradientSize);
+  let mouseY = useMotionValue(-gradientSize);
+  let bg = useMotionTemplate`radial-gradient(${gradSize}px circle at ${mouseX}px ${mouseY}px, ${gradColor}, transparent 100%)`;
 
-	function handleMouseMove(e: MouseEvent) {
-		const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-		mouseX.set(e.clientX - rect.left);
-		mouseY.set(e.clientY - rect.top);
-	}
-	function handleMouseLeave() {
-		mouseX.set(-gradientSize);
-		mouseY.set(-gradientSize);
-	}
+  function handleMouseMove(e: MouseEvent) {
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    mouseX.set(e.clientX - rect.left);
+    mouseY.set(e.clientY - rect.top);
+  }
+  function handleMouseLeave() {
+    mouseX.set(-gradientSize);
+    mouseY.set(-gradientSize);
+  }
 
-	function formatPrice(p: string | CalculatedPrice): string {
-		if (typeof p === 'string') return p;
-		return formatCalculatedPrice(p);
-	}
+  // Cleanup motion values on component destroy to prevent memory leaks
+  onDestroy(() => {
+    // Motion values don't have explicit destroy method, but we can help GC
+    // by setting them to initial values
+    mouseX.set(-gradientSize);
+    mouseY.set(-gradientSize);
+  });
 
-	const isNew = $derived(() => {
-		if (!createdAt) return false;
-		const created = new Date(createdAt).getTime();
-		if (Number.isNaN(created)) return false;
-		const now = Date.now();
-		const fifteenDaysMs = 15 * 24 * 60 * 60 * 1000;
-		return now - created <= fifteenDaysMs;
-	});
+  function formatPrice(p: string | CalculatedPrice): string {
+    if (typeof p === "string") return p;
+    return formatCalculatedPrice(p);
+  }
 
-	// Reactive quantity getter that updates when cart changes - fixed for proper reactivity
-	let currentQty = $derived(() => {
-		if (!$cart?.items || !variantId) return 0;
-		const item = $cart.items.find((i: any) => i?.variant_id === variantId);
-		return item?.quantity ?? 0;
-	});
+  const isNew = $derived(() => {
+    if (!createdAt) return false;
+    const created = new Date(createdAt).getTime();
+    if (Number.isNaN(created)) return false;
+    const now = Date.now();
+    const fifteenDaysMs = 15 * 24 * 60 * 60 * 1000;
+    return now - created <= fifteenDaysMs;
+  });
 
-	// Loading state for better UX and preventing double-clicks
-	let isUpdating = $state(false);
+  // Reactive quantity getter that updates when cart changes - fixed for proper reactivity
+  let currentQty = $derived(() => {
+    if (!$cart?.items || !variantId) return 0;
+    const item = $cart.items.find((i: any) => i?.variant_id === variantId);
+    return item?.quantity ?? 0;
+  });
 
-	async function onAddToCart() {
-		if (!variantId || isUpdating) return;
+  // Loading state for better UX and preventing double-clicks
+  let isUpdating = $state(false);
 
-		isUpdating = true;
-		try {
-			await addLine(variantId, 1);
-			await getCart();
-			const m = await import('$lib/stores/toast');
-			m.showToast('Added to cart', { type: 'success' });
-		} catch (error) {
-			console.error('Failed to add to cart:', error);
-			const m = await import('$lib/stores/toast');
-			m.showToast('Failed to add to cart', { type: 'error' });
-		} finally {
-			isUpdating = false;
-		}
-	}
+  async function onAddToCart() {
+    if (!variantId || isUpdating) return;
 
-	async function onInc() {
-		if (!variantId || !$cart?.items || isUpdating) return;
+    isUpdating = true;
+    try {
+      await addLine(variantId, 1);
+      const m = await import('$lib/stores/toast');
+      m.showToast('Added to cart', { type: 'success' });
+    } catch (error) {
+      logger.error('Failed to add to cart:', error);
+      const m = await import('$lib/stores/toast');
+      m.showToast('Failed to add to cart', { type: 'error' });
+    } finally {
+      isUpdating = false;
+    }
+  }
 
-		const item = $cart.items.find((i: any) => i?.variant_id === variantId);
-		if (!item) return;
+  async function onInc() {
+    if (!variantId || !$cart?.items || isUpdating) return;
 
-		isUpdating = true;
-		try {
-			await updateLine(item.id, (item.quantity ?? 0) + 1);
-			await getCart();
-		} catch (error) {
-			console.error('Failed to update cart:', error);
-		} finally {
-			isUpdating = false;
-		}
-	}
+    const item = $cart.items.find((i: any) => i?.variant_id === variantId);
+    if (!item) return;
 
-	async function onDec() {
-		if (!variantId || !$cart?.items || isUpdating) return;
+    isUpdating = true;
+    try {
+      await updateLine(item.id, (item.quantity ?? 0) + 1);
+    } catch (error) {
+      logger.error("Failed to update cart:", error);
+    } finally {
+      isUpdating = false;
+    }
+  }
 
-		const item = $cart.items.find((i: any) => i?.variant_id === variantId);
-		if (!item) return;
+  async function onDec() {
+    if (!variantId || !$cart?.items || isUpdating) return;
 
-		isUpdating = true;
-		try {
-			if ((item.quantity ?? 0) > 1) {
-				await updateLine(item.id, item.quantity - 1);
-			} else {
-				await removeLine(item.id);
-			}
-			await getCart();
-		} catch (error) {
-			console.error('Failed to update cart:', error);
-		} finally {
-			isUpdating = false;
-		}
-	}
+    const item = $cart.items.find((i: any) => i?.variant_id === variantId);
+    if (!item) return;
 
-	const displayTitle = title ?? 'Untitled';
+    isUpdating = true;
+    try {
+      if ((item.quantity ?? 0) > 1) {
+        await updateLine(item.id, item.quantity - 1);
+      } else {
+        await removeLine(item.id);
+      }
+    } catch (error) {
+      logger.error("Failed to update cart:", error);
+    } finally {
+      isUpdating = false;
+    }
+  }
+
+  const displayTitle = title ?? "Untitled";
 </script>
 
 <div
-	role="group"
-	onmousemove={handleMouseMove}
-	onmouseleave={handleMouseLeave}
-	class={cn(
-		'group card relative overflow-hidden rounded-2xl border border-base-300/60 bg-base-100 shadow-xl ring-1 ring-black/5 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl',
-		className
-	)}
+  role="group"
+  onmousemove={handleMouseMove}
+  onmouseleave={handleMouseLeave}
+  class={cn(
+    "group card relative overflow-hidden rounded-2xl border-2 border-base-300/50 bg-base-100 shadow-lg ring-1 ring-black/5 transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:-translate-y-1",
+    className,
+  )}
 >
-	<a {href} class="relative block aspect-[4/3] overflow-hidden">
-		<img
+	<a {href} class="relative block aspect-square overflow-hidden bg-base-200">
+		<OptimizedImage
 			src={image}
 			alt={displayTitle}
+			width={400}
+			height={400}
 			loading="lazy"
-			decoding="async"
-			class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+			class="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
 		/>
 		{#if badge ?? isNew()}
 			<span
-				class="absolute top-2 left-2 badge rounded-full badge-sm px-2.5 py-0.5 text-primary-content shadow badge-primary"
+				class="absolute top-2 right-2 badge badge-primary rounded-full badge-sm px-3 py-1.5 text-xs font-bold text-primary-content shadow-lg animate-pulse"
 			>NEW</span
 			>
 		{/if}
 	</a>
-	<div class="space-y-3 p-3 sm:space-y-2 sm:p-4">
-		<a {href} class="line-clamp-2 block leading-tight font-semibold hover:underline text-sm sm:text-base"
+	<div class="space-y-3 p-3 sm:p-4">
+		<a {href} class="line-clamp-2 block leading-tight font-bold hover:text-primary transition-colors text-sm sm:text-base"
 			>{displayTitle}</a
 		>
-		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-			<span class="text-base font-bold sm:text-lg">{formatPrice(price)}</span>
+		<span class="text-lg font-extrabold text-primary block">{formatPrice(price)}</span>
+		<div class="flex flex-col gap-2">
 			{#if currentQty() > 0}
-				<div class="join h-9 overflow-hidden rounded-full border border-base-300 sm:h-8">
-					<Button
-						variant="ghost"
-						size="sm"
-						class="join-item btn-sm"
+				<div class="join h-9 sm:h-10 overflow-hidden rounded-xl border-2 border-base-300 bg-base-100 shadow-md w-full max-w-[140px]">
+					<button
+						type="button"
+						class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
 						onclick={onDec}
-						aria-label="Decrease quantity">-</Button
+						disabled={isUpdating}
+						aria-label="Decrease quantity"
 					>
+						<span class="leading-none">−</span>
+					</button>
 					<input
-						class="pointer-events-none join-item w-10 border-0 bg-transparent text-center sm:w-12"
+						type="text"
+						class="join-item w-12 sm:w-14 border-0 bg-transparent text-center text-sm sm:text-base font-bold focus:outline-none pointer-events-none"
 						value={currentQty()}
 						readonly
 						aria-live="polite"
 						aria-label="Quantity"
 					/>
-					<Button
-						variant="ghost"
-						size="sm"
-						class="join-item btn-sm"
+					<button
+						type="button"
+						class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
 						onclick={onInc}
-						aria-label="Increase quantity">+</Button
+						disabled={isUpdating}
+						aria-label="Increase quantity"
 					>
+						<span class="leading-none">+</span>
+					</button>
 				</div>
 			{:else}
-				<button
-					class="btn rounded-full shadow-md btn-sm btn-primary hover:shadow-lg w-full sm:w-auto sm:btn-md"
-					onclick={onAddToCart}
-					disabled={!variantId}
-				>
-					<ShoppingCart class="size-4" />
-					Add to cart
-				</button>
+				<div class="flex gap-2">
+					<button
+						type="button"
+						class="btn rounded-xl shadow-md btn-primary hover:shadow-lg flex-1 h-10 min-h-[2.5rem] px-3 text-xs sm:text-sm font-bold flex items-center gap-1.5 justify-center transition-all duration-300 disabled:opacity-50"
+						onclick={onAddToCart}
+						disabled={!variantId || isUpdating}
+					>
+						{#if isUpdating}
+							<span class="loading loading-spinner loading-xs"></span>
+						{:else}
+							<ShoppingCart class="size-3.5 sm:size-4 shrink-0" />
+							<span class="truncate">Add</span>
+						{/if}
+					</button>
+					{#if onQuickView}
+						<button
+							type="button"
+							class="btn btn-square btn-outline btn-primary h-10 w-10 min-h-[2.5rem] rounded-xl hover:bg-primary hover:text-primary-content hover:border-primary transition-all duration-300"
+							onclick={(e) => {
+								e.preventDefault();
+								onQuickView?.();
+							}}
+							aria-label="Quick view"
+						>
+							<Eye class="size-4" />
+						</button>
+					{/if}
+				</div>
 			{/if}
 		</div>
 	</div>

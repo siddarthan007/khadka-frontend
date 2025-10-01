@@ -1,8 +1,13 @@
 <script lang="ts">
 	import ProductCard from '$lib/components/ProductCard.svelte';
+	import ProductGridSkeleton from '$lib/components/ProductGridSkeleton.svelte';
+	import QuickViewModal from '$lib/components/QuickViewModal.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { cn } from '$lib/utils';
 	import DoubleRange from '$lib/components/DoubleRange.svelte';
 	import { ChevronRight, SearchX } from '@lucide/svelte';
+	import SEO from '$lib/components/SEO.svelte';
+	
 	let {
 		data
 	}: {
@@ -31,6 +36,17 @@
 	const categories = data?.categories ?? [];
 	const collections = data?.collections ?? [];
 	let loading = $state(false);
+	
+	// Quick view modal state
+	let quickViewProduct: any = $state(null);
+
+	function openQuickView(product: any) {
+		quickViewProduct = product;
+	}
+
+	function closeQuickView() {
+		quickViewProduct = null;
+	}
 
 	$effect(() => {
 		if (typeof document !== 'undefined') document.title = 'Products • KhadkaFoods';
@@ -83,6 +99,14 @@
 	}
 </script>
 
+<SEO
+	title="Products • KhadkaFoods"
+	description="Browse our wide selection of premium groceries, fresh produce, and household essentials. Find quality products at great prices."
+	keywords={['products', 'groceries', 'fresh produce', 'household essentials', 'shop online']}
+	canonical="https://khadkafoods.com/products"
+	ogType="website"
+/>
+
 <svelte:head>
 	<title>All Products • KhadkaFoods - Premium Quality Groceries & Essentials</title>
 	<meta name="description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at KhadkaFoods. Find everything you need with fast delivery." />
@@ -101,30 +125,36 @@
 	<link rel="canonical" href="https://khadkafoods.com/products" />
 </svelte:head>
 
-<section class="w-full py-8">
+<section class="w-full py-8 min-h-screen">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
-		<header class="mb-6 flex items-end justify-between">
+		<header class="mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
 			<div>
-				<h1 class="text-3xl font-bold tracking-tight">Products</h1>
-				<p class="mt-1 text-base-content/70">{count} results</p>
+				<h1 class="text-4xl font-extrabold tracking-tight text-primary">All Products</h1>
+				<p class="mt-2 text-base-content/60">{count} {count === 1 ? 'product' : 'products'} found</p>
 			</div>
-			<form onsubmit={() => applyFilters(true)} class="join">
+			<form onsubmit={() => applyFilters(true)} class="join shadow-md w-full sm:w-auto rounded-xl">
 				<input
 					type="text"
 					name="q"
-					placeholder="Search products"
+					placeholder="Search products..."
 					bind:value={q}
-					class="input-bordered input join-item input-primary"
+					class="input input-bordered join-item input-primary border-2 bg-base-100 focus:border-primary transition-all rounded-l-xl w-full sm:w-64"
 				/>
-				<button class="btn join-item btn-primary" type="submit">Search</button>
+				<button class="btn join-item btn-primary rounded-r-xl" type="submit">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+					Search
+				</button>
 			</form>
 		</header>
 
-		<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
 			<aside class="lg:col-span-3">
-				<div class="card border border-base-300 bg-base-100 shadow-xl">
-					<div class="card-body space-y-4">
-						<h2 class="card-title text-lg">Filters</h2>
+				<div class="card border-2 border-base-300/50 bg-base-100 shadow-xl rounded-3xl sticky top-24">
+					<div class="card-body space-y-6 p-6">
+						<h2 class="card-title text-xl font-bold flex items-center gap-2">
+							<svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+							Filters
+						</h2>
 						<div>
 							<div class="mb-2 text-sm font-medium">Categories</div>
 							<!-- Tree UI -->
@@ -229,27 +259,44 @@
 								/>
 							</div>
 						</div>
-						<div class="flex gap-2 pt-2">
+						<div class="flex gap-2 pt-4">
 							<button
-								class="btn btn-sm btn-primary"
+								class="btn btn-sm btn-primary flex-1 rounded-xl shadow-md hover:shadow-lg transition-all"
 								onclick={() => applyFilters(true)}
 								disabled={loading}
-								class:loading>Apply</button
-							>
-							<button class="btn btn-ghost btn-sm" onclick={resetFilters}>Reset</button>
+								class:loading>
+								{#if loading}
+									<span class="loading loading-spinner loading-xs"></span>
+								{/if}
+								Apply
+							</button>
+							<button class="btn btn-ghost btn-sm rounded-xl" onclick={resetFilters}>Reset</button>
 						</div>
 					</div>
 				</div>
 			</aside>
 
 			<div class="lg:col-span-9">
-				{#if products.length === 0}
-					<div class="flex flex-col items-center justify-center py-16 text-center">
-						<SearchX class="size-16 text-base-300" />
-						<p class="mt-4 text-base-content/70">No items found. Try adjusting your filters.</p>
-					</div>
+				{#if loading && products.length === 0}
+					<!-- Show skeleton on initial load -->
+					<ProductGridSkeleton count={12} />
+				{:else if products.length === 0}
+					<EmptyState
+						message="No products found"
+						icon="search"
+						description="Try adjusting your filters or search query to find what you're looking for"
+						actionText="Reset Filters"
+						actionHref="javascript:void(0)"
+						class="min-h-[500px]"
+					/>
+					<button
+						class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 mx-auto block mt-4"
+						onclick={resetFilters}
+					>
+						Reset Filters
+					</button>
 				{:else}
-					<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+					<div class="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
 						{#each products as p}
 							<ProductCard
 								href={`/products/${p.handle}`}
@@ -268,21 +315,31 @@
 									)}
 								variantId={p?.variants?.[0]?.id ?? null}
 								createdAt={p?.created_at ?? null}
+								onQuickView={() => openQuickView(p)}
 							/>
 						{/each}
 					</div>
 				{/if}
 				{#if products.length < count}
-					<div class="mt-6 flex justify-center">
+					<div class="mt-8 flex justify-center">
 						<button
-							class="btn btn-primary"
+							class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
 							onclick={() => applyFilters(false)}
 							disabled={loading}
-							class:loading>Load more</button
-						>
+							class:loading>
+							{#if loading}
+								<span class="loading loading-spinner"></span>
+							{/if}
+							Load more
+						</button>
 					</div>
 				{/if}
 			</div>
 		</div>
 	</div>
 </section>
+
+<!-- Quick View Modal -->
+{#if quickViewProduct}
+	<QuickViewModal product={quickViewProduct} onClose={closeQuickView} />
+{/if}

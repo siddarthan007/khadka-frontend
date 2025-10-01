@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import PasswordInput from '$lib/components/ui/password-input.svelte';
+	import SEO from '$lib/components/SEO.svelte';
 
 	let password: string = $state('');
 	let confirmPassword: string = $state('');
@@ -46,28 +47,17 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Set New Password • KhadkaFoods - Complete Password Reset</title>
-	<meta name="description" content="Complete your password reset at KhadkaFoods. Set a new secure password for your account." />
-	<meta name="keywords" content="set password, new password, password reset, account security, password change" />
-	<meta name="robots" content="noindex, nofollow" />
-	<meta name="author" content="KhadkaFoods" />
-	<meta property="og:title" content="Set New Password • KhadkaFoods - Complete Password Reset" />
-	<meta property="og:description" content="Complete your password reset at KhadkaFoods. Set a new secure password for your account." />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://khadkafoods.com/reset-password" />
-	<meta property="og:image" content="/logo.png" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="Set New Password • KhadkaFoods - Complete Password Reset" />
-	<meta name="twitter:description" content="Complete your password reset at KhadkaFoods. Set a new secure password for your account." />
-	<meta name="twitter:image" content="/logo.png" />
-	<link rel="canonical" href="https://khadkafoods.com/reset-password" />
-</svelte:head>
+<SEO
+	title="Set New Password - KhadkaFoods"
+	description="Set a new password for your KhadkaFoods account."
+	keywords={['reset password', 'new password', 'change password', 'KhadkaFoods']}
+	canonical="https://khadkafoods.com/reset-password"
+/>
 
 <section class="w-full py-10">
 	<div class="container mx-auto max-w-md px-4 sm:px-6 lg:px-8">
 		<h1 class="mb-6 text-3xl font-bold tracking-tight">Set new password</h1>
-		<form class="card border border-base-300 bg-base-100 shadow-xl" onsubmit={onSubmit}>
+		<form class="card border-2 border-base-300/50 bg-base-100 shadow-xl rounded-3xl" onsubmit={onSubmit}>
 			<div class="card-body space-y-3">
 				{#if errorMsg}
 					<div class="alert alert-error"><span>{errorMsg}</span></div>

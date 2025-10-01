@@ -3,16 +3,29 @@
 	import { createSlider, melt } from '@melt-ui/svelte';
 	import { formatCurrency } from '$lib/utils';
 
-	export let min = 0;
-	export let max = 100;
-	export let step = 1;
-	export let value: [number, number] = [0, 100];
-	export const prefix = '$';
-	export let minGap = 0;
-	export let currency: string | undefined = undefined;
-	export let locale: string | undefined = undefined;
-	export let onInput: ((v: [number, number]) => void) | undefined;
-	export let onChange: ((v: [number, number]) => void) | undefined;
+	let {
+		min = 0,
+		max = 100,
+		step = 1,
+		value = $bindable([0, 100] as [number, number]),
+		prefix = '$',
+		minGap = 0,
+		currency = undefined,
+		locale = undefined,
+		onInput = undefined,
+		onChange = undefined
+	}: {
+		min?: number;
+		max?: number;
+		step?: number;
+		value?: [number, number];
+		prefix?: string;
+		minGap?: number;
+		currency?: string | undefined;
+		locale?: string | undefined;
+		onInput?: ((v: [number, number]) => void) | undefined;
+		onChange?: ((v: [number, number]) => void) | undefined;
+	} = $props();
 
 	const storeValue: Writable<[number, number]> = writable(value);
 
@@ -41,13 +54,15 @@
 		states: { value: sliderValue }
 	} = slider;
 
-	// Keep internal store in sync with external prop
-	$: if (Array.isArray(value) && value.length === 2) {
-		storeValue.update((curr) => (JSON.stringify(curr) !== JSON.stringify(value) ? value : curr));
-	}
+	// Keep internal store in sync with external prop using $effect
+	$effect(() => {
+		if (Array.isArray(value) && value.length === 2) {
+			storeValue.update((curr) => (JSON.stringify(curr) !== JSON.stringify(value) ? value : curr));
+		}
+	});
 
 	// Guarantee two thumbs; if a single value sneaks in, expand to a range
-	$: {
+	$effect(() => {
 		const v = $sliderValue as unknown as number[];
 		if (Array.isArray(v) && v.length < 2) {
 			const lo = typeof v[0] === 'number' ? v[0] : min;
@@ -55,10 +70,10 @@
 			const next: [number, number] = [lo, hi];
 			storeValue.update((curr) => (JSON.stringify(curr) !== JSON.stringify(next) ? next : curr));
 		}
-	}
+	});
 
 	// Enforce minimum gap between thumbs (in major units)
-	$: {
+	$effect(() => {
 		const v = $sliderValue as unknown as [number, number];
 		if (minGap > 0 && Array.isArray(v) && v[0] + minGap > v[1]) {
 			storeValue.update(([lo, hi]) => {
@@ -66,7 +81,7 @@
 				return [lo, newHi] as [number, number];
 			});
 		}
-	}
+	});
 
 	function fmt(v: number) {
 		return formatCurrency(v, currency, locale);

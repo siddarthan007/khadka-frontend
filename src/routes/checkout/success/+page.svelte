@@ -6,6 +6,9 @@
   import { formatCurrency } from '$lib/utils';
   import type { HttpTypes } from '@medusajs/types';
   import { goto } from '$app/navigation';
+  import SEO from '$lib/components/SEO.svelte';
+  import { logger } from '$lib/logger';
+  import { trackPurchase, formatCartItemsForAnalytics } from '$lib/utils/analytics';
 
   let message: string = $state('Thanks! If your payment was successful, your order details are below.');
   let latestOrder: HttpTypes.StoreOrder | null = $state(null);
@@ -26,13 +29,30 @@
     try { await getCart(); } catch {}
 
     // Clear the cart after successful order placement
-    try { await clearCart(); } catch (e) { console.warn('Failed to clear cart:', e); }
+    try { await clearCart(); } catch (e) { logger.warn('Failed to clear cart:', e); }
 
     // Try loading the latest order for logged-in users
     try {
       const resp = (await listOrders?.({ limit: 1, order: '-created_at' })) as any;
       const orders = resp?.orders ?? [];
       latestOrder = orders?.[0] ?? null;
+      
+      // Track purchase event for analytics
+      if (latestOrder) {
+        try {
+          const items = formatCartItemsForAnalytics(latestOrder.items || []);
+          trackPurchase(
+            latestOrder.id,
+            (latestOrder.total || 0) / 100,
+            latestOrder.currency_code?.toUpperCase() || 'USD',
+            items,
+            (latestOrder.shipping_total || 0) / 100,
+            (latestOrder.tax_total || 0) / 100
+          );
+        } catch (err) {
+          logger.warn('Analytics tracking failed:', err);
+        }
+      }
     } catch {}
 
     // Optional confetti
@@ -43,6 +63,17 @@
     } catch {}
   });
 </script>
+
+<SEO
+  title="Order Confirmed • KhadkaFoods"
+  description="Thank you for your order! Your payment has been processed successfully."
+  canonical="https://khadkafoods.com/checkout/success"
+  ogType="website"
+/>
+
+<svelte:head>
+  <meta name="robots" content="noindex, nofollow" />
+</svelte:head>
 
 <section class="w-full py-16">
   <div class="container mx-auto max-w-lg px-4 text-center">

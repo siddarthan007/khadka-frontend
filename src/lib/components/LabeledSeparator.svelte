@@ -1,12 +1,21 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
+	import type { Snippet } from 'svelte';
 
-	export let gradient: boolean = false;
-	export let className: any = '';
-	export { className as class };
+	let {
+		gradient = false,
+		class: className = '',
+		label,
+		children
+	}: {
+		gradient?: boolean;
+		class?: string;
+		label?: Snippet;
+		children?: Snippet;
+	} = $props();
 </script>
 
-{#if $$slots.label}
+{#if label}
 	<div class="flex w-full items-center">
 		<div
 			class={cn(
@@ -20,7 +29,7 @@
 		<div
 			class="mx-3 w-fit text-xs tracking-wider text-nowrap text-gray-600 uppercase sm:text-sm dark:text-gray-300"
 		>
-			<slot name="label"></slot>
+			{@render label()}
 		</div>
 		<div
 			class={cn(
@@ -32,16 +41,16 @@
 			)}
 		></div>
 	</div>
+{:else if children}
+	{@render children()}
 {:else}
-	<slot>
-		<div
-			class={cn(
-				'h-[1px] w-full rounded-full',
-				gradient
-					? 'bg-gradient-to-r from-transparent via-zinc-500 to-transparent dark:from-zinc-800 dark:via-zinc-200 dark:to-zinc-700'
-					: 'bg-zinc-300 dark:bg-zinc-800',
-				className
-			)}
-		></div>
-	</slot>
+	<div
+		class={cn(
+			'h-[1px] w-full rounded-full',
+			gradient
+				? 'bg-gradient-to-r from-transparent via-zinc-500 to-transparent dark:from-zinc-800 dark:via-zinc-200 dark:to-zinc-700'
+				: 'bg-zinc-300 dark:bg-zinc-800',
+			className
+		)}
+	></div>
 {/if}

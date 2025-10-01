@@ -1,6 +1,18 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
+	import SEO from '$lib/components/SEO.svelte';
 </script>
+
+<SEO
+	title="Payment Failed • KhadkaFoods"
+	description="Payment could not be processed. Please try again or use a different payment method."
+	canonical="https://khadkafoods.com/checkout/failed"
+	ogType="website"
+/>
+
+<svelte:head>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
 
 <section class="w-full py-16">
 	<div class="container mx-auto max-w-lg px-4 text-center">

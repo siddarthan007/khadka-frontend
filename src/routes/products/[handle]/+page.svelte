@@ -3,8 +3,14 @@
 	import { cart } from '$lib/stores/cart';
 	import { formatCalculatedPrice } from '$lib/utils';
 	import ProductCard from '$lib/components/ProductCard.svelte';
+	import OptimizedImage from '$lib/components/OptimizedImage.svelte';
+	import SEO from '$lib/components/SEO.svelte';
+	import { generateProductStructuredData, generateBreadcrumbStructuredData } from '$lib/seo';
 	import { ShoppingCart } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { trackViewItem } from '$lib/utils/analytics';
+	import { onMount } from 'svelte';
+	import { logger } from '$lib/logger';
 
 	let { data }: { data?: { product: any; recByCategory?: any[]; recByCollection?: any[] } } =
 		$props();
@@ -12,7 +18,9 @@
 	const recByCategory = data?.recByCategory ?? [];
 	const recByCollection = data?.recByCollection ?? [];
 	let selected: Record<string, string> = $state({});
-	let activeImage: string | null = $state(null);
+	let activeImage: string | null = $state(
+		product?.thumbnail || product?.images?.[0]?.url || null
+	);
 
 	const isNew = $derived(() => {
 		const created = product?.created_at ? new Date(product.created_at).getTime() : NaN;
@@ -21,12 +29,55 @@
 		return Date.now() - created <= fifteenDaysMs;
 	});
 
-	$effect(() => {
-		if (product?.title) {
-			if (typeof document !== 'undefined') {
-				document.title = `${product.title} • KhadkaFoods`;
+	const baseUrl = 'https://khadkafoods.com';
+	
+	// Track view_item event on mount
+	onMount(() => {
+		if (product) {
+			try {
+				const variant = selectedVariant();
+				const price = variant?.calculated_price?.calculated_amount || variant?.prices?.[0]?.amount || 0;
+				const currency = variant?.calculated_price?.currency_code || variant?.prices?.[0]?.currency_code || 'USD';
+				trackViewItem({
+					id: product.id,
+					name: product.title,
+					price: price / 100,
+					currency: currency.toUpperCase(),
+					category: product.collection?.title || product.categories?.[0]?.name,
+					brand: 'KhadkaFoods'
+				});
+			} catch (e) {
+				logger.warn('Analytics tracking failed:', e);
 			}
 		}
+	});
+	
+	// Generate structured data
+	const structuredData = $derived(() => {
+		if (!product) return [];
+		
+		const breadcrumbItems = [
+			{ name: 'Home', url: baseUrl },
+			{ name: 'Products', url: `${baseUrl}/products` },
+			{ name: product.title, url: `${baseUrl}/products/${product.handle}` }
+		];
+		
+		const variant = selectedVariant();
+		const price = variant?.calculated_price?.calculated_amount || variant?.prices?.[0]?.amount || 0;
+		const currency = variant?.calculated_price?.currency_code || variant?.prices?.[0]?.currency_code || 'USD';
+		
+		return [
+			generateProductStructuredData({
+				name: product.title,
+				description: product.description || '',
+				image: activeImage || product.thumbnail || `${baseUrl}/logo.png`,
+				price: price / 100,
+				currency: currency.toUpperCase(),
+				availability: isInStock(variant) ? 'InStock' : 'OutOfStock',
+				brand: 'KhadkaFoods'
+			}),
+			generateBreadcrumbStructuredData(breadcrumbItems)
+		];
 	});
 
 	// Initialize default selections for each option
@@ -89,7 +140,7 @@
 			const m = await import('$lib/stores/toast');
 			m.showToast('Added to cart', { type: 'success' });
 		} catch (error) {
-			console.error('Failed to add to cart:', error);
+			logger.error('Failed to add to cart:', error);
 			const m = await import('$lib/stores/toast');
 			m.showToast('Failed to add to cart', { type: 'error' });
 		} finally {
@@ -109,7 +160,7 @@
 			await updateLine(item.id, (item.quantity ?? 0) + 1);
 			await getCart();
 		} catch (error) {
-			console.error('Failed to update cart:', error);
+			logger.error('Failed to update cart:', error);
 		} finally {
 			isUpdating = false;
 		}
@@ -131,7 +182,7 @@
 			}
 			await getCart();
 		} catch (error) {
-			console.error('Failed to update cart:', error);
+			logger.error('Failed to update cart:', error);
 		} finally {
 			isUpdating = false;
 		}
@@ -145,79 +196,59 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{product?.title ? `${product.title} • KhadkaFoods` : 'Product • KhadkaFoods'}</title>
-	{#if product?.description}
-		<meta name="description" content={`${product.description.slice(0, 150)}${product.description.length > 150 ? '...' : ''}`} />
-		<meta name="keywords" content={`buy ${product.title}, ${product.title} online, groceries, fresh products, KhadkaFoods`} />
-	{/if}
-	<meta name="robots" content="index, follow" />
-	<meta name="author" content="KhadkaFoods" />
-	{#if activeImage}
-		<meta property="og:image" content={activeImage} />
-		<meta property="og:image:width" content="1200" />
-		<meta property="og:image:height" content="630" />
-		<meta name="twitter:image" content={activeImage} />
-	{:else}
-		<meta property="og:image" content="/logo.png" />
-		<meta name="twitter:image" content="/logo.png" />
-	{/if}
-	<meta property="og:title" content={product?.title ?? 'Product'} />
-	<meta property="og:description" content={product?.description?.slice(0, 150) ?? 'Premium quality product at KhadkaFoods'} />
-	<meta property="og:type" content="product" />
-	<meta property="og:url" content={`https://khadkafoods.com/products/${product?.handle ?? ''}`} />
-	<meta property="product:price:amount" content={product?.variants?.[0]?.prices?.[0]?.amount ? (product.variants[0].prices[0].amount / 100).toString() : ''} />
-	<meta property="product:price:currency" content={product?.variants?.[0]?.prices?.[0]?.currency_code ?? 'USD'} />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content={product?.title ?? 'Product'} />
-	<meta name="twitter:description" content={product?.description?.slice(0, 150) ?? 'Premium quality product at KhadkaFoods'} />
-	<link rel="canonical" href={`https://khadkafoods.com/products/${product?.handle ?? ''}`} />
-	{#if product}
-		<script type="application/ld+json">
-			{{
-				"@context": "https://schema.org",
-				"@type": "Product",
-				"name": product.title,
-				"description": product.description,
-				"image": activeImage || "/logo.png",
-				"brand": {
-					"@type": "Brand",
-					"name": "KhadkaFoods"
-				},
-				"offers": {
-					"@type": "Offer",
-					"price": product.variants?.[0]?.prices?.[0]?.amount ? (product.variants[0].prices[0].amount / 100) : 0,
-					"priceCurrency": product.variants?.[0]?.prices?.[0]?.currency_code || "USD",
-					"availability": "https://schema.org/InStock"
-				}
-			}}
-		</script>
-	{/if}
-</svelte:head>
+{#if product}
+	<SEO
+		title={`${product.title} • KhadkaFoods`}
+		description={product.description || `Buy ${product.title} at KhadkaFoods. Premium quality products with fast delivery.`}
+		keywords={[`buy ${product.title}`, `${product.title} online`, 'groceries', 'fresh products', 'KhadkaFoods']}
+		canonical={`${baseUrl}/products/${product.handle}`}
+		ogImage={activeImage || product.thumbnail || `${baseUrl}/logo.png`}
+		ogType="product"
+		structuredData={structuredData()}
+	/>
+{/if}
 
-<section class="w-full py-8">
+<section class="w-full py-12">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 		{#if product}
-			<div class="grid grid-cols-1 gap-12 lg:grid-cols-2">
+			<div class="grid grid-cols-1 gap-8 lg:gap-12 lg:grid-cols-2">
 				<!-- Product Images -->
-				<div class="space-y-4">
-					<div class="aspect-square overflow-hidden rounded-2xl border border-base-300 bg-base-200">
-						<img
-							src={activeImage ?? ''}
-							alt={product.title}
-							loading="lazy"
-							decoding="async"
-							class="h-full w-full object-cover transition-all duration-300"
-						/>
+				<div class="space-y-4 lg:space-y-6">
+					<div class="group relative aspect-square overflow-hidden rounded-3xl border-2 border-base-300/50 bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-500">
+						{#if activeImage}
+							<OptimizedImage
+								src={activeImage}
+								alt={product.title}
+								loading="eager"
+								width={800}
+								height={800}
+								class="h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
+								priority={true}
+							/>
+							<div class="absolute inset-0 bg-base-300/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+						{:else}
+							<div class="flex h-full w-full items-center justify-center bg-base-200 text-base-content/40">
+								<svg class="h-24 w-24 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+								</svg>
+							</div>
+						{/if}
 					</div>
 					{#if product.images && product.images.length > 1}
-						<div class="grid grid-cols-4 gap-2">
-							{#each product.images.slice(0, 8) as img}
+						<div class="grid grid-cols-4 gap-3">
+							{#each product.images.slice(0, 8) as img, idx}
 								<button
-									class="aspect-square cursor-pointer overflow-hidden rounded-lg border border-base-300 bg-base-200 transition-colors hover:border-primary/50"
+									class="group aspect-square cursor-pointer overflow-hidden rounded-xl border-2 transition-all duration-300 {activeImage === img.url ? 'border-primary shadow-lg scale-105' : 'border-base-300/50 hover:border-primary/50 hover:shadow-md'}"
 									onclick={() => (activeImage = img.url)}
+									style="animation-delay: {idx * 50}ms"
 								>
-									<img src={img.url} alt={product.title} class="h-full w-full object-cover" />
+									<OptimizedImage 
+										src={img.url} 
+										alt={product.title} 
+										width={200}
+										height={200}
+										class="h-full w-full object-contain transition-transform duration-300 group-hover:scale-110" 
+									/>
 								</button>
 							{/each}
 						</div>
@@ -226,42 +257,57 @@
 
 				<!-- Product Info as sticky card -->
 				<div class="h-fit lg:sticky lg:top-24">
-					<div class="card rounded-2xl border border-base-300/70 bg-base-100 shadow-xl">
-						<div class="card-body space-y-5">
-							<div class="space-y-2">
-								<h1 class="text-3xl font-bold tracking-tight lg:text-4xl">{product.title}</h1>
-								{#if product.subtitle}
-									<p class="text-base text-base-content/70">{product.subtitle}</p>
-								{/if}
-								<div class="text-2xl font-semibold text-primary">
-									{formatCalculatedPrice(
-										selectedVariant()?.calculated_price ??
-											product.variants?.[0]?.calculated_price ??
-											null
-									)}
+					<div class="card rounded-3xl border-2 border-base-300/50 bg-base-100 shadow-2xl hover:shadow-3xl transition-all duration-500 backdrop-blur-sm">
+						<div class="card-body space-y-6 p-6 lg:p-8">
+							<div class="space-y-3">
+								<div class="flex items-start justify-between gap-3">
+									<h1 class="flex-1 text-3xl font-extrabold tracking-tight lg:text-4xl text-primary">{product.title}</h1>
+									{#if isNew()}
+										<span class="badge badge-primary badge-lg rounded-full px-4 py-3 text-xs font-bold shadow-lg animate-pulse">NEW</span>
+									{/if}
 								</div>
-								{#if selectedVariant()?.sku}
-									<div class="text-xs text-base-content/60">SKU: {selectedVariant()?.sku}</div>
+								{#if product.subtitle}
+									<p class="text-base lg:text-lg text-base-content/70 leading-relaxed">{product.subtitle}</p>
 								{/if}
+								<div class="flex items-baseline gap-3 pt-2">
+									<div class="text-4xl lg:text-5xl font-black text-primary drop-shadow-sm">
+										{formatCalculatedPrice(
+											selectedVariant()?.calculated_price ??
+												product.variants?.[0]?.calculated_price ??
+												null
+										)}
+									</div>
+								</div>
+								<div class="flex flex-wrap items-center gap-2">
+									{#if selectedVariant()?.sku}
+										<div class="badge badge-outline badge-sm gap-1 font-mono">
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+											SKU: {selectedVariant()?.sku}
+										</div>
+									{/if}
+									{#if isInStock(selectedVariant())}
+										<div class="badge badge-success badge-sm gap-1.5 font-semibold px-3 py-2.5 shadow-md">
+											<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+											In Stock
+										</div>
+									{:else}
+										<div class="badge badge-error badge-sm gap-1.5 font-semibold px-3 py-2.5 shadow-md">
+											<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+											Out of Stock
+										</div>
+									{/if}
+								</div>
 							</div>
-							{#if isNew()}
-								<span
-									class="top-2 left-2 badge rounded-full badge-sm px-2.5 py-0.5 text-primary-content shadow badge-primary"
-									>NEW</span
-								>
-							{/if}
 
 							{#if (product.options?.length ?? 0) > 0}
-								<div class="space-y-4">
+								<div class="space-y-5">
 									{#each product.options as opt}
-										<div class="space-y-2">
-											<div class="text-sm font-medium text-base-content/80">{opt.title}</div>
-											<div class="flex flex-wrap gap-2">
+										<div class="space-y-3">
+											<div class="text-sm font-bold uppercase tracking-wider text-base-content/80">{opt.title}</div>
+											<div class="flex flex-wrap gap-2.5">
 												{#each opt.values ?? [] as ov}
 													<button
-														class="btn btn-md"
-														class:btn-primary={selected[opt.id!] === ov.value}
-														class:btn-outline={selected[opt.id!] !== ov.value}
+														class="btn btn-lg rounded-xl transition-all duration-300 {selected[opt.id!] === ov.value ? 'btn-primary shadow-lg scale-105' : 'btn-outline hover:scale-105'}"
 														onclick={() => (selected[opt.id!] = ov.value)}
 														aria-pressed={selected[opt.id!] === ov.value}
 														aria-label={`Select ${opt.title} ${ov.value}`}
@@ -275,20 +321,22 @@
 								</div>
 							{/if}
 
-							<div class="space-y-3">
+							<div class="divider my-2"></div>
+
+							<div class="space-y-4">
 								{#if currentQty() > 0}
-									<div class="flex items-center gap-4">
-										<div class="join overflow-hidden rounded-full border border-base-300">
+									<div class="flex flex-col sm:flex-row items-center gap-3">
+										<div class="join w-full sm:w-auto overflow-hidden rounded-2xl border-2 border-base-300 shadow-md">
 											<Button
 												variant="ghost"
 												size="lg"
-												class="join-item"
+												class="join-item text-lg font-bold"
 												onclick={decSelected}
 												disabled={isUpdating}
-												aria-label="Decrease quantity">-</Button
+												aria-label="Decrease quantity">−</Button
 											>
 											<input
-												class="pointer-events-none join-item w-16 border-0 bg-transparent text-center"
+												class="join-item w-20 border-0 bg-transparent text-center text-lg font-bold pointer-events-none"
 												value={currentQty()}
 												readonly
 												aria-live="polite"
@@ -297,53 +345,63 @@
 											<Button
 												variant="ghost"
 												size="lg"
-												class="join-item"
+												class="join-item text-lg font-bold"
 												onclick={incSelected}
 												disabled={isUpdating}
 												aria-label="Increase quantity">+</Button
 											>
 										</div>
-										<a href="/cart" class="btn btn-outline btn-sm btn-primary">View cart</a>
+										<a href="/cart" class="btn btn-outline btn-primary btn-lg rounded-xl flex-1 sm:flex-initial shadow-md hover:shadow-lg transition-all duration-300">View cart</a>
 									</div>
 								{:else}
 									<button
-										class="btn w-full btn-md btn-primary"
+										class="btn w-full btn-lg btn-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 {isUpdating ? 'loading' : ''}"
 										disabled={!selectedVariant()?.id || !isInStock(selectedVariant()) || isUpdating}
-										class:loading={isUpdating}
 										onclick={addSelected}
 										aria-label="Add to cart"
 									>
-										{#if isUpdating}{:else if !isInStock(selectedVariant())}Out of Stock{:else}
-											<ShoppingCart class="size-4" />
+										{#if isUpdating}
+											<span class="loading loading-spinner"></span>
+											Adding...
+										{:else if !isInStock(selectedVariant())}
+											Out of Stock
+										{:else}
+											<ShoppingCart class="size-5" />
 											Add to cart
 										{/if}
 									</button>
 									{#if justAdded}
-										<a href="/cart" class="btn w-full btn-outline btn-sm btn-primary">View cart</a>
+										<a href="/cart" class="btn w-full btn-outline btn-primary btn-sm rounded-xl animate-fade-in">View cart</a>
 									{/if}
 								{/if}
 							</div>
 
 							<!-- Details & Meta -->
-							<div class="space-y-4">
+							<div class="space-y-5">
 								{#if product.description}
-									<div class="space-y-2">
-										<h3 class="text-lg font-semibold">Description</h3>
-										<div class="prose prose-sm max-w-none text-base-content/80">
+									<div class="space-y-3">
+										<h3 class="text-lg font-bold flex items-center gap-2">
+											<svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+											Description
+										</h3>
+										<div class="prose prose-sm max-w-none text-base-content/80 leading-relaxed p-4 rounded-xl bg-base-200/30">
 											{product.description}
 										</div>
 									</div>
 								{/if}
 								{#if (product.categories?.length ?? 0) > 0 || product.collection || (product.tags?.length ?? 0) > 0}
-									<div class="space-y-2 pt-1">
-										<h3 class="text-lg font-semibold">Details</h3>
+									<div class="space-y-3">
+										<h3 class="text-lg font-bold flex items-center gap-2">
+											<svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+											Categories & Tags
+										</h3>
 
 										<div class="flex flex-wrap gap-2">
 											{#if (product.categories?.length ?? 0) > 0}
 												{#each product.categories as c}
 													<a
 														href={`/categories/${c.handle}`}
-														class="badge rounded-full px-3 py-2 transition-colors badge-primary hover:badge-primary"
+														class="badge badge-primary badge-lg rounded-full px-4 py-3 transition-all duration-300 hover:shadow-lg hover:scale-105"
 														>{c.name}</a
 													>
 												{/each}
@@ -351,13 +409,13 @@
 											{#if product.collection}
 												<a
 													href={`/collections/${product.collection.handle}`}
-													class="badge rounded-full px-3 py-2 badge-secondary hover:badge-secondary"
+													class="badge badge-secondary badge-lg rounded-full px-4 py-3 transition-all duration-300 hover:shadow-lg hover:scale-105"
 													>{product.collection.title}</a
 												>
 											{/if}
 											{#if (product.tags?.length ?? 0) > 0}
 												{#each product.tags as t}
-													<span class="badge rounded-full badge-outline px-3 py-2">#{t.value}</span>
+													<span class="badge badge-outline badge-lg rounded-full px-4 py-3 transition-all duration-300 hover:bg-base-200">#{t.value}</span>
 												{/each}
 											{/if}
 										</div>
@@ -370,11 +428,14 @@
 
 				<!-- Recommendations -->
 				{#if recByCategory.length + recByCollection.length > 0}
-					<div class="mt-16 space-y-10">
+					<div class="col-span-1 lg:col-span-2 mt-16 space-y-10">
 						{#if recByCategory.length > 0}
 							<div>
-								<h3 class="mb-3 text-lg font-semibold">You may also like</h3>
-								<div class="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3">
+								<h3 class="mb-6 text-2xl font-bold flex items-center gap-2">
+									<svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+									You may also like
+								</h3>
+								<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 									{#each recByCategory as p}
 										<ProductCard
 											href={`/products/${p.handle}`}
@@ -390,8 +451,11 @@
 						{/if}
 						{#if recByCollection.length > 0}
 							<div>
-								<h3 class="mb-3 text-lg font-semibold">More from this collection</h3>
-								<div class="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3">
+								<h3 class="mb-6 text-2xl font-bold flex items-center gap-2">
+									<svg class="w-6 h-6 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+									More from this collection
+								</h3>
+								<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 									{#each recByCollection as p}
 										<ProductCard
 											href={`/products/${p.handle}`}

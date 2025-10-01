@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { handleGoogleOAuthCallback } from '$lib/auth';
+  import SEO from '$lib/components/SEO.svelte';
 
   let loading: boolean = $state(true);
   let errorMsg: string | null = $state(null);
@@ -26,10 +27,16 @@
   });
 </script>
 
+<SEO 
+	title="Authenticating - KhadkaFoods"
+	description="Completing your Google authentication"
+  noindex={true}
+/>
+
 <section class="w-full py-10">
 	<div class="container mx-auto max-w-md px-4 sm:px-6 lg:px-8">
-		<div class="card border border-base-300 bg-base-100 shadow-xl">
-			<div class="card-body">
+		<div class="card border-2 border-base-300/50 bg-base-100 shadow-xl rounded-3xl">
+			<div class="card-body p-6">
 				{#if loading}
 					<div class="flex items-center justify-center p-8">
 						<div class="loading loading-lg loading-spinner text-primary"></div>

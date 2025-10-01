@@ -9,7 +9,11 @@
 		getCart,
 	} from "$lib/cart";
 	import { onMount } from "svelte";
+	import SEO from "$lib/components/SEO.svelte";
+	import EmptyState from "$lib/components/EmptyState.svelte";
 	import ProductCard from "$lib/components/ProductCard.svelte";
+	import CartSkeleton from "$lib/components/CartSkeleton.svelte";
+	import { logger } from "$lib/logger";
 	import {
 		listProducts,
 		listProductsByCategoryIds,
@@ -24,6 +28,11 @@
 	import { SiGoogle } from "@icons-pack/svelte-simple-icons";
 	import { startGoogleOAuth } from "$lib/auth";
 	import { createDialog, melt } from "@melt-ui/svelte";
+	import {
+		trackViewCart,
+		formatCartItemsForAnalytics,
+		calculateCartValue
+	} from "$lib/utils/analytics";
 
 	onMount(() => {
 		ensureCart();
@@ -32,14 +41,25 @@
 	let promo: string = $state("");
 	let applying: boolean = $state(false);
 	let recommended: any[] = $state([]);
+	let loading: boolean = $state(true);
 
 	onMount(async () => {
 		try {
 			await getCart();
 			await loadRecommendationsFromCart();
-		} catch {}
-		if (typeof document !== "undefined") {
-			document.title = "Your cart • KhadkaFoods";
+			
+			// Track view_cart event
+			if ($cart && ($cart as any).items && ($cart as any).items.length > 0) {
+				try {
+					const items = formatCartItemsForAnalytics(($cart as any).items);
+					const value = calculateCartValue($cart);
+					trackViewCart(value, ($cart as any).currency_code?.toUpperCase() || 'USD', items);
+				} catch (e) {
+					logger.warn('Analytics tracking failed:', e);
+				}
+			}
+		} catch {} finally {
+			loading = false;
 		}
 	});
 
@@ -161,17 +181,17 @@
 
 			recommended = dedup;
 		} catch (err) {
-			console.error("Failed to load recommendations", err);
+			logger.error("Failed to load recommendations", err);
 			recommended = [];
 		}
 	}
 
 	$effect(() => {
 		// Recompute recommendations when cart items change
+		// Only track item IDs and quantities to avoid unnecessary runs
 		const items = (($cart as any)?.items ?? []) as any[];
-		const _ = JSON.stringify(
-			items.map((i: any) => [i?.variant_id, i?.quantity]),
-		);
+		const itemsKey = items.map((i: any) => `${i?.variant_id ?? ''}-${i?.quantity ?? 0}`).join(',');
+		
 		if (items.length > 0) {
 			void loadRecommendationsFromCart();
 		} else {
@@ -312,139 +332,112 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Shopping Cart • KhadkaFoods - Review Your Order</title>
-	<meta
-		name="description"
-		content="Review your shopping cart at KhadkaFoods. Check your selected products, apply coupons, and proceed to checkout for fast delivery."
-	/>
-	<meta
-		name="keywords"
-		content="shopping cart, cart, checkout, order review, groceries cart, online shopping cart"
-	/>
-	<meta name="robots" content="noindex, follow" />
-	<meta name="author" content="KhadkaFoods" />
-	<meta
-		property="og:title"
-		content="Shopping Cart • KhadkaFoods - Review Your Order"
-	/>
-	<meta
-		property="og:description"
-		content="Review your shopping cart at KhadkaFoods. Check your selected products and proceed to checkout."
-	/>
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://khadkafoods.com/cart" />
-	<meta property="og:image" content="/logo.png" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta
-		name="twitter:title"
-		content="Shopping Cart • KhadkaFoods - Review Your Order"
-	/>
-	<meta
-		name="twitter:description"
-		content="Review your shopping cart at KhadkaFoods. Check your selected products and proceed to checkout."
-	/>
-	<meta name="twitter:image" content="/logo.png" />
-	<link rel="canonical" href="https://khadkafoods.com/cart" />
-</svelte:head>
+<SEO
+	title="Shopping Cart • KhadkaFoods - Review Your Order"
+	description="Review your shopping cart at KhadkaFoods. Check your selected products, apply coupons, and proceed to checkout for fast delivery."
+	keywords={["shopping cart", "cart", "checkout", "order review", "groceries cart", "online shopping cart"]}
+	canonical="https://khadkafoods.com/cart"
+	noindex={true}
+/>
 
-<section class="w-full py-10">
+<section class="w-full py-12 min-h-screen">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
-		<header class="mb-6">
-			<h1 class="text-3xl font-bold tracking-tight">Your cart</h1>
+		<header class="mb-8">
+			<h1 class="text-4xl font-extrabold tracking-tight text-primary">Your Shopping Cart</h1>
+			<p class="mt-2 text-base-content/60">Review your items and proceed to checkout</p>
 		</header>
 
-		{#if ($cart?.items?.length ?? 0) === 0}
-			<div class="p-10 text-center opacity-70">Your cart is empty.</div>
+		{#if loading}
+			<CartSkeleton />
+		{:else if ($cart?.items?.length ?? 0) === 0}
+			<EmptyState
+				message="Your cart is empty"
+				icon="cart"
+				description="Looks like you haven't added anything yet. Start exploring our products!"
+				actionText="Start Shopping"
+				actionHref="/products"
+				class="min-h-[500px]"
+			/>
 		{:else}
 			<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
-				<div class="space-y-3 lg:col-span-8">
-					{#each $cart?.items ?? [] as li}
-						<div
-							class="flex items-center gap-4 rounded-xl border border-base-300 p-3"
-						>
-							<div
-								class="relative h-16 w-16 shrink-0 overflow-hidden rounded bg-base-200"
-							>
-								{#key (li as any)?.id}
-									<img
-										src={(li as any)?.variant?.metadata
-											?.thumbnail ??
-											(li as any)?.variant?.product
-												?.thumbnail ??
-											(li as any)?.thumbnail ??
-											""}
-										alt={li.title}
-										loading="lazy"
-										decoding="async"
-										class="h-full w-full object-cover"
-									/>
-								{/key}
+				<div class="space-y-4 lg:col-span-8">
+					<div class="card bg-base-100 shadow-xl border-2 border-base-300/50 rounded-3xl">
+						<div class="card-body p-4 sm:p-6">
+							<h2 class="card-title text-xl font-bold mb-4">Cart Items ({$cart?.items?.length ?? 0})</h2>
+							<div class="space-y-3">
+								{#each $cart?.items ?? [] as li}
+									<div class="group flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl border-2 border-base-300/50 bg-base-100 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+										<!-- Left side: Image + Text -->
+										<div class="flex items-center gap-4 flex-1 min-w-0">
+											<div class="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-base-200 shadow-md group-hover:shadow-lg transition-shadow">
+												{#key (li as any)?.id}
+													<img
+														src={(li as any)?.variant?.metadata?.thumbnail ?? (li as any)?.variant?.product?.thumbnail ?? (li as any)?.thumbnail ?? ""}
+														alt={li.title}
+														loading="lazy"
+														decoding="async"
+														class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+													/>
+												{/key}
+											</div>
+											<div class="min-w-0 flex-1">
+												<div class="font-semibold text-base truncate">
+													{li.title}
+													{#if (li as any)?.variant?.title || (li as any)?.variant_title}
+														<span class="text-sm text-base-content/60">({(li as any)?.variant?.title ?? (li as any).variant_title})</span>
+													{/if}
+												</div>
+												<div class="text-sm font-medium text-primary mt-1">
+													{formatCalculatedPrice(li.variant?.calculated_price ?? null)}
+												</div>
+											</div>
+										</div>
+
+										<!-- Right side: Stepper + Price + Delete -->
+										<div class="flex items-center gap-3 sm:gap-4">
+											<div class="join h-11 overflow-hidden rounded-full border-2 border-base-300 bg-base-100 shadow-md shrink-0">
+												<button
+													type="button"
+													class="join-item h-11 w-11 flex items-center justify-center text-xl font-bold hover:bg-base-200 active:bg-base-300 transition-all"
+													aria-label="Decrease quantity"
+													onclick={() => (li.quantity ?? 1) <= 1 ? removeLine(li.id) : updateLine(li.id, (li.quantity ?? 1) - 1)}
+												>
+													<span class="leading-none">−</span>
+												</button>
+												<input
+													type="text"
+													class="join-item w-14 border-0 bg-transparent text-center text-base font-bold focus:outline-none pointer-events-none"
+													aria-live="polite"
+													aria-label="Quantity"
+													value={li.quantity ?? 1}
+													readonly
+												/>
+												<button
+													type="button"
+													class="join-item h-11 w-11 flex items-center justify-center text-xl font-bold hover:bg-base-200 active:bg-base-300 transition-all"
+													aria-label="Increase quantity"
+													onclick={() => updateLine(li.id, (li.quantity ?? 1) + 1)}
+												>
+													<span class="leading-none">+</span>
+												</button>
+											</div>
+											<div class="hidden sm:block w-24 text-right font-bold text-lg">
+												{lineTotal(li)}
+											</div>
+											<button
+												class="btn btn-ghost btn-sm h-11 w-11 min-h-[2.75rem] p-0 rounded-xl hover:bg-error/10 hover:text-error transition-all"
+												aria-label="Remove item"
+												title="Remove"
+												onclick={() => removeLine(li.id)}
+											>
+												<Trash class="size-5" />
+											</button>
+										</div>
+									</div>
+								{/each}
 							</div>
-							<div class="min-w-0 flex-1">
-								<div class="truncate font-medium">
-									{li.title}
-									{#if (li as any)?.variant?.title || (li as any)?.variant_title}<span
-											class="text-sm opacity-60"
-											>({(li as any)?.variant?.title ??
-												(li as any)
-													.variant_title})</span
-										>{/if}
-								</div>
-								<div class="text-sm opacity-70">
-									{formatCalculatedPrice(
-										li.variant?.calculated_price ?? null,
-									)}
-								</div>
-							</div>
-							<div
-								class="join h-8 overflow-hidden rounded-full border border-base-300"
-							>
-								<Button
-									variant="ghost"
-									size="sm"
-									class="join-item"
-									aria-label="Decrease quantity"
-									onclick={() =>
-										(li.quantity ?? 1) <= 1
-											? removeLine(li.id)
-											: updateLine(
-													li.id,
-													(li.quantity ?? 1) - 1,
-												)}>-</Button
-								>
-								<input
-									class="join-item w-12 border-0 bg-transparent text-center"
-									aria-live="polite"
-									aria-label="Quantity"
-									value={li.quantity ?? 1}
-									readonly
-								/>
-								<Button
-									variant="ghost"
-									size="sm"
-									class="join-item"
-									aria-label="Increase quantity"
-									onclick={() =>
-										updateLine(
-											li.id,
-											(li.quantity ?? 1) + 1,
-										)}>+</Button
-								>
-							</div>
-							<div class="w-28 text-right font-semibold">
-								{lineTotal(li)}
-							</div>
-							<button
-								class="btn btn-ghost btn-xs btn-secondary"
-								aria-label="Remove item"
-								title="Remove"
-								onclick={() => removeLine(li.id)}
-							>
-								<Trash class="size-3" />
-							</button>
 						</div>
-					{/each}
+					</div>
 
 					{#if (recommended?.length ?? 0) > 0}
 						<div class="mt-6">
@@ -452,7 +445,7 @@
 								You may also like
 							</h3>
 							<div
-								class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+								class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4"
 							>
 								{#each recommended as p}
 									<ProductCard
@@ -464,47 +457,58 @@
 										price={(p?.variants ?? [])[0]
 											?.calculated_price ?? null}
 										variantId={p?.variants?.[0]?.id ?? null}
+										class="min-w-0"
 									/>
 								{/each}
 							</div>
 						</div>
 					{/if}
 				</div>
-				<div class="h-fit space-y-3 lg:sticky lg:top-20 lg:col-span-4">
+				<div class="h-fit space-y-4 lg:sticky lg:top-20 lg:col-span-4">
 					<!-- Coupon Card -->
 					<div
-						class="card border border-base-300 bg-base-100 shadow-xl"
+						class="card border-2 border-base-300/50 bg-base-100 shadow-xl rounded-3xl"
 					>
-						<div class="card-body space-y-3">
-							<h2 class="card-title">Coupon</h2>
+						<div class="card-body space-y-4 p-6">
+							<h2 class="card-title text-xl font-bold flex items-center gap-2">
+								<svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+								Coupon Code
+							</h2>
 							<div class="join w-full">
 								<input
 									id="promo"
 									aria-label="Coupon code"
-									class="input-bordered input join-item w-full border-base-300 input-primary"
-									placeholder="Enter code"
+									class="input input-bordered join-item w-full border-2 input-primary bg-base-100 focus:border-primary transition-all rounded-l-xl"
+									placeholder="Enter coupon code"
 									bind:value={promo}
 								/>
 								<button
-									class="btn join-item btn-primary"
+									class="btn join-item btn-primary rounded-r-xl px-6"
 									class:loading={applying}
 									onclick={onApplyCoupon}
 									disabled={applying ||
-										promo.trim().length === 0}>Apply</button
+										promo.trim().length === 0}>
+									{#if applying}
+										<span class="loading loading-spinner loading-sm"></span>
+									{:else}
+										Apply
+									{/if}
+								</button
 								>
 							</div>
 							{#if couponCodes().length > 0}
 								<div class="mt-2 flex flex-wrap gap-2">
 									{#each couponCodes() as code}
 										<span
-											class="badge flex items-center gap-1 rounded-full px-2.5 py-1 badge-success"
+											class="badge flex items-center gap-2 rounded-full px-3 py-3 badge-success shadow-md font-semibold whitespace-nowrap"
 										>
+											<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
 											<span
-												class="max-w-[8rem] truncate text-sm"
+												class="max-w-[8rem] truncate text-xs font-bold leading-none"
 												>{code}</span
 											>
 											<button
-												class="btn h-5 min-h-[1.25rem] px-1 text-current btn-ghost btn-xs btn-secondary"
+												class="btn h-5 min-h-[1.25rem] px-1.5 text-current btn-ghost btn-xs hover:bg-success-content/20 rounded-full transition-all"
 												aria-label="Remove coupon"
 												title="Remove"
 												onclick={() =>
@@ -521,50 +525,61 @@
 
 					<!-- Order Summary Card -->
 					<div
-						class="card border border-base-300 bg-base-100 shadow-xl"
+						class="card border-2 border-base-300/50 bg-base-100 shadow-xl rounded-3xl"
 					>
-						<div class="card-body space-y-3">
-							<h2 class="card-title">Order Summary</h2>
-							<div
-								class="flex items-center justify-between text-sm"
-							>
-								<span>Items</span>
-								<span>{$cart?.items?.length ?? 0}</span>
-							</div>
-							<div class="flex items-center justify-between">
-								<span class="opacity-70">Subtotal</span>
-								<span class="font-medium">{cartSubtotal()}</span
-								>
-							</div>
-							{#if discountMinor() > 0}
+						<div class="card-body space-y-4 p-6">
+							<h2 class="card-title text-xl font-bold flex items-center gap-2">
+								<svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+								Order Summary
+							</h2>
+							<div class="bg-base-200/30 rounded-xl p-4 space-y-3">
 								<div
-									class="flex items-center justify-between text-sm text-success"
+									class="flex items-center justify-between text-sm"
 								>
-									<span>Discount</span>
-									<span>-{cartDiscount()}</span>
+									<span class="flex items-center gap-2 text-base-content/70">
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+										Items
+									</span>
+									<span class="font-bold">{$cart?.items?.length ?? 0}</span>
 								</div>
-							{/if}
-							<div class="flex items-center justify-between">
-								<span class="opacity-70">Estimated tax</span>
-								<span class="font-medium">{cartTax()}</span>
-							</div>
-							{#if shippingMinor() > 0}
+								<div class="divider my-0"></div>
 								<div class="flex items-center justify-between">
-									<span class="opacity-70">Shipping</span>
-									<span class="font-medium"
-										>{cartShipping()}</span
+									<span class="text-base-content/70">Subtotal</span>
+									<span class="font-semibold">{cartSubtotal()}</span
 									>
 								</div>
-							{/if}
+								{#if discountMinor() > 0}
+									<div
+										class="flex items-center justify-between text-sm bg-success/10 rounded-lg p-2 -mx-2"
+									>
+										<span class="flex items-center gap-1.5 text-success font-medium">
+											<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+											Discount
+										</span>
+										<span class="font-bold text-success">-{cartDiscount()}</span>
+									</div>
+								{/if}
+								<div class="flex items-center justify-between">
+									<span class="text-base-content/70">Estimated tax</span>
+									<span class="font-semibold">{cartTax()}</span>
+								</div>
+								{#if shippingMinor() > 0}
+									<div class="flex items-center justify-between">
+										<span class="text-base-content/70">Shipping</span>
+										<span class="font-semibold"
+											>{cartShipping()}</span
+										>
+									</div>
+								{/if}
+							</div>
 							<div class="divider my-1"></div>
 							<div
-								class="flex items-center justify-between text-lg"
-							>
-								<span class="font-semibold">Total</span>
-								<span class="font-bold">
+								class="flex items-center justify-between text-xl bg-primary/10 rounded-xl p-4">
+								<span class="font-bold">Total</span>
+								<span class="font-extrabold text-primary">
 									{#if discountMinor() > 0}
 										<span
-											class="mr-2 text-base line-through opacity-60"
+											class="mr-2 text-base line-through opacity-50 font-normal"
 											>{cartTotalBeforeDiscount()}</span
 										>
 									{/if}
@@ -573,13 +588,20 @@
 							</div>
 							<div class="flex gap-2 pt-2">
 								<button
-									class="btn flex-1 btn-primary"
-									onclick={onCheckoutClick}>Checkout</button
+									class="btn flex-1 btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+									onclick={onCheckoutClick}>
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+									Checkout
+								</button
 								>
 								<button
-									class="btn btn-error"
+									class="btn btn-error btn-lg rounded-xl hover:shadow-lg transition-all"
+									aria-label="Clear cart"
+									title="Clear all items"
 									onclick={async () => { const m = await import('$lib/cart'); await m.clearCart(); }}
-									>Clear all</button
+									>
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+								</button
 								>
 							</div>
 
@@ -591,99 +613,97 @@
 										class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
 									></div>
 
-									<!-- Dialog Content -->
-									<div
-										use:melt={$content}
-										class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-base-300 bg-base-100 p-4 shadow-2xl animate-in zoom-in-95 fade-in duration-200 mx-4 sm:max-w-lg sm:p-6"
-									>
-										<!-- Header -->
-										<div
-											class="flex items-center justify-between mb-3 sm:mb-4"
+							<!-- Dialog Content -->
+							<div
+								use:melt={$content}
+								class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-3xl border-2 border-base-300/50 bg-base-100 shadow-2xl animate-in zoom-in-95 fade-in duration-200 mx-4 sm:max-w-lg"
+							>
+								<!-- Header with gradient background -->
+								<div class="bg-base-200/30 border-b-2 border-base-300/50 p-6 rounded-t-3xl">
+									<div class="flex items-center justify-between">
+										<h3
+											use:melt={$title}
+											class="text-xl sm:text-2xl font-bold text-primary"
 										>
-											<h3
-												use:melt={$title}
-												class="text-lg sm:text-xl font-bold text-base-content"
-											>
-												How do you want to check out?
-											</h3>
-											<button
-												use:melt={$close}
-												class="btn btn-ghost btn-sm btn-circle"
-												aria-label="Close dialog"
-											>
-												<X class="w-4 h-4" />
-											</button>
-										</div>
-
-										<!-- Description -->
-										<p
-											use:melt={$description}
-											class="text-sm text-base-content/70 mb-4 sm:mb-6"
+											Ready to Checkout?
+										</h3>
+										<button
+											use:melt={$close}
+											class="btn btn-ghost btn-sm btn-circle hover:bg-error/10 hover:text-error transition-all"
+											aria-label="Close dialog"
 										>
-											Choose to continue as a guest or
-											sign in to save your order and track
-											it easily.
-										</p>
-
-										<!-- Action Buttons -->
-										<div class="space-y-2 sm:space-y-3">
-											<button
-												class="btn btn-primary w-full h-11 sm:h-12 text-sm sm:text-base font-medium"
-												onclick={() => {
-													open.set(false);
-													goto("/checkout");
-												}}
-											>
-												Continue as guest
-											</button>
-
-											<button
-												class="btn btn-outline w-full h-11 sm:h-12 text-sm sm:text-base font-medium"
-												onclick={() => {
-													open.set(false);
-													goto(
-														"/login?return_to=%2Fcheckout",
-													);
-												}}
-											>
-												Sign in & continue
-											</button>
-
-											<button
-												class="btn btn-outline w-full h-11 sm:h-12 text-sm sm:text-base font-medium"
-												onclick={async () => {
-													open.set(false);
-													await startGoogleOAuth(
-														"/checkout",
-													);
-												}}
-											>
-												<div
-													class="flex items-center justify-center gap-2"
-												>
-													<div
-														class="w-4 h-4 sm:w-[18px] sm:h-[18px] flex items-center justify-center"
-													>
-														<SiGoogle size={16} />
-													</div>
-													<span
-														>Continue with Google</span
-													>
-												</div>
-											</button>
-										</div>
-
-										<!-- Footer Link -->
-										<div class="mt-4 sm:mt-6 text-center">
-											<a
-												href="/orders/lookup"
-												class="text-sm text-primary hover:text-primary-focus transition-colors"
-												onclick={() => open.set(false)}
-											>
-												Track an existing order
-											</a>
-										</div>
+											<X class="w-5 h-5" />
+										</button>
 									</div>
+									<!-- Description -->
+									<p
+										use:melt={$description}
+										class="text-sm text-base-content/70 mt-2"
+									>
+										Choose how you'd like to proceed with your order
+									</p>
+								</div>
+
+								<!-- Content Body -->
+															<!-- Content Body -->
+							<div class="p-6">
+								<!-- Action Buttons -->
+								<div class="space-y-3">
+									<button
+										class="btn btn-primary w-full h-12 rounded-xl text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+										onclick={() => {
+											open.set(false);
+											goto("/checkout");
+										}}
+									>
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+										Continue as Guest
+									</button>
+
+									<div class="divider text-xs text-base-content/50 my-2">OR</div>
+
+									<button
+										class="btn btn-outline btn-primary w-full h-12 rounded-xl text-base font-semibold border-2 hover:bg-primary hover:text-primary-content transition-all duration-300"
+										onclick={() => {
+											open.set(false);
+											goto(
+												"/login?return_to=%2Fcheckout",
+											);
+										}}
+									>
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+										Sign In to Your Account
+									</button>
+
+									<button
+										class="btn btn-outline w-full h-12 rounded-xl text-base font-semibold border-2 hover:bg-base-200 transition-all duration-300"
+										onclick={async () => {
+											open.set(false);
+											await startGoogleOAuth(
+												"/checkout",
+											);
+										}}
+									>
+										<div class="flex items-center justify-center gap-2">
+											<SiGoogle size={20} />
+											<span>Continue with Google</span>
+										</div>
+									</button>
+								</div>
+
+								<!-- Footer Link -->
+								<div class="mt-6 pt-4 border-t border-base-300/50 text-center">
+									<a
+										href="/orders/lookup"
+										class="text-sm text-primary hover:text-primary-focus font-medium inline-flex items-center gap-1 transition-colors"
+										onclick={() => open.set(false)}
+									>
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+										Track an Existing Order
+									</a>
+								</div>
+							</div>
+						</div>
 								</div>
 							{/if}
 							<a href="/products" class="btn btn-ghost"

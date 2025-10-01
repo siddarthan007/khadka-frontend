@@ -2,12 +2,15 @@
 	import { createAccordion, melt } from '@melt-ui/svelte';
 	import ProductCard from '$lib/components/ProductCard.svelte';
 	import LabeledSeparator from '$lib/components/LabeledSeparator.svelte';
+	import SEO from '$lib/components/SEO.svelte';
+	import { generateBreadcrumbStructuredData } from '$lib/seo';
 	import { cn } from '$lib/utils';
 	import { listProductsByCategoryIds } from '$lib/medusa';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { tick } from 'svelte';
+	import { logger } from '$lib/logger';
 	let {
 		data
 	}: {
@@ -36,15 +39,20 @@
 	let visible = $state(products);
 	let activeLabel: string = $state('All products');
 
+	const baseUrl = 'https://khadkafoods.com';
+	const breadcrumbs = [
+		{ name: 'Home', url: baseUrl },
+		{ name: 'Categories', url: `${baseUrl}/categories` },
+		{ name: category?.name || 'Category', url: `${baseUrl}/categories/${category?.handle || ''}` }
+	];
+	const structuredData = [generateBreadcrumbStructuredData(breadcrumbs)];
+
 	onMount(() => {
 		const qs = new URLSearchParams($page.url.search);
 		const sub = qs.get('sub');
 		if (sub && sub !== 'all') {
 			selected = sub;
 			loadFor(sub);
-		}
-		if (typeof document !== 'undefined') {
-			document.title = `${category?.name ?? 'Category'} • KhadkaFoods`;
 		}
 	});
 
@@ -77,7 +85,7 @@
 			});
 			visible = prods ?? [];
 		} catch (e) {
-			console.error(e);
+			logger.error(e);
 			visible = [];
 		} finally {
 			loading = false;
@@ -105,12 +113,16 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{category?.name ? `${category.name} • KhadkaFoods` : 'Categories • KhadkaFoods'}</title>
-	<meta name="description" content={`Shop ${category?.name ?? 'categories'} and discover more.`} />
-	<meta property="og:title" content={category?.name ?? 'Categories'} />
-	<meta property="og:type" content="website" />
-</svelte:head>
+{#if category}
+	<SEO
+		title={`${category.name} - KhadkaFoods`}
+		description={category.description || `Shop ${category.name} at KhadkaFoods. Browse our selection of quality products.`}
+		keywords={['category', category.name, 'groceries', 'products', 'KhadkaFoods']}
+		canonical={`${baseUrl}/categories/${category.handle}`}
+		ogImage={category.thumbnail || `${baseUrl}/logo.png`}
+		structuredData={structuredData}
+	/>
+{/if}
 
 <section class="w-full py-8">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -140,37 +152,37 @@
 		<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
 			<!-- Sidebar -->
 			<aside class="lg:col-span-4 xl:col-span-3">
-				<div class="card border border-base-300/60 bg-base-100 shadow-xl">
+				<div class="card border-2 border-base-300/50 bg-base-100 shadow-xl rounded-3xl">
 					<div class="card-body p-4">
-						<h2 class="card-title text-lg">Subcategories</h2>
+						<h2 class="card-title text-xl font-bold">Subcategories</h2>
 						<ul class="menu w-full menu-sm rounded-box">
 							<li>
 								<button
 									class={cn(
-										'flex w-full justify-between rounded-md',
+										'flex w-full justify-between rounded-xl',
 										selected === 'all'
-											? 'active bg-primary/10 font-medium text-primary'
-											: 'hover:bg-base-200'
+											? 'active bg-primary/10 font-semibold text-primary border-2 border-primary/20'
+											: 'hover:bg-base-200 transition-colors'
 									)}
 									onclick={() => onSelect('all')}
 								>
 									<span>All products</span>
-									<span class="ml-auto badge badge-ghost">{total}</span>
+									<span class="ml-auto">{total}</span>
 								</button>
 							</li>
 							{#each subcategories as sc}
 								<li>
 									<button
 										class={cn(
-											'flex w-full justify-between rounded-md',
+											'flex w-full justify-between rounded-xl',
 											selected === sc.id
-												? 'active bg-primary/10 font-medium text-primary'
-												: 'hover:bg-base-200'
+												? 'active bg-primary/10 font-semibold text-primary border-2 border-primary/20'
+												: 'hover:bg-base-200 transition-colors'
 										)}
 										onclick={() => onSelect(sc.id)}
 									>
 										<span>{sc.name}</span>
-										<span class="ml-auto badge badge-ghost">{subCounts[sc.id] ?? 0}</span>
+										<span class="ml-auto">{subCounts[sc.id] ?? 0}</span>
 									</button>
 								</li>
 							{/each}

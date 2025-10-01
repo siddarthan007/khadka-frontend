@@ -272,14 +272,14 @@
 </script>
 
 <!-- Full-width carousel -->
-<section class="relative w-full overflow-hidden">
-	<div class="w-full">
-		<div class="relative min-h-[350px] sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px]">
+<section class="relative w-full overflow-hidden max-w-[100vw]">
+	<div class="w-full max-w-full">
+		<div class="relative min-h-[350px] sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px] max-w-full">
 			<!-- Ambient background elements removed to eliminate faint container -->
 
 			<div
 				bind:this={containerRef}
-				class="relative h-full w-full overflow-hidden"
+				class="relative h-full w-full max-w-full overflow-hidden"
 				role="region"
 				aria-roledescription="carousel"
 				aria-label={'Hero carousel with ' + (activeSlides.length || 0) + ' slides'}
@@ -322,7 +322,7 @@
 								>
 									<!-- Card container with full responsive sizing -->
 									<div
-										class="relative h-[90%] w-[95%] mx-auto overflow-hidden rounded-2xl sm:h-[87%] sm:w-[90%] md:h-[88%] md:w-[85%] lg:w-[80%] xl:w-[75%]"
+										class="relative h-[85%] w-[90%] mx-auto overflow-hidden rounded-xl sm:h-[87%] sm:w-[88%] sm:rounded-2xl md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] lg:rounded-3xl xl:w-[78%]"
 									>
 										<!-- Image with error handling -->
 										{#if shouldShowSlide(i)}
@@ -330,7 +330,7 @@
 												<img
 													src={slide.image}
 													alt={slide.title}
-													class="h-full w-full object-cover transition-opacity duration-300"
+													class="h-full w-full object-cover object-center transition-opacity duration-300"
 													loading={i === current ? 'eager' : 'lazy'}
 													decoding="async"
 													on:error={() => handleImageError(i)}
@@ -428,10 +428,10 @@
 				{#if activeSlides.length > 1}
 					<button
 						on:click={prev}
-						class="absolute top-1/2 left-2 flex h-10 w-10 -translate-y-1/2 -translate-x-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:left-4 sm:h-12 sm:w-12"
+						class="absolute top-1/2 left-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:left-8 md:left-12 sm:h-12 sm:w-12 lg:h-14 lg:w-14"
 						aria-label="Previous slide"
 					>
-						<svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -442,10 +442,10 @@
 					</button>
 					<button
 						on:click={next}
-						class="absolute top-1/2 right-2 flex h-10 w-10 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:right-4 sm:h-12 sm:w-12"
+						class="absolute top-1/2 right-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:right-8 md:right-12 sm:h-12 sm:w-12 lg:h-14 lg:w-14"
 						aria-label="Next slide"
 					>
-						<svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"

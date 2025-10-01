@@ -10,6 +10,8 @@
 	import { customer } from '$lib/stores/customer';
 	import { Info, X } from "@lucide/svelte";
 	import { createDialog, melt } from '@melt-ui/svelte';
+	import SEO from '$lib/components/SEO.svelte';
+	import { logger } from '$lib/logger';
 
 	let email: string = $state('');
 	let orderNo: string = $state('');
@@ -234,7 +236,7 @@
 				hour12: true
 			});
 		} catch (e) {
-			console.warn('Invalid date format:', date);
+			logger.warn('Invalid date format:', date);
 			return 'Invalid Date';
 		}
 	}
@@ -413,106 +415,93 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Track Your Order • KhadkaFoods - Order Lookup</title>
-	<meta
-		name="description"
-		content="Track your KhadkaFoods order status. Enter your order details to view order status, shipping information, and delivery updates."
-	/>
-	<meta
-		name="keywords"
-		content="track order, order status, order lookup, shipping status, delivery tracking, order history"
-	/>
-	<meta name="robots" content="noindex, follow" />
-	<meta name="author" content="KhadkaFoods" />
-	<meta property="og:title" content="Track Your Order • KhadkaFoods - Order Lookup" />
-	<meta
-		property="og:description"
-		content="Track your KhadkaFoods order status. Enter your order details to view order status."
-	/>
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://khadkafoods.com/orders/lookup" />
-	<meta property="og:image" content="/logo.png" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="Track Your Order • KhadkaFoods - Order Lookup" />
-	<meta
-		name="twitter:description"
-		content="Track your KhadkaFoods order status. Enter your order details."
-	/>
-	<meta name="twitter:image" content="/logo.png" />
-	<link rel="canonical" href="https://khadkafoods.com/orders/lookup" />
-</svelte:head>
+<SEO
+	title="Track Your Order • KhadkaFoods - Order Lookup"
+	description="Track your KhadkaFoods order status. Enter your order details to view order status, shipping information, and delivery updates."
+	keywords={["track order", "order status", "order lookup", "shipping status", "delivery tracking", "order history"]}
+	canonical="https://khadkafoods.com/orders/lookup"
+	noindex={true}
+/>
 
-<section class="w-full py-10">
+<section class="w-full min-h-screen flex items-center justify-center py-12">
 	<div class="container mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-		<h1 class="mb-6 text-3xl font-bold">Track your order</h1>
+		<div class="text-center mb-8">
+			<h1 class="mb-3 text-4xl font-black tracking-tight text-primary">
+				Track Your Order
+			</h1>
+			<p class="text-base-content/60">Enter your order details to view status and tracking information</p>
+		</div>
 
-		<div class="card border border-base-300 bg-base-100 shadow-xl">
+		<div class="card border-2 border-base-300/50 bg-base-100 shadow-2xl backdrop-blur-sm hover:shadow-3xl transition-all duration-500 rounded-3xl">
 			<form
-				class="card-body space-y-3"
+				class="card-body space-y-5 p-6 sm:p-8"
 				onsubmit={(e) => {
 					e.preventDefault();
 					lookup();
 				}}
 			>
 				{#if errorMsg}
-					<div class="alert alert-error"><span>{errorMsg}</span></div>
+					<div class="alert alert-error shadow-lg rounded-xl">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+						<span>{errorMsg}</span>
+					</div>
 				{/if}
 
 				{#if $customer}
 					<!-- Authenticated user -->
-					<div class="space-y-6">
-						<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+					<div class="space-y-5">
+						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<label class="form-control">
-								<span class="label-text mb-1 font-medium text-gray-700">Email</span>
+								<div class="label"><span class="label-text font-semibold">Email</span></div>
 								<input
-									class="input-bordered input w-full rounded-xl input-primary focus:ring-2 focus:ring-primary"
+									class="input input-bordered input-primary w-full bg-base-100 border-2 focus:border-primary focus:outline-none transition-all rounded-xl"
 									type="email"
 									bind:value={email}
+									oninput={resetLookupState}
 									required
 								/>
 							</label>
 
 							<label class="form-control">
-								<span class="label-text mb-1 font-medium text-gray-700">Order Number</span>
+								<div class="label"><span class="label-text font-semibold">Order Number</span></div>
 								<input
-									class="input-bordered input w-full rounded-xl input-primary focus:ring-2 focus:ring-primary"
+									class="input input-bordered input-primary w-full bg-base-100 border-2 focus:border-primary focus:outline-none transition-all rounded-xl"
 									type="text"
 									bind:value={orderNo}
+									oninput={resetLookupState}
 									placeholder="e.g. 1024"
 								/>
 							</label>
 						</div>
 
-						<div class="text-sm text-gray-500">
-							Or, if you received an order token link, paste the token below:
-						</div>
+						<div class="divider">OR</div>
 
 						<label class="form-control">
-							<span class="label-text mb-1 font-medium text-gray-700">Order Token (optional)</span>
+							<div class="label"><span class="label-text font-semibold">Order Token (optional)</span></div>
 							<input
-								class="input-bordered input w-full rounded-xl input-primary focus:ring-2 focus:ring-primary"
+								class="input input-bordered input-primary w-full bg-base-100 border-2 focus:border-primary focus:outline-none transition-all rounded-xl"
 								type="text"
 								bind:value={token}
+								oninput={resetLookupState}
 								placeholder="Paste your order token"
 							/>
 						</label>
 					</div>
 				{:else}
 					<!-- Guest user -->
-					<div class="space-y-6">
-						<div class="alert flex items-center gap-2 rounded-xl alert-info p-4 text-sm shadow-md">
-							<Info class="h-5 w-5 shrink-0 text-blue-500" />
-							<span>
+					<div class="space-y-5">
+						<div class="alert alert-info flex items-center gap-3 rounded-xl p-4 shadow-md">
+							<Info class="h-5 w-5 shrink-0" />
+							<span class="text-sm">
 								To track your order, please use the <strong>order token</strong> from your confirmation
 								email or order details.
 							</span>
 						</div>
 
 						<label class="form-control">
-							<span class="label-text mb-1 font-medium text-gray-700">Order Token</span>
+							<div class="label"><span class="label-text font-semibold">Order Token</span></div>
 							<input
-								class="input-bordered input w-full rounded-xl input-primary focus:ring-2 focus:ring-primary"
+								class="input input-bordered input-primary w-full bg-base-100 border-2 focus:border-primary focus:outline-none transition-all rounded-xl"
 								type="text"
 								bind:value={token}
 								placeholder="Paste your order token here"
@@ -524,16 +513,21 @@
 				{/if}
 
 				<Button
-					class={'btn btn-primary ' + (loading ? 'loading' : '')}
+					class={'btn btn-primary w-full rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ' + (loading ? 'loading' : '')}
 					disabled={loading}
-					type="submit">Find order</Button
-				>
+					type="submit">
+					{#if loading}
+						<span class="loading loading-spinner loading-sm"></span>
+					{:else}
+						Find Order
+					{/if}
+				</Button>
 			</form>
 		</div>
 
 		{#if loading && !order}
 			<div
-				class="mt-6 animate-pulse space-y-4 rounded-xl border border-base-300 bg-base-100 p-6 shadow-sm"
+				class="mt-6 animate-pulse space-y-4 rounded-3xl border-2 border-base-300/50 bg-base-100 p-6 shadow-xl"
 			>
 				<div class="h-4 w-40 rounded bg-base-300"></div>
 				<div class="flex gap-2">

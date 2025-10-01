@@ -1,0 +1,265 @@
+/**
+ * SEO utilities and helpers for e-commerce optimization
+ */
+
+export interface SEOMetadata {
+  title: string;
+  description: string;
+  keywords?: string[];
+  canonical?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+  ogType?: string;
+  twitterCard?: 'summary' | 'summary_large_image' | 'app' | 'player';
+  twitterTitle?: string;
+  twitterDescription?: string;
+  twitterImage?: string;
+  structuredData?: Record<string, any>;
+  noindex?: boolean;
+}
+
+export interface ProductSEO {
+  name: string;
+  description: string;
+  image: string;
+  price: number;
+  currency: string;
+  availability: 'InStock' | 'OutOfStock' | 'PreOrder';
+  brand?: string;
+  sku?: string;
+  gtin?: string;
+  rating?: {
+    value: number;
+    count: number;
+  };
+}
+
+/**
+ * Generate structured data for a product (Schema.org)
+ */
+export function generateProductStructuredData(product: ProductSEO) {
+  return {
+    '@context': 'https://schema.org/',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description,
+    image: product.image,
+    brand: product.brand ? {
+      '@type': 'Brand',
+      name: product.brand
+    } : undefined,
+    offers: {
+      '@type': 'Offer',
+      url: typeof window !== 'undefined' ? window.location.href : '',
+      priceCurrency: product.currency,
+      price: product.price,
+      availability: `https://schema.org/${product.availability}`,
+      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    },
+    sku: product.sku,
+    gtin: product.gtin,
+    aggregateRating: product.rating ? {
+      '@type': 'AggregateRating',
+      ratingValue: product.rating.value,
+      reviewCount: product.rating.count
+    } : undefined
+  };
+}
+
+/**
+ * Generate breadcrumb structured data
+ */
+export function generateBreadcrumbStructuredData(items: Array<{ name: string; url: string }>) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: item.url
+    }))
+  };
+}
+
+/**
+ * Generate organization structured data
+ */
+export function generateOrganizationStructuredData(config: {
+  name: string;
+  url: string;
+  logo: string;
+  description?: string;
+  socialLinks?: string[];
+  contactPoint?: {
+    telephone: string;
+    contactType: string;
+    email?: string;
+  };
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: config.name,
+    url: config.url,
+    logo: config.logo,
+    description: config.description,
+    sameAs: config.socialLinks,
+    contactPoint: config.contactPoint ? {
+      '@type': 'ContactPoint',
+      telephone: config.contactPoint.telephone,
+      contactType: config.contactPoint.contactType,
+      email: config.contactPoint.email
+    } : undefined
+  };
+}
+
+/**
+ * Generate WebSite structured data with search action
+ */
+export function generateWebsiteStructuredData(config: {
+  name: string;
+  url: string;
+  searchUrl: string;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: config.name,
+    url: config.url,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${config.searchUrl}?q={search_term_string}`
+      },
+      'query-input': 'required name=search_term_string'
+    }
+  };
+}
+
+/**
+ * Generate e-commerce action structured data
+ */
+export function generateOfferCatalogStructuredData(config: {
+  name: string;
+  description: string;
+  url: string;
+  itemListElements: Array<{
+    name: string;
+    url: string;
+    image: string;
+    price: number;
+    currency: string;
+  }>;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'OfferCatalog',
+    name: config.name,
+    description: config.description,
+    url: config.url,
+    itemListElement: config.itemListElements.map((item, index) => ({
+      '@type': 'Offer',
+      position: index + 1,
+      name: item.name,
+      url: item.url,
+      image: item.image,
+      priceCurrency: item.currency,
+      price: item.price,
+      availability: 'https://schema.org/InStock'
+    }))
+  };
+}
+
+/**
+ * Generate canonical URL
+ */
+export function generateCanonicalUrl(path: string, baseUrl: string): string {
+  // Remove trailing slash
+  const cleanPath = path.replace(/\/$/, '');
+  const cleanBase = baseUrl.replace(/\/$/, '');
+  
+  // Remove query parameters for canonical
+  const pathWithoutQuery = cleanPath.split('?')[0];
+  
+  return `${cleanBase}${pathWithoutQuery}`;
+}
+
+/**
+ * Generate meta description from content
+ */
+export function generateMetaDescription(content: string, maxLength: number = 160): string {
+  if (!content) return '';
+  
+  // Strip HTML tags
+  const stripped = content.replace(/<[^>]*>/g, ' ');
+  
+  // Clean up whitespace
+  const cleaned = stripped.replace(/\s+/g, ' ').trim();
+  
+  // Truncate to max length
+  if (cleaned.length <= maxLength) return cleaned;
+  
+  return cleaned.substring(0, maxLength - 3) + '...';
+}
+
+/**
+ * Generate SEO-friendly slug
+ */
+export function generateSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Get optimal image size for social sharing
+ */
+export function getOptimalSocialImage(images: string[]): string {
+  // Prefer images with proper aspect ratio for social sharing (1.91:1 or 1:1)
+  // Return first image or fallback
+  return images[0] || '/logo.png';
+}
+
+/**
+ * Generate FAQ structured data
+ */
+export function generateFAQStructuredData(faqs: Array<{ question: string; answer: string }>) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(faq => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer
+      }
+    }))
+  };
+}
+
+/**
+ * Generate robots meta content based on conditions
+ */
+export function generateRobotsTag(config: {
+  index?: boolean;
+  follow?: boolean;
+  noarchive?: boolean;
+  nosnippet?: boolean;
+}): string {
+  const tags: string[] = [];
+  
+  tags.push(config.index !== false ? 'index' : 'noindex');
+  tags.push(config.follow !== false ? 'follow' : 'nofollow');
+  
+  if (config.noarchive) tags.push('noarchive');
+  if (config.nosnippet) tags.push('nosnippet');
+  
+  return tags.join(', ');
+}

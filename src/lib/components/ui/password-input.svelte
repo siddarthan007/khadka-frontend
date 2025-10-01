@@ -23,7 +23,7 @@
 
 <div class="join w-full">
 	<input
-		class="input-bordered input join-item w-full input-primary"
+		class="input input-bordered input-primary join-item w-full bg-base-100 border-2 focus:border-primary focus:outline-none transition-all rounded-l-xl"
 		type={visible ? 'text' : 'password'}
 		bind:value
 		{name}
@@ -33,7 +33,7 @@
 	/>
 	<button
 		type="button"
-		class="btn join-item btn-ghost"
+		class="btn join-item btn-ghost rounded-r-xl border-2 border-l-0 border-base-300 hover:border-primary hover:bg-primary/10 transition-all"
 		onclick={toggle}
 		aria-label={visible ? 'Hide password' : 'Show password'}
 	>
