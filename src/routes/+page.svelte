@@ -98,28 +98,6 @@
 	<HeroCarousel {slides} />
 </section>
 
-<!-- SEO-optimized intro section with H1 -->
-<section class="w-full py-8 sm:py-12 bg-base-200/30">
-	<div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-		<h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-primary mb-6">
-			Premium Quality Groceries & Fresh Produce
-		</h1>
-		<p class="text-lg sm:text-xl text-base-content/80 max-w-3xl mx-auto leading-relaxed">
-			Welcome to Khadka Foods, your trusted source for authentic international groceries and fresh produce. 
-			We bring you premium quality products from around the world, delivered fresh to your doorstep. 
-			Discover a wide selection of ethnic ingredients, specialty items, and everyday essentials—all at competitive prices with fast, reliable delivery.
-		</p>
-		<div class="mt-8 flex flex-wrap justify-center gap-4">
-			<a href="/products" class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-				Shop All Products →
-			</a>
-			<a href="/collections" class="btn btn-outline btn-lg rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-				Browse Collections
-			</a>
-		</div>
-	</div>
-</section>
-
 <LabeledSeparator gradient class="my-12" />
 
 <!-- Shop by Countries -->

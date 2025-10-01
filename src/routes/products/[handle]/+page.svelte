@@ -282,10 +282,6 @@
 		maxImagePreview="large"
 		maxSnippet={-1}
 	/>
-		ogImage={activeImage || product.thumbnail || `${baseUrl}/logo.png`}
-		ogType="product"
-		structuredData={structuredData()}
-	/>
 {/if}
 
 <section class="w-full py-12">
