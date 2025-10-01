@@ -10,7 +10,10 @@ import { sequence } from "@sveltejs/kit/hooks";
 const securityHeaders: Handle = async ({ event, resolve }) => {
   const response = await resolve(event);
 
-  // Content Security Policy - Strict policy for production
+  const isDev = process.env.NODE_ENV === 'development';
+  const isHttps = event.url.protocol === 'https:';
+
+  // Content Security Policy - Relaxed for development, strict for production
   const cspDirectives = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.googletagmanager.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://maps.googleapis.com",
@@ -22,21 +25,31 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'none'",
-    "upgrade-insecure-requests"
-  ].join('; ');
+    "frame-ancestors 'none'"
+  ];
 
-  response.headers.set('Content-Security-Policy', cspDirectives);
+  // Only upgrade insecure requests in production with HTTPS
+  if (!isDev && isHttps) {
+    cspDirectives.push("upgrade-insecure-requests");
+  }
 
-  // Additional security headers
-  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Content-Security-Policy', cspDirectives.join('; '));
+
+  // Additional security headers (relaxed for development)
+  if (!isDev) {
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  } else {
+    response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+    response.headers.set('Referrer-Policy', 'no-referrer-when-downgrade');
+  }
+  
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   
-  // HSTS - Enforce HTTPS (only in production)
-  if (event.url.protocol === 'https:') {
+  // HSTS - Enforce HTTPS (only in production with HTTPS)
+  if (!isDev && isHttps) {
     response.headers.set(
       'Strict-Transport-Security',
       'max-age=31536000; includeSubDomains; preload'
