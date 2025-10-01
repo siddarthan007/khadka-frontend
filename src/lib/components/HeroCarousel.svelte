@@ -147,9 +147,12 @@
 	}
 
 	function onTouchMove(e: TouchEvent) {
-		if (touchStartX == null || !e.touches || e.touches.length === 0) return;
-		touchDeltaX = e.touches[0].clientX - touchStartX;
-		e.preventDefault(); // Prevent scrolling while swiping
+    	if (touchStartX == null || !e.touches || e.touches.length === 0) return;
+    	touchDeltaX = e.touches[0].clientX - touchStartX;
+
+    	if (isMobile) {
+        	e.preventDefault(); // only on mobile to avoid blocking desktop scroll
+    	}
 	}
 
 	function onTouchEnd() {
@@ -285,9 +288,9 @@
 				aria-label={'Hero carousel with ' + (activeSlides.length || 0) + ' slides'}
 				on:mouseenter={() => (hovering = true)}
 				on:mouseleave={() => (hovering = false)}
-				on:touchstart|passive={onTouchStart}
-				on:touchmove|passive={onTouchMove}
-				on:touchend|passive={onTouchEnd}
+				on:touchstart={onTouchStart}
+				on:touchmove={onTouchMove}
+				on:touchend={onTouchEnd}
 			>
 				<!-- Background mask and floor glow removed -->
 				<!-- Loading state -->

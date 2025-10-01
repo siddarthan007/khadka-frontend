@@ -18,6 +18,8 @@ const config = {
     alias: {
       "@/*": "./src/lib/*",
     },
+    // Inline critical CSS to reduce preload warnings
+    inlineStyleThreshold: 4096
   },
   compilerOptions: {
     experimental: {
