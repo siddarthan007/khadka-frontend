@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { env as publicEnv } from '$env/dynamic/public';
 import type { HttpTypes } from '@medusajs/types';
+import { logger } from '$lib/logger';
 
 /**
  * Google Analytics 4 Integration
@@ -37,12 +38,12 @@ export function initGoogleAnalytics(): void {
 	if (!browser) return;
 
 	if (!GA_ID) {
-		console.warn('[GA4] Google Analytics ID not configured');
+		logger.warn('[GA4] Google Analytics ID not configured');
 		return;
 	}
 
 	if (isInitialized) {
-		console.log('[GA4] Already initialized');
+		logger.log('[GA4] Already initialized');
 		return;
 	}
 
@@ -51,7 +52,7 @@ export function initGoogleAnalytics(): void {
 	script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
 	script.async = true;
 	script.onerror = () => {
-		console.error('[GA4] Failed to load gtag.js script');
+		logger.error('[GA4] Failed to load gtag.js script');
 		isInitialized = false;
 	};
 	document.head.appendChild(script);
@@ -64,7 +65,7 @@ export function initGoogleAnalytics(): void {
 		window.gtag('js', new Date());
 		window.gtag('config', GA_ID, { send_page_view: false });
 		isInitialized = true;
-		console.log('[GA4] Initialized successfully:', GA_ID);
+		logger.log('[GA4] Initialized successfully:', GA_ID);
 	};
 }
 
@@ -82,7 +83,7 @@ export function trackPageView(url: string, title?: string): void {
 	if (!browser) return;
 
 	if (!isInitialized || !window.gtag) {
-		console.warn('[GA4] Cannot track page view - not initialized');
+		logger.warn('[GA4] Cannot track page view - not initialized');
 		return;
 	}
 
@@ -91,7 +92,7 @@ export function trackPageView(url: string, title?: string): void {
 		page_title: title || document.title
 	});
 
-	console.log('[GA4] Page view tracked:', url);
+	logger.log('[GA4] Page view tracked:', url);
 }
 
 /**
@@ -104,12 +105,12 @@ export function trackEvent(
 	if (!browser) return;
 
 	if (!isInitialized || !window.gtag) {
-		console.warn('[GA4] Cannot track event - not initialized:', eventName);
+		logger.warn('[GA4] Cannot track event - not initialized:', eventName);
 		return;
 	}
 
 	window.gtag('event', eventName, eventParams);
-	console.log('[GA4] Event tracked:', eventName, eventParams);
+	logger.log('[GA4] Event tracked:', eventName, eventParams);
 }
 
 /**

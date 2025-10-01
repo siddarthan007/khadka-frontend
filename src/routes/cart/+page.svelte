@@ -34,14 +34,26 @@
 		calculateCartValue
 	} from "$lib/utils/analytics";
 
-	onMount(() => {
-		ensureCart();
-	});
-
 	let promo: string = $state("");
 	let applying: boolean = $state(false);
 	let recommended: any[] = $state([]);
 	let loading: boolean = $state(true);
+	let isMobile: boolean = $state(false);
+
+	onMount(() => {
+		ensureCart();
+		
+		// Detect mobile/desktop
+		const checkMobile = () => {
+			isMobile = window.innerWidth < 768; // Tailwind 'md' breakpoint
+		};
+		checkMobile();
+		window.addEventListener('resize', checkMobile);
+		
+		return () => {
+			window.removeEventListener('resize', checkMobile);
+		};
+	});
 
 	onMount(async () => {
 		try {
@@ -447,7 +459,7 @@
 							<div
 								class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4"
 							>
-								{#each recommended as p}
+								{#each recommended.slice(0, isMobile ? 4 : 8) as p}
 									<ProductCard
 										href={`/products/${p.handle}`}
 										title={p.title}
