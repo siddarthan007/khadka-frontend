@@ -428,7 +428,7 @@
 				{#if activeSlides.length > 1}
 					<button
 						on:click={prev}
-						class="absolute top-1/2 left-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:left-8 md:left-12 sm:h-12 sm:w-12 lg:h-14 lg:w-14"
+						class="absolute top-1/2 left-4 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:left-8 md:flex md:left-12 sm:h-12 sm:w-12 lg:h-14 lg:w-14"
 						aria-label="Previous slide"
 					>
 						<svg class="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -442,7 +442,7 @@
 					</button>
 					<button
 						on:click={next}
-						class="absolute top-1/2 right-4 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:right-8 md:right-12 sm:h-12 sm:w-12 lg:h-14 lg:w-14"
+						class="absolute top-1/2 right-4 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none sm:right-8 md:flex md:right-12 sm:h-12 sm:w-12 lg:h-14 lg:w-14"
 						aria-label="Next slide"
 					>
 						<svg class="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
