@@ -74,9 +74,14 @@
 			}
 
 			// Proceed with login
+			const returnTo = page.url.searchParams.get('returnTo') || null;
 			const me = await login(email, password);
 			if (me) {
 				trackLogin('email');
+				if (returnTo) {
+					await goto(returnTo);
+					return;
+				}
 				await goto('/account');
 			} else {
 				errorMsg = 'Invalid credentials';

@@ -9,7 +9,7 @@
   let errorMsg: string | null = $state(null);
 
   onMount(async () => {
-    const url = page.url;
+    const url = new URL(page.url, window.location.origin);
     const ok = await handleGoogleOAuthCallback(url.searchParams);
     if (ok) {
       let returnTo = url.searchParams.get("returnTo") || "/account";
