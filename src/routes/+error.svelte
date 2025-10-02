@@ -47,8 +47,8 @@
 			
 			<!-- Error Code with Minimal Badge -->
 			<div class="flex justify-center mb-6">
-				<div class="badge badge-lg badge-ghost gap-2">
-					<span class="text-5xl font-black text-primary opacity-20">{status}</span>
+				<div class="badge badge-lg badge-ghost gap-2 border-base-content/10">
+					<span class="text-5xl font-black text-base-content/20">{status}</span>
 				</div>
 			</div>
 
@@ -56,9 +56,8 @@
 			<div class="flex justify-center mb-8">
 				<div class="relative">
 					<svg
-						class="w-24 h-24 sm:w-32 sm:h-32 text-primary/20"
+						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content/20 stroke-current"
 						fill="none"
-						stroke="currentColor"
 						viewBox="0 0 24 24"
 					>
 						{#if status === 404}
@@ -121,14 +120,14 @@
 				<div class="mt-10">
 					<div class="collapse collapse-arrow bg-base-100">
 						<input type="checkbox" />
-						<div class="collapse-title text-xs font-medium opacity-50">
+						<div class="collapse-title text-xs font-medium text-base-content/50">
 							Technical Details
 						</div>
 						<div class="collapse-content">
-							<div class="text-left text-xs font-mono opacity-60 space-y-1">
-								<div><span class="text-primary">Status:</span> {status}</div>
-								<div><span class="text-primary">Message:</span> {errorMessage}</div>
-								<div class="break-all"><span class="text-primary">URL:</span> {$page.url.pathname}</div>
+							<div class="text-left text-xs font-mono text-base-content/60 space-y-1">
+								<div><span class="font-semibold text-base-content">Status:</span> {status}</div>
+								<div><span class="font-semibold text-base-content">Message:</span> {errorMessage}</div>
+								<div class="break-all"><span class="font-semibold text-base-content">URL:</span> {$page.url.pathname}</div>
 							</div>
 						</div>
 					</div>
