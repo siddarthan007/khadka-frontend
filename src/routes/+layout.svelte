@@ -1351,7 +1351,7 @@
 			</div>
 			
 			<!-- Credits Section -->
-			<div class="border-t border-base-300/50 bg-base-200/30">
+			<div class="border-t border-base-300/50 bg-base">
 				<div class="mx-auto max-w-7xl px-4 py-3 text-center">
 					<p class="text-xs text-base-content/60">
 						Designed & Developed by
