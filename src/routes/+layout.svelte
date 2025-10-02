@@ -1334,13 +1334,7 @@
 				<span class="text-base-content/70"
 					>© {new Date().getFullYear()}
 					<span class="font-semibold text-primary">Khadka Foods</span
-					>. All rights reserved. </span><span>Designed & Developed by
-					<a
-						href="https://devignity.tech/"
-						class="font-semibold text-primary hover:text-primary/80 transition-colors duration-200"
-						target="_blank"
-						rel="noopener noreferrer">Devignity</a
-					></span
+					>. All rights reserved.</span
 				>
 				<div class="flex gap-6">
 					<a
@@ -1353,6 +1347,21 @@
 						class="link link-hover hover:text-primary transition-colors"
 						>Terms of Service</a
 					>
+				</div>
+			</div>
+			
+			<!-- Credits Section -->
+			<div class="border-t border-base-300/50 bg-base-200/30">
+				<div class="mx-auto max-w-7xl px-4 py-3 text-center">
+					<p class="text-xs text-base-content/60">
+						Designed & Developed by
+						<a
+							href="https://devignity.tech/"
+							class="font-semibold text-primary hover:text-primary/80 transition-colors duration-200"
+							target="_blank"
+							rel="noopener noreferrer"
+						>Devignity</a>
+					</p>
 				</div>
 			</div>
 		</div>
