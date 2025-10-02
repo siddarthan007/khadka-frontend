@@ -757,36 +757,36 @@
 										checked={selectedShippingAddressId === a.id}
 										onchange={() => onSelectShippingAddress(a.id!)}
 									/>
-									<div class="min-w-0">
-										<div class="flex items-center gap-2">
-											<div class="truncate font-medium">
-												{(a as any).address_name || `${a.first_name} ${a.last_name}`}
-											</div>
+									<div class="min-w-0 flex-1 overflow-hidden">
+										<div class="font-medium break-words">
+											{(a as any).address_name || `${a.first_name} ${a.last_name}`}
+										</div>
+										<div class="flex flex-wrap items-center gap-1.5 mt-1">
 											{#if (a as any).is_default_shipping}
 												<span
-													class="badge rounded-full badge-sm px-2.5 py-0.5 text-primary-content shadow badge-primary"
+													class="badge rounded-full badge-sm px-2 py-0.5 text-[10px] text-primary-content shadow badge-primary whitespace-nowrap"
 													>Default Shipping</span
 												>
 											{/if}
 											{#if (a as any).is_default_billing}
 												<span
-													class="badge rounded-full badge-sm px-2.5 py-0.5 text-secondary-content shadow badge-secondary"
+													class="badge rounded-full badge-sm px-2 py-0.5 text-[10px] text-secondary-content shadow badge-secondary whitespace-nowrap"
 													>Default Billing</span
 												>
 											{/if}
 										</div>
 										{#if (a as any).company}
-											<div class="truncate text-sm opacity-70">{(a as any).company}</div>
+											<div class="text-sm opacity-70 break-words mt-1">{(a as any).company}</div>
 										{/if}
-										<div class="truncate text-sm opacity-70">{a.first_name} {a.last_name}</div>
-										<div class="truncate text-sm opacity-70">
+										<div class="text-sm opacity-70 break-words">{a.first_name} {a.last_name}</div>
+										<div class="text-sm opacity-70 break-words">
 											{a.address_1}{#if a.address_2}, {a.address_2}{/if}, {a.city}
 										</div>
-										<div class="truncate text-sm opacity-70">
+										<div class="text-sm opacity-70 break-words">
 											{a.province}, {a.postal_code}, {a.country_code}
 										</div>
 										{#if (a as any).phone}
-											<div class="truncate text-sm opacity-70">{(a as any).phone}</div>
+											<div class="text-sm opacity-70 break-words">{(a as any).phone}</div>
 										{/if}
 									</div>
 								</label>
@@ -819,36 +819,36 @@
 											checked={selectedBillingAddressId === a.id}
 											onchange={() => onSelectBillingAddress(a.id!)}
 										/>
-										<div class="min-w-0">
-											<div class="flex items-center gap-2">
-												<div class="truncate font-medium">
-													{(a as any).address_name || `${a.first_name} ${a.last_name}`}
-												</div>
+										<div class="min-w-0 flex-1 overflow-hidden">
+											<div class="font-medium break-words">
+												{(a as any).address_name || `${a.first_name} ${a.last_name}`}
+											</div>
+											<div class="flex flex-wrap items-center gap-1.5 mt-1">
 												{#if (a as any).is_default_shipping}
 													<span
-														class="badge rounded-full badge-sm px-2.5 py-0.5 text-primary-content shadow badge-primary"
+														class="badge rounded-full badge-sm px-2 py-0.5 text-[10px] text-primary-content shadow badge-primary whitespace-nowrap"
 														>Default Shipping</span
 													>
 												{/if}
 												{#if (a as any).is_default_billing}
 													<span
-														class="badge rounded-full badge-sm px-2.5 py-0.5 text-secondary-content shadow badge-secondary"
+														class="badge rounded-full badge-sm px-2 py-0.5 text-[10px] text-secondary-content shadow badge-secondary whitespace-nowrap"
 														>Default Billing</span
 													>
 												{/if}
 											</div>
 											{#if (a as any).company}
-												<div class="truncate text-sm opacity-70">{(a as any).company}</div>
+												<div class="text-sm opacity-70 break-words mt-1">{(a as any).company}</div>
 											{/if}
-											<div class="truncate text-sm opacity-70">{a.first_name} {a.last_name}</div>
-											<div class="truncate text-sm opacity-70">
+											<div class="text-sm opacity-70 break-words">{a.first_name} {a.last_name}</div>
+											<div class="text-sm opacity-70 break-words">
 												{a.address_1}{#if a.address_2}, {a.address_2}{/if}, {a.city}
 											</div>
-											<div class="truncate text-sm opacity-70">
+											<div class="text-sm opacity-70 break-words">
 												{a.province}, {a.postal_code}, {a.country_code}
 											</div>
 											{#if (a as any).phone}
-												<div class="truncate text-sm opacity-70">{(a as any).phone}</div>
+												<div class="text-sm opacity-70 break-words">{(a as any).phone}</div>
 											{/if}
 										</div>
 									</label>
