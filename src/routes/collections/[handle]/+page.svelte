@@ -178,9 +178,7 @@
 		maxImagePreview="large"
 		maxSnippet={-1}
 	/>
-{/if}
 
-{#key collection?.id ?? collection?.handle ?? 'unknown'}
 	<section class="w-full py-8">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 			<nav class="breadcrumbs mb-4 text-sm">
@@ -218,4 +216,4 @@
 			</div>
 		</div>
 	</section>
-{/key}
+{/if}
