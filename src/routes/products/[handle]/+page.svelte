@@ -555,7 +555,7 @@
 				<!-- Icon Illustration -->
 				<div class="flex justify-center mb-8">
 					<svg
-						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content/30 stroke-current"
+						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content stroke-current"
 						fill="none"
 						viewBox="0 0 24 24"
 					>
