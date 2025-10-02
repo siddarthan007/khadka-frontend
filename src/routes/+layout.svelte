@@ -317,71 +317,76 @@
 </script>
 
 <svelte:head>
-	<!-- Canonical & Icons -->
-	<link rel="icon" href={favicon} />
-	<link rel="apple-touch-icon" href="{favicon}" />
-	{#if page}
-		<link rel="canonical" href={`${page.url.origin}${page.url.pathname}`} />
-	{/if}
+  <!-- Canonical & Icons -->
+  <link rel="icon" href={favicon} />
+  <link rel="apple-touch-icon" href="{favicon}" />
+  {#if page}
+    <link rel="canonical" href={`${page.url.origin}${page.url.pathname}`} />
+  {/if}
 
-	<!-- Primary Meta -->
-	<title>{storeMetadata.title ?? 'Khadka Foods'}</title>
-	<meta
-		name="description"
-		content={storeMetadata.description ?? 'Discover and shop curated products at Khadka Foods. Fast checkout, secure payments, and great collections.'}
-	/>
-	<meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
-	<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <!-- Primary Meta -->
+  <title>{storeMetadata.title ?? 'Khadka Foods'}</title>
+  <meta
+    name="description"
+    content={storeMetadata.description ?? 'Discover and shop curated products at Khadka Foods. Fast checkout, secure payments, and great collections.'}
+  />
+  <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 
-	<!-- Robots (dynamic per-route) -->
-	{#if page}
-		{#key page.url.pathname}
-			{#if (() => { const p = page.url.pathname; const noindexPaths = [
-				'/cart', '/checkout', '/login', '/register', '/account', '/orders/lookup', '/oauth', '/password-reset', '/reset-password'
-			]; return noindexPaths.some(x => p === x || p.startsWith(`${x}/`)); })()}
-				<meta name="robots" content="noindex,nofollow,noarchive" />
-			{:else}
-				<meta name="robots" content="index,follow" />
-			{/if}
-		{/key}
-	{/if}
+  <!-- Robots (dynamic per-route) -->
+  {#if page}
+    {#key page.url.pathname}
+      {#if (() => { 
+        const p = page.url.pathname; 
+        const noindexPaths = [
+          '/cart', '/checkout', '/login', '/register', '/account', 
+          '/orders/lookup', '/oauth', '/password-reset', '/reset-password'
+        ]; 
+        return noindexPaths.some(x => p === x || p.startsWith(`${x}/`)); 
+      })()}
+        <meta name="robots" content="noindex,nofollow,noarchive" />
+      {:else}
+        <meta name="robots" content="index,follow" />
+      {/if}
+    {/key}
+  {/if}
 
-	<!-- Open Graph -->
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content={storeMetadata.title ?? 'Khadka Foods'} />
-	{#if page}
-		<meta property="og:url" content={`${page.url.origin}${page.url.pathname}`} />
-	{/if}
-	<meta property="og:title" content={storeMetadata.title ?? 'Khadka Foods'} />
-	<meta property="og:description" content={storeMetadata.description ?? 'Shop curated collections at Khadka Foods.'} />
-	<meta property="og:image" content="/hero.png" />
-	<meta property="og:locale" content="en_US" />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content={storeMetadata.title ?? 'Khadka Foods'} />
+  {#if page}
+    <meta property="og:url" content={`${page.url.origin}${page.url.pathname}`} />
+  {/if}
+  <meta property="og:title" content={storeMetadata.title ?? 'Khadka Foods'} />
+  <meta property="og:description" content={storeMetadata.description ?? 'Shop curated collections at Khadka Foods.'} />
+  <meta property="og:image" content="/hero.png" />
+  <meta property="og:locale" content="en_US" />
 
-	<!-- Twitter -->
-	<meta name="twitter:card" content="summary_large_image" />
-	{#if storeMetadata.x}
-		<meta name="twitter:site" content={`@${storeMetadata.x}`} />
-	{/if}
-	<meta name="twitter:title" content={storeMetadata.title ?? 'Khadka Foods'} />
-	<meta name="twitter:description" content={storeMetadata.description ?? 'Shop curated collections at Khadka Foods.'} />
-	<meta name="twitter:image" content="/hero.png" />
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  {#if storeMetadata.x}
+    <meta name="twitter:site" content={`@${storeMetadata.x}`} />
+  {/if}
+  <meta name="twitter:title" content={storeMetadata.title ?? 'Khadka Foods'} />
+  <meta name="twitter:description" content={storeMetadata.description ?? 'Shop curated collections at Khadka Foods.'} />
+  <meta name="twitter:image" content="/hero.png" />
 
-	<!-- JSON-LD: Organization -->
-	{#if page}
-		{@const org = {
-			'@context': 'https://schema.org',
-			'@type': 'Organization',
-			name: storeMetadata.title ?? 'Khadka Foods',
-			url: `${page.url.origin}`,
-			logo: '/favicon.svg',
-			sameAs: [
-				storeMetadata.instagram ? `https://instagram.com/${storeMetadata.instagram}` : null,
-				storeMetadata.facebook ? `https://facebook.com/${storeMetadata.facebook}` : null,
-				storeMetadata.x ? `https://x.com/${storeMetadata.x}` : null
-			].filter(Boolean)
-		}}
-		<script type="application/ld+json">{JSON.stringify(org).replace(/<\/script>/g, '<\\/script>')}</script>
-	{/if}
+  <!-- JSON-LD: Organization -->
+  {#if page}
+    {@const org = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: storeMetadata.title ?? 'Khadka Foods',
+      url: `${page.url.origin}`,
+      logo: '/favicon.svg',
+      sameAs: [
+        storeMetadata.instagram ? `https://instagram.com/${storeMetadata.instagram}` : null,
+        storeMetadata.facebook ? `https://facebook.com/${storeMetadata.facebook}` : null,
+        storeMetadata.x ? `https://x.com/${storeMetadata.x}` : null
+      ].filter(Boolean)
+    }}
+    {@html `<script type="application/ld+json">${JSON.stringify(org).replace(/<\/script>/g, '<\\/script>')}</script>`}
+  {/if}
 </svelte:head>
 
 <div class="flex min-h-svh flex-col max-w-[100vw]">

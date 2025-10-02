@@ -165,14 +165,10 @@
   {#if Array.isArray(structuredData)}
     {#each structuredData as schema}
       {#if schema}
-        <script type="application/ld+json">
-          {safeJsonLd(schema)}
-        </script>
+        {@html `<script type="application/ld+json">${safeJsonLd(schema)}</script>`}
       {/if}
     {/each}
   {:else}
-    <script type="application/ld+json">
-      {safeJsonLd(structuredData)}
-    </script>
+    {@html `<script type="application/ld+json">${safeJsonLd(structuredData)}</script>`}
   {/if}
 {/if}
