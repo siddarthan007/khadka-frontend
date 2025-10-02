@@ -45,6 +45,30 @@
   const robotsContent = noindex 
     ? 'noindex, nofollow' 
     : `index, follow, max-image-preview:${maxImagePreview}, max-snippet:${maxSnippet}, max-video-preview:${maxVideoPreview}`;
+  
+  /**
+   * Safely serialize structured data to JSON-LD
+   * - Handles arrays and single objects
+   * - Escapes closing script tags to prevent injection
+   * - Removes undefined values for clean JSON
+   */
+  function safeJsonLd(data: any): string {
+    if (!data) return '';
+    
+    try {
+      // Convert to plain object/array (strips reactivity, proxies, etc.)
+      const plainData = JSON.parse(JSON.stringify(data));
+      
+      // Stringify with clean formatting (no extra whitespace)
+      const jsonString = JSON.stringify(plainData, null, 0);
+      
+      // Escape closing script tags to prevent injection attacks
+      return jsonString.replace(/<\/script>/gi, '<\\/script>');
+    } catch (error) {
+      console.error('Failed to serialize structured data:', error);
+      return '';
+    }
+  }
 </script>
 
 <svelte:head>
@@ -134,9 +158,21 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Khadka Foods" />
-  
-  <!-- Structured Data -->
-  {#if structuredData}
-    {@html `<script type="application/ld+json">${JSON.stringify(structuredData)}</script>`}
-  {/if}
 </svelte:head>
+
+<!-- Structured Data - Safely serialized JSON-LD -->
+{#if structuredData}
+  {#if Array.isArray(structuredData)}
+    {#each structuredData as schema}
+      {#if schema}
+        <script type="application/ld+json">
+          {safeJsonLd(schema)}
+        </script>
+      {/if}
+    {/each}
+  {:else}
+    <script type="application/ld+json">
+      {safeJsonLd(structuredData)}
+    </script>
+  {/if}
+{/if}

@@ -380,7 +380,7 @@
 				storeMetadata.x ? `https://x.com/${storeMetadata.x}` : null
 			].filter(Boolean)
 		}}
-		<script type="application/ld+json">{JSON.stringify(org)}</script>
+		<script type="application/ld+json">{JSON.stringify(org).replace(/<\/script>/g, '<\\/script>')}</script>
 	{/if}
 </svelte:head>
 

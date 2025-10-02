@@ -69,11 +69,8 @@
   description="Thank you for your order! Your payment has been processed successfully."
   canonical="https://khadkafoods.com/checkout/success"
   ogType="website"
+  noindex={true}
 />
-
-<svelte:head>
-  <meta name="robots" content="noindex, nofollow" />
-</svelte:head>
 
 <section class="w-full py-16">
   <div class="container mx-auto max-w-lg px-4 text-center">

@@ -30,19 +30,6 @@
 	ogType="website"
 />
 
-<svelte:head>
-	<meta property="og:title" content="Collections • Khadka Foods - Curated Product Collections" />
-	<meta property="og:description" content="Explore our carefully curated product collections at Khadka Foods. Find themed collections of premium groceries and essentials." />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://khadkafoods.com/collections" />
-	<meta property="og:image" content="/logo.png" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="Collections • Khadka Foods - Curated Product Collections" />
-	<meta name="twitter:description" content="Explore our carefully curated product collections at Khadka Foods. Find themed collections of premium groceries and essentials." />
-	<meta name="twitter:image" content="/logo.png" />
-	<link rel="canonical" href="https://khadkafoods.com/collections" />
-</svelte:head>
-
 <section class="w-full py-10">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 		<header class="mb-8">

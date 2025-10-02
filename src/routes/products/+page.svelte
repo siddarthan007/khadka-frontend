@@ -151,24 +151,6 @@
 	ogType="website"
 />
 
-<svelte:head>
-	<title>All Products • Khadka Foods - Premium Quality Groceries & Essentials</title>
-	<meta name="description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at Khadka Foods. Find everything you need with fast delivery." />
-	<meta name="keywords" content="products, groceries, fresh food, household essentials, premium products, online shopping, food delivery" />
-	<meta name="robots" content="index, follow" />
-	<meta name="author" content="Khadka Foods" />
-	<meta property="og:title" content="All Products • Khadka Foods - Premium Quality Groceries & Essentials" />
-	<meta property="og:description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at Khadka Foods." />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://khadkafoods.com/products" />
-	<meta property="og:image" content="/logo.png" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="All Products • Khadka Foods - Premium Quality Groceries & Essentials" />
-	<meta name="twitter:description" content="Browse our complete collection of premium quality products, fresh groceries, and household essentials at Khadka Foods." />
-	<meta name="twitter:image" content="/logo.png" />
-	<link rel="canonical" href="https://khadkafoods.com/products" />
-</svelte:head>
-
 <section class="w-full py-8 min-h-screen">
 	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 		<header class="mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
