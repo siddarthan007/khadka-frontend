@@ -337,7 +337,7 @@
 						<div class="card-body space-y-6 p-6 lg:p-8">
 							<div class="space-y-3">
 								<div class="flex items-start justify-between gap-3">
-									<h1 class="flex-1 text-3xl font-extrabold tracking-tight lg:text-4xl text-primary">{product.title}</h1>
+									<h1 class="flex-1 text-3xl font-extrabold tracking-tight lg:text-4xl">{product.title}</h1>
 									{#if isNew()}
 										<span class="badge badge-primary badge-lg rounded-full px-4 py-3 text-xs font-bold shadow-lg animate-pulse">NEW</span>
 									{/if}
