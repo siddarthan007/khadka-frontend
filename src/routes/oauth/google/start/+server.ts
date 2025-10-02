@@ -6,7 +6,7 @@ import { logger } from "$lib/logger";
 export const GET: RequestHandler = async (event) => {
   try {
     const url = new URL(event.request.url);
-    const returnTo = url.searchParams.get("return_to") || "/account";
+    const returnTo = url.searchParams.get("returnTo") || "/account";
     const baseUrl = event.locals?.config?.baseUrl;
     if (!baseUrl) return new Response("Missing base URL", { status: 500 });
 
@@ -14,10 +14,6 @@ export const GET: RequestHandler = async (event) => {
     if (!sdk) return new Response("SDK not initialized", { status: 500 });
 
     const callback = new URL("/oauth/google/callback", baseUrl);
-    // Do NOT append return_to to the callback URL; keep it only in cookie to avoid
-    // unexpected params being forwarded to the provider/Medusa callback.
-
-    // Generate and store CSRF state for security
     const state = randomBytes(32).toString("hex");
     const isSecure = url.protocol === "https:";
     event.cookies.set("oauth_state", state, {
@@ -25,10 +21,9 @@ export const GET: RequestHandler = async (event) => {
       httpOnly: true,
       sameSite: "lax",
       secure: isSecure,
-      maxAge: 10 * 60, // 10 minutes
+      maxAge: 10 * 60,
     });
 
-    // Persist return_to for server callback to read and redirect
     event.cookies.set("oauth_return_to", returnTo, {
       path: "/",
       httpOnly: true,

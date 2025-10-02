@@ -239,12 +239,12 @@ export async function startGoogleOAuth(
     const callbackUrl = new URL(
       "/oauth/google/callback",
       window.location.origin,
-    ).toString();
+    );
 
-    localStorage.setItem("oauth_intended_path", returnTo);
+    callbackUrl.searchParams.set("returnTo", returnTo);
 
     const res = await sdk.auth.login("customer", "google", {
-      callbackUrl: callbackUrl,
+      callbackUrl: callbackUrl.toString(),
     });
 
     if (res && typeof res === "object" && "location" in res && res.location) {

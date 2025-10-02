@@ -12,13 +12,7 @@
     const url = page.url;
     const ok = await handleGoogleOAuthCallback(url.searchParams);
     if (ok) {
-      // Prefer intended path from localStorage set by startGoogleOAuth
-      let returnTo = '/account';
-      try {
-        const stored = localStorage.getItem('oauth_intended_path');
-        if (stored && stored.startsWith('/')) returnTo = stored;
-        localStorage.removeItem('oauth_intended_path');
-      } catch {}
+      let returnTo = url.searchParams.get("returnTo") || "/account";
       await goto(returnTo);
       return;
     }
