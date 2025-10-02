@@ -150,7 +150,7 @@
 
 <!-- Backdrop -->
 <div
-	class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm"
+	class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-sm"
 	transition:fade={{ duration: 200 }}
 	onclick={handleBackdropClick}
 	onkeydown={(e) => e.key === 'Escape' && onClose()}
@@ -161,7 +161,7 @@
 >
 	<!-- Modal -->
 	<div
-		class="relative w-full max-w-5xl overflow-hidden rounded-xl sm:rounded-2xl bg-base-100 shadow-2xl"
+		class="relative w-full max-w-5xl overflow-hidden rounded-xl sm:rounded-2xl bg-base-100 shadow-2xl max-h-[95vh] flex flex-col"
 		transition:scale={{ start: 0.95, duration: 300, easing: cubicOut }}
 		role="document"
 	>
@@ -182,7 +182,7 @@
 		</button>
 
 		<!-- Content -->
-		<div class="grid max-h-[90vh] grid-cols-1 gap-4 sm:gap-6 overflow-y-auto p-4 sm:p-6 md:grid-cols-2 md:p-8">
+		<div class="grid grid-cols-1 gap-4 sm:gap-6 overflow-y-auto p-4 sm:p-6 md:grid-cols-2 md:p-8 flex-1 min-h-0">
 			<!-- Image Section -->
 			<div class="space-y-3">
 				<!-- Main Image -->
@@ -328,7 +328,7 @@
 						</button>
 					</div>
 				</div>				<!-- Actions -->
-				<div class="mt-auto flex flex-col sm:flex-row gap-2 sm:gap-3">
+				<div class="mt-auto pt-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
 					<Button
 						variant="outline"
 						class="flex-1 text-sm sm:text-base"
