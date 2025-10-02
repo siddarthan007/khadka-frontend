@@ -40,15 +40,15 @@
 	noindex={true}
 />
 
-<!-- Clean Error Hero Section -->
-<div class="hero min-h-[calc(100vh-200px)] bg-base-200">
-	<div class="hero-content text-center max-w-2xl px-4">
-		<div class="w-full">
+<!-- Clean Error Section - Matching site pattern -->
+<section class="w-full py-12 sm:py-16 min-h-[calc(100vh-200px)]">
+	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+		<div class="max-w-2xl mx-auto text-center">
 			
 			<!-- Error Code with Minimal Badge -->
 			<div class="flex justify-center mb-6">
-				<div class="badge badge-lg badge-ghost gap-2 border-base-content/10">
-					<span class="text-5xl font-black text-base-content/20">{status}</span>
+				<div class="badge badge-lg badge-ghost gap-2 border-base-content/20">
+					<span class="text-5xl font-black text-base-content/40">{status}</span>
 				</div>
 			</div>
 
@@ -56,7 +56,7 @@
 			<div class="flex justify-center mb-8">
 				<div class="relative">
 					<svg
-						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content/20 stroke-current"
+						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content/30 stroke-current"
 						fill="none"
 						viewBox="0 0 24 24"
 					>
@@ -77,7 +77,7 @@
 			</h1>
 
 			<!-- Subtitle -->
-			<p class="text-base sm:text-lg text-base-content/60 mb-10 max-w-md mx-auto">
+			<p class="text-base sm:text-lg text-base-content/70 mb-10 max-w-md mx-auto">
 				{errorContent.subtitle}
 			</p>
 
@@ -103,15 +103,15 @@
 			</div>
 
 			<!-- Minimal Quick Links -->
-			<div class="divider divider-neutral text-xs opacity-50">or explore</div>
+			<div class="divider divider-neutral text-xs text-base-content/60">or explore</div>
 			
 			<div class="flex flex-wrap gap-2 justify-center">
 				<a href="/collections" class="link link-hover text-sm">Collections</a>
-				<span class="text-base-content/30">•</span>
+				<span class="text-base-content/50">•</span>
 				<a href="/categories" class="link link-hover text-sm">Categories</a>
-				<span class="text-base-content/30">•</span>
+				<span class="text-base-content/50">•</span>
 				<a href="/cart" class="link link-hover text-sm">Cart</a>
-				<span class="text-base-content/30">•</span>
+				<span class="text-base-content/50">•</span>
 				<a href="/about" class="link link-hover text-sm">About</a>
 			</div>
 
@@ -120,11 +120,11 @@
 				<div class="mt-10">
 					<div class="collapse collapse-arrow bg-base-100">
 						<input type="checkbox" />
-						<div class="collapse-title text-xs font-medium text-base-content/50">
+						<div class="collapse-title text-xs font-medium text-base-content/70">
 							Technical Details
 						</div>
 						<div class="collapse-content">
-							<div class="text-left text-xs font-mono text-base-content/60 space-y-1">
+							<div class="text-left text-xs font-mono text-base-content/80 space-y-1">
 								<div><span class="font-semibold text-base-content">Status:</span> {status}</div>
 								<div><span class="font-semibold text-base-content">Message:</span> {errorMessage}</div>
 								<div class="break-all"><span class="font-semibold text-base-content">URL:</span> {$page.url.pathname}</div>
@@ -136,4 +136,4 @@
 
 		</div>
 	</div>
-</div>
+</section>
