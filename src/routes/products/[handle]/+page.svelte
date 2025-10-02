@@ -401,18 +401,18 @@
 
 							<div class="space-y-4">
 								{#if currentQty() > 0}
-									<div class="flex flex-col sm:flex-row items-center gap-3">
-										<div class="join w-full sm:w-auto overflow-hidden rounded-2xl border-2 border-base-300 shadow-md">
+									<div class="flex flex-row items-center gap-2 sm:gap-3">
+										<div class="join flex-shrink-0 overflow-hidden rounded-2xl border-2 border-base-300 shadow-md">
 											<Button
 												variant="ghost"
 												size="lg"
-												class="join-item text-lg font-bold"
+												class="join-item text-lg font-bold px-3 sm:px-4"
 												onclick={decSelected}
 												disabled={isUpdating}
 												aria-label="Decrease quantity">−</Button
 											>
 											<input
-												class="join-item w-20 border-0 bg-transparent text-center text-lg font-bold pointer-events-none"
+												class="join-item w-14 sm:w-16 border-0 bg-transparent text-center text-lg font-bold pointer-events-none"
 												value={currentQty()}
 												readonly
 												aria-live="polite"
@@ -421,13 +421,13 @@
 											<Button
 												variant="ghost"
 												size="lg"
-												class="join-item text-lg font-bold"
+												class="join-item text-lg font-bold px-3 sm:px-4"
 												onclick={incSelected}
 												disabled={isUpdating}
 												aria-label="Increase quantity">+</Button
 											>
 										</div>
-										<a href="/cart" class="btn btn-outline btn-primary btn-lg rounded-xl flex-1 sm:flex-initial shadow-md hover:shadow-lg transition-all duration-300">View cart</a>
+										<a href="/cart" class="btn btn-outline btn-primary btn-lg rounded-xl flex-1 shadow-md hover:shadow-lg transition-all duration-300 whitespace-nowrap">View cart</a>
 									</div>
 								{:else}
 									<button
