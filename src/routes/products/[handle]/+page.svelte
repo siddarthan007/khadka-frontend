@@ -549,7 +549,61 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="p-10 text-center opacity-70">Product not found</div>
+			<!-- Product Not Found Section -->
+			<div class="max-w-2xl mx-auto text-center py-12 sm:py-16">
+				
+				<!-- Icon Illustration -->
+				<div class="flex justify-center mb-8">
+					<svg
+						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content/30 stroke-current"
+						fill="none"
+						viewBox="0 0 24 24"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+					</svg>
+				</div>
+
+				<!-- Title -->
+				<h1 class="text-4xl sm:text-5xl font-bold mb-4 text-base-content">
+					Product Not Found
+				</h1>
+
+				<!-- Subtitle -->
+				<p class="text-base sm:text-lg text-base-content/70 mb-10 max-w-md mx-auto">
+					This product seems to have sold out before we could restock it! Or maybe it never existed...
+				</p>
+
+				<!-- Divider -->
+				<div class="divider my-8"></div>
+
+				<!-- Action Buttons -->
+				<div class="flex flex-col sm:flex-row gap-3 justify-center items-center mb-8">
+					<a href="/products" class="btn btn-primary gap-2 min-w-[160px]">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+						</svg>
+						Browse Products
+					</a>
+
+					<a href="/" class="btn btn-outline gap-2 min-w-[160px]">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+						</svg>
+						Go Home
+					</a>
+				</div>
+
+				<!-- Quick Links -->
+				<div class="divider divider-neutral text-xs text-base-content/60">or explore</div>
+				
+				<div class="flex flex-wrap gap-2 justify-center">
+					<a href="/collections" class="link link-hover text-sm">Collections</a>
+					<span class="text-base-content/50">•</span>
+					<a href="/categories" class="link link-hover text-sm">Categories</a>
+					<span class="text-base-content/50">•</span>
+					<a href="/cart" class="link link-hover text-sm">Cart</a>
+				</div>
+			</div>
 		{/if}
 	</div>
 </section>

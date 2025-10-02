@@ -159,7 +159,67 @@
 	}
 </script>
 
-{#if category}
+{#if !category}
+	<!-- Category Not Found Section -->
+	<section class="w-full py-12 sm:py-16 min-h-[calc(100vh-200px)]">
+		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+			<div class="max-w-2xl mx-auto text-center">
+				
+				<!-- Icon Illustration -->
+				<div class="flex justify-center mb-8">
+					<svg
+						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content/30 stroke-current"
+						fill="none"
+						viewBox="0 0 24 24"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+					</svg>
+				</div>
+
+				<!-- Title -->
+				<h1 class="text-4xl sm:text-5xl font-bold mb-4 text-base-content">
+					Category Not Found
+				</h1>
+
+				<!-- Subtitle -->
+				<p class="text-base sm:text-lg text-base-content/70 mb-10 max-w-md mx-auto">
+					Looks like this category escaped our inventory system. Let's find you something delicious instead!
+				</p>
+
+				<!-- Divider -->
+				<div class="divider my-8"></div>
+
+				<!-- Action Buttons -->
+				<div class="flex flex-col sm:flex-row gap-3 justify-center items-center mb-8">
+					<a href="/categories" class="btn btn-primary gap-2 min-w-[160px]">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+						</svg>
+						All Categories
+					</a>
+
+					<a href="/products" class="btn btn-outline gap-2 min-w-[160px]">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+						</svg>
+						Browse Products
+					</a>
+				</div>
+
+				<!-- Quick Links -->
+				<div class="divider divider-neutral text-xs text-base-content/60">or explore</div>
+				
+				<div class="flex flex-wrap gap-2 justify-center">
+					<a href="/collections" class="link link-hover text-sm">Collections</a>
+					<span class="text-base-content/50">•</span>
+					<a href="/" class="link link-hover text-sm">Home</a>
+					<span class="text-base-content/50">•</span>
+					<a href="/cart" class="link link-hover text-sm">Cart</a>
+				</div>
+			</div>
+		</div>
+	</section>
+{:else if category}
 	<SEO
 		title={seoTitle}
 		description={seoDescription}

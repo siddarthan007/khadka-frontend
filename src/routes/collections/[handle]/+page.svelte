@@ -95,7 +95,67 @@
 	});
 </script>
 
-{#if collection}
+{#if !collection}
+	<!-- Collection Not Found Section -->
+	<section class="w-full py-12 sm:py-16 min-h-[calc(100vh-200px)]">
+		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+			<div class="max-w-2xl mx-auto text-center">
+				
+				<!-- Icon Illustration -->
+				<div class="flex justify-center mb-8">
+					<svg
+						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content/30 stroke-current"
+						fill="none"
+						viewBox="0 0 24 24"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+				</div>
+
+				<!-- Title -->
+				<h1 class="text-4xl sm:text-5xl font-bold mb-4 text-base-content">
+					Collection Not Found
+				</h1>
+
+				<!-- Subtitle -->
+				<p class="text-base sm:text-lg text-base-content/70 mb-10 max-w-md mx-auto">
+					This collection took a trip to a different country and forgot to leave a forwarding address!
+				</p>
+
+				<!-- Divider -->
+				<div class="divider my-8"></div>
+
+				<!-- Action Buttons -->
+				<div class="flex flex-col sm:flex-row gap-3 justify-center items-center mb-8">
+					<a href="/collections" class="btn btn-primary gap-2 min-w-[160px]">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						All Collections
+					</a>
+
+					<a href="/products" class="btn btn-outline gap-2 min-w-[160px]">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+						</svg>
+						Browse Products
+					</a>
+				</div>
+
+				<!-- Quick Links -->
+				<div class="divider divider-neutral text-xs text-base-content/60">or explore</div>
+				
+				<div class="flex flex-wrap gap-2 justify-center">
+					<a href="/categories" class="link link-hover text-sm">Categories</a>
+					<span class="text-base-content/50">•</span>
+					<a href="/" class="link link-hover text-sm">Home</a>
+					<span class="text-base-content/50">•</span>
+					<a href="/cart" class="link link-hover text-sm">Cart</a>
+				</div>
+			</div>
+		</div>
+	</section>
+{:else if collection}
 	<SEO
 		title={seoTitle}
 		description={seoDescription}
