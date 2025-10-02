@@ -406,6 +406,7 @@ export function generateOptimizedDescription(
 /**
  * Generate ItemList structured data for product listings
  * Note: Using simple URL references to avoid nested Product schema validation errors
+ * According to Schema.org, ListItem.item should be a URL string for simple references
  */
 export function generateItemListStructuredData(config: {
   name: string;
@@ -420,11 +421,14 @@ export function generateItemListStructuredData(config: {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name: config.name,
+    numberOfItems: config.items.length,
     itemListElement: config.items.map(item => ({
       '@type': 'ListItem',
       position: item.position,
-      name: item.name,
-      item: item.url  // Use URL reference instead of nested Product object
+      // Use URL string only - do not nest Product objects
+      // This avoids "offers required" validation errors
+      url: item.url,
+      name: item.name
     }))
   };
 }

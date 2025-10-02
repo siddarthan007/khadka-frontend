@@ -148,16 +148,6 @@
 		}
 	}
 
-	function formatPrice(cp: any): string {
-		if (!cp) return '';
-		const amount = cp.calculated_amount ?? cp.amount ?? 0;
-		try {
-			return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount / 100);
-		} catch {
-			return `$${(amount / 100).toFixed(2)}`;
-		}
-	}
-
 	async function onSelect(id: string) {
 		selected = id;
 		const url = new URL(page.url);

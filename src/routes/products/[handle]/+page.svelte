@@ -81,15 +81,15 @@
 			name: product.title,
 			description: product.description || `Shop ${product.title} at Khadka Foods. Premium quality, fast delivery.`,
 			image: activeImage || product.thumbnail || `${baseUrl}/logo.png`,
-			price: price / 100, // Convert from cents
+			price: price, // Convert from cents
 			currency: currency.toUpperCase(),
 			availability: isInStock(variant) ? 'InStock' : 'OutOfStock',
 			brand: 'Khadka Foods',
 			sku: variant?.sku || product.id,
 			// Add aggregate offer data if multiple variants
 			...(hasMultipleVariants && variantPrices.length > 1 ? {
-				lowPrice: Math.min(...variantPrices) / 100,
-				highPrice: Math.max(...variantPrices) / 100,
+				lowPrice: Math.min(...variantPrices),
+				highPrice: Math.max(...variantPrices),
 				offerCount: product.variants.length
 			} : {})
 		});
@@ -266,7 +266,7 @@
 		productPrice={(() => {
 			const variant = selectedVariant();
 			const price = variant?.calculated_price?.calculated_amount || variant?.prices?.[0]?.amount || 0;
-			return (price / 100).toFixed(2);
+			return (price).toFixed(2);
 		})()}
 		productCurrency={(() => {
 			const variant = selectedVariant();
