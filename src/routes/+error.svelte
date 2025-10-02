@@ -47,8 +47,8 @@
 			
 			<!-- Error Code with Minimal Badge -->
 			<div class="flex justify-center mb-6">
-				<div class="badge badge-lg badge-ghost gap-2 border-base-content/20">
-					<span class="text-5xl font-black text-base-content/40">{status}</span>
+				<div class="gap-2 border-base-content/20">
+					<span class="text-5xl font-black text-base-content">{status}</span>
 				</div>
 			</div>
 
@@ -56,7 +56,7 @@
 			<div class="flex justify-center mb-8">
 				<div class="relative">
 					<svg
-						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content/30 stroke-current"
+						class="w-24 h-24 sm:w-32 sm:h-32 text-base-content stroke-current"
 						fill="none"
 						viewBox="0 0 24 24"
 					>
