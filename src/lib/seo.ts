@@ -71,6 +71,11 @@ export function generateProductStructuredData(product: ProductSEO) {
   const hasVariants = product.offerCount && product.offerCount > 1;
   const hasReviews = product.reviews && product.reviews.length > 0;
   
+  // Ensure we always have valid price values
+  const price = product.price || 0;
+  const lowPrice = product.lowPrice || price;
+  const highPrice = product.highPrice || price;
+  
   return {
     '@context': 'https://schema.org/',
     '@type': 'Product',
@@ -81,12 +86,13 @@ export function generateProductStructuredData(product: ProductSEO) {
       '@type': 'Brand',
       name: product.brand
     } : undefined,
+    // Always include offers (required by Google)
     offers: hasVariants ? {
       '@type': 'AggregateOffer',
       url: typeof window !== 'undefined' ? window.location.href : '',
       priceCurrency: product.currency,
-      lowPrice: product.lowPrice || product.price,
-      highPrice: product.highPrice || product.price,
+      lowPrice: lowPrice.toString(),
+      highPrice: highPrice.toString(),
       offerCount: product.offerCount,
       availability: `https://schema.org/${product.availability}`,
       priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -94,7 +100,7 @@ export function generateProductStructuredData(product: ProductSEO) {
       '@type': 'Offer',
       url: typeof window !== 'undefined' ? window.location.href : '',
       priceCurrency: product.currency,
-      price: product.price,
+      price: price.toString(),
       availability: `https://schema.org/${product.availability}`,
       priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       itemCondition: 'https://schema.org/NewCondition'
@@ -399,6 +405,7 @@ export function generateOptimizedDescription(
 
 /**
  * Generate ItemList structured data for product listings
+ * Note: Using simple URL references to avoid nested Product schema validation errors
  */
 export function generateItemListStructuredData(config: {
   name: string;
@@ -416,18 +423,15 @@ export function generateItemListStructuredData(config: {
     itemListElement: config.items.map(item => ({
       '@type': 'ListItem',
       position: item.position,
-      item: {
-        '@type': 'Product',
-        name: item.name,
-        url: item.url,
-        image: item.image
-      }
+      name: item.name,
+      item: item.url  // Use URL reference instead of nested Product object
     }))
   };
 }
 
 /**
  * Generate CollectionPage structured data
+ * Note: Using URL references to avoid nested Product validation issues
  */
 export function generateCollectionPageStructuredData(config: {
   name: string;
@@ -441,11 +445,8 @@ export function generateCollectionPageStructuredData(config: {
     name: config.name,
     description: config.description,
     url: config.url,
-    hasPart: config.hasPart?.map(part => ({
-      '@type': 'Product',
-      url: part.url,
-      name: part.name
-    }))
+    // Use simple URL array instead of nested Product objects
+    hasPart: config.hasPart?.map(part => part.url)
   };
 }
 
