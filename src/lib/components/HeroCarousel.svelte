@@ -381,7 +381,7 @@
 														{slide.title}
 														{#if slide.accent}
 															<br />
-															<span class="text-primary-content/90 drop-shadow-lg"
+															<span class="text-primary drop-shadow-lg"
 																>{slide.accent}</span
 															>
 														{/if}
