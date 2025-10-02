@@ -808,7 +808,7 @@
 									<!-- Dialog Content -->
 									<div
 										use:melt={$content}
-										class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-3xl border-2 border-base-300/50 bg-base-100 shadow-2xl animate-in zoom-in-95 fade-in duration-200 mx-4 sm:max-w-lg"
+										class="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl sm:rounded-3xl border-2 border-base-300/50 bg-base-100 shadow-2xl animate-in zoom-in-95 fade-in duration-200 max-h-[90vh] overflow-y-auto sm:max-w-lg"
 									>
 										<!-- Header with gradient background -->
 										<!-- Header with gradient background -->
