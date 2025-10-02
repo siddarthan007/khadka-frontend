@@ -1334,11 +1334,7 @@
 				<span class="text-base-content/70"
 					>© {new Date().getFullYear()}
 					<span class="font-semibold text-primary">Khadka Foods</span
-					>. All rights reserved.
-				</span>
-
-				<span class="mt-2 inline-block">
-					Designed & Developed by
+					>. All rights reserved. Designed & Developed by
 					<a
 						href="https://devignity.tech/"
 						class="font-semibold text-primary hover:text-primary/80 transition-colors duration-200"
