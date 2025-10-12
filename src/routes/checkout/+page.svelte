@@ -779,10 +779,6 @@
 		{/if}
 		<h1 class="mb-6 text-3xl font-bold tracking-tight">Checkout</h1>
 
-		{#if errorMsg}
-			<div class="mb-4 alert alert-error"><span>{errorMsg}</span></div>
-		{/if}
-
 		<div class="card border border-base-300 bg-base-100 shadow-xl">
 			<div class="card-body space-y-4">
 				<!-- Stepper nav -->
