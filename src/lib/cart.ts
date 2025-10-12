@@ -90,7 +90,7 @@ export async function addLine(
       trackAddToCart({
         id: existingItem.variant_id || existingItem.id,
         name: existingItem.title || existingItem.variant?.title || 'Product',
-        price: (existingItem.unit_price || 0) / 100,
+        price: existingItem.unit_price || 0,
         quantity,
         currency: updatedCart.currency_code?.toUpperCase() || 'USD',
         category: existingItem.product?.collection?.title
@@ -117,7 +117,7 @@ export async function addLine(
       trackAddToCart({
         id: addedItem.variant_id || addedItem.id,
         name: addedItem.title || addedItem.variant?.title || 'Product',
-        price: (addedItem.unit_price || 0) / 100,
+        price: addedItem.unit_price || 0,
         quantity,
         currency: updatedCart.currency_code?.toUpperCase() || 'USD',
         category: addedItem.product?.collection?.title
@@ -169,7 +169,7 @@ export async function removeLine(
       trackRemoveFromCart({
         id: removedItem.variant_id || removedItem.id,
         name: removedItem.title || removedItem.variant?.title || 'Product',
-        price: (removedItem.unit_price || 0) / 100,
+        price: removedItem.unit_price || 0,
         quantity: removedItem.quantity || 1,
         currency: existing.currency_code?.toUpperCase() || 'USD'
       });

@@ -79,7 +79,7 @@
 			trackEvent('order_card_expanded', {
 				order_id: order.id,
 				order_status: order.status,
-				order_total: order.total / 100
+				order_total: order.total
 			});
 		}
 	});
@@ -673,7 +673,7 @@
 						showCancelConfirm = false;
 						trackEvent('order_cancel_confirmed', { 
 							order_id: order.id,
-							order_total: order.total / 100
+							order_total: order.total
 						});
 						await onCancel(order.id);
 					}}

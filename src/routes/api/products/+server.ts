@@ -52,13 +52,17 @@ function productMinPriceMajor(p: any): number | null {
 }
 
 export const GET: RequestHandler = async ({ url }) => {
-  let limit = Number(url.searchParams.get("limit") ?? "20");
-  const offset = Number(url.searchParams.get("offset") ?? "0");
+  let limitRaw = Number(url.searchParams.get("limit") ?? "20");
+  if (!Number.isFinite(limitRaw) || limitRaw <= 0) limitRaw = 20;
+  let limit = limitRaw;
+  const offsetRaw = Number(url.searchParams.get("offset") ?? "0");
+  const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
   const q = url.searchParams.get("q") ?? undefined;
   const categoryId = url.searchParams.getAll("category_id");
   const collectionId = url.searchParams.getAll("collection_id");
   const priceMin = url.searchParams.get("price_min");
   const priceMax = url.searchParams.get("price_max");
+  const fields = url.searchParams.get("fields") ?? undefined;
 
   const hasPriceFilter = priceMin != null || priceMax != null;
   if (hasPriceFilter && limit < 200) {
@@ -69,6 +73,7 @@ export const GET: RequestHandler = async ({ url }) => {
   if (q) params.q = q;
   if (categoryId.length) params.category_id = categoryId;
   if (collectionId.length) params.collection_id = collectionId;
+  if (fields) params.fields = fields;
 
   const { products, count } = await listProducts(params);
 
@@ -88,11 +93,19 @@ export const GET: RequestHandler = async ({ url }) => {
     });
   }
 
-  return new Response(
-    JSON.stringify({ products: filtered, count: filtered.length }),
-    {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    },
-  );
+  const responseBody = {
+    products: filtered,
+    count,
+    filtered_count: filtered.length,
+    has_price_filter: hasPriceFilter,
+    limit,
+    offset,
+    next_offset: offset + limit,
+    has_more: offset + limit < count,
+  };
+
+  return new Response(JSON.stringify(responseBody), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
 };

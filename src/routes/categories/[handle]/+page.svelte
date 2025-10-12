@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { createAccordion, melt } from "@melt-ui/svelte";
 	import ProductCard from "$lib/components/ProductCard.svelte";
-	import LabeledSeparator from "$lib/components/LabeledSeparator.svelte";
 	import SEO from "$lib/components/SEO.svelte";
 	import {
 		generateBreadcrumbStructuredData,
@@ -11,7 +9,6 @@
 		generateOptimizedDescription,
 	} from "$lib/seo";
 	import { cn } from "$lib/utils";
-	import { listProductsByCategoryIds } from "$lib/medusa";
 	import { onMount } from "svelte";
 	import { page } from "$app/state";
 	import { goto } from "$app/navigation";
@@ -31,23 +28,37 @@
 	} = $props();
 	const category = data?.category;
 	const subcategories = data?.subcategories ?? [];
-	const products = data?.products ?? [];
-	const total = data?.total ?? 0;
+	const initialProducts = data?.products ?? [];
+	const initialTotal = data?.total ?? 0;
+	let products = $state(initialProducts);
+	let total = $state(initialTotal);
 	const subCounts = data?.subCounts ?? {};
 	// allIds is provided by the loader but optional
 	const allIds: string[] = (data as any)?.allIds ?? [];
-	let currency = $state(
-		(
-			products?.[0]?.variants?.[0]?.calculated_price?.currency_code ??
-			"USD"
-		).toUpperCase(),
-	);
 
 	// sidebar selection: 'all' | subcat.id
 	let selected: string = $state("all");
 	let loading = $state(false);
-	let visible = $state(products);
-	let activeLabel: string = $state("All products");
+	let loadingMore = $state(false);
+	let visible = $state([...initialProducts]);
+	let hasMore = $state(initialProducts.length < initialTotal);
+	let offset = $state(initialProducts.length);
+	let currentIds = $state(allIds);
+	let currentCount = $state(initialTotal);
+	const pageLimit = 24;
+
+	function mergeUniqueProducts(existing: any[], additions: any[]) {
+		const seen = new Set(existing.map((item) => item.id));
+		const merged = [...existing];
+		let added = 0;
+		for (const product of additions) {
+			if (!product?.id || seen.has(product.id)) continue;
+			merged.push(product);
+			seen.add(product.id);
+			added += 1;
+		}
+		return { merged, added };
+	}
 
 	const baseUrl = "https://khadkafoods.com";
 	const breadcrumbs = [
@@ -68,14 +79,14 @@
 				category?.description ||
 				`Explore our ${category?.name} category with premium quality products.`,
 			url: `${baseUrl}/categories/${category?.handle}`,
-			hasPart: products.slice(0, 10).map((p) => ({
+			hasPart: initialProducts.slice(0, 10).map((p) => ({
 				url: `${baseUrl}/products/${p.handle}`,
 				name: p.title,
 			})),
 		}),
 		generateItemListStructuredData({
 			name: `${category?.name} Products`,
-			items: products.slice(0, 20).map((p, index) => ({
+			items: initialProducts.slice(0, 20).map((p, index) => ({
 				position: index + 1,
 				name: p.title,
 				url: `${baseUrl}/products/${p.handle}`,
@@ -144,25 +155,100 @@
 	}
 
 	async function loadFor(targetId: string) {
+		loading = true;
+		loadingMore = false;
+		if (targetId === "all") {
+			currentIds = allIds;
+			visible = [...products];
+			offset = products.length;
+			hasMore = products.length < total;
+			currentCount = total;
+			loading = false;
+			return;
+		}
+		const node = findNodeById(subcategories, targetId);
+		const ids = node ? collectIds(node) : [];
+		currentIds = ids;
+		currentCount = subCounts[targetId] ?? 0;
+		visible = [];
+		if (!ids.length) {
+			hasMore = false;
+			loading = false;
+			return;
+		}
 		try {
-			loading = true;
-			if (targetId === "all") {
-				visible = products;
-				return;
+			const params = new URLSearchParams();
+			params.set("limit", String(pageLimit));
+			params.set("offset", "0");
+			params.set(
+				"fields",
+				"title,handle,thumbnail,variants.id,*variants.calculated_price",
+			);
+			for (const id of ids) params.append("category_id", id);
+			const res = await fetch(`/api/products?${params.toString()}`);
+			if (!res.ok) {
+				throw new Error(`Failed to load products: ${res.status}`);
 			}
-			const node = findNodeById(subcategories, targetId);
-			const ids = node ? collectIds(node) : [];
-			const { products: prods } = await listProductsByCategoryIds(ids, {
-				limit: 24,
-				offset: 0,
-				fields: "title,handle,thumbnail,*variants.calculated_price",
-			});
-			visible = prods ?? [];
+			const json = await res.json();
+			const fetched = json.products ?? [];
+			const { merged, added } = mergeUniqueProducts([], fetched);
+			visible = merged;
+			offset =
+				json.next_offset ??
+				(json.offset ?? 0) + (json.limit ?? pageLimit);
+			hasMore = Boolean(json.has_more) && added > 0;
+			currentCount = json.count ?? fetched.length ?? currentCount;
 		} catch (e) {
-			logger.error(e);
+			logger.error("Failed to load category products", e);
 			visible = [];
+			hasMore = false;
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function loadMore() {
+		if (loadingMore || !hasMore || !currentIds.length) return;
+		loadingMore = true;
+		try {
+			const params = new URLSearchParams();
+			params.set("limit", String(pageLimit));
+			params.set("offset", String(offset));
+			params.set(
+				"fields",
+				"title,handle,thumbnail,variants.id,*variants.calculated_price",
+			);
+			for (const id of currentIds) params.append("category_id", id);
+			const res = await fetch(`/api/products?${params.toString()}`);
+			if (!res.ok) {
+				throw new Error(`Failed to load more products: ${res.status}`);
+			}
+			const json = await res.json();
+			const fetched = json.products ?? [];
+			offset =
+				json.next_offset ??
+				(json.offset ?? offset) + (json.limit ?? pageLimit);
+			let addedUnique = fetched.length;
+			hasMore = Boolean(json.has_more);
+			currentCount = json.count ?? currentCount;
+			if (selected === "all") {
+				const { merged, added } = mergeUniqueProducts(products, fetched);
+				products = merged;
+				visible = [...products];
+				addedUnique = added;
+				total = json.count ?? total;
+				currentCount = total;
+			} else {
+				const { merged, added } = mergeUniqueProducts(visible, fetched);
+				visible = merged;
+				addedUnique = added;
+			}
+			hasMore = hasMore && addedUnique > 0;
+		} catch (e) {
+			logger.error("Failed to load more category products", e);
+			hasMore = false;
+		} finally {
+			loadingMore = false;
 		}
 	}
 
@@ -176,7 +262,7 @@
 			noScroll: true,
 		});
 		await tick();
-		loadFor(id);
+		await loadFor(id);
 	}
 </script>
 
@@ -325,13 +411,14 @@
 							: (findNodeById(subcategories, selected)?.name ??
 								category?.name)}
 					</h1>
-					{#if selected !== "all"}
-						<p class="mt-1 text-sm opacity-70">
-							{subCounts[selected] ?? 0} products
-						</p>
-					{:else}
-						<p class="mt-1 text-sm opacity-70">{total} products</p>
-					{/if}
+					<p class="mt-1 text-sm opacity-70">
+						{#if loading && (visible?.length ?? 0) === 0 && selected !== "all"}
+							Loading products…
+						{:else}
+							{currentCount}
+							{currentCount === 1 ? " product" : " products"}
+						{/if}
+					</p>
 				</div>
 			</header>
 
@@ -385,7 +472,7 @@
 
 				<!-- Product listing -->
 				<div class="lg:col-span-8 xl:col-span-9">
-					{#if loading}
+					{#if loading && (visible?.length ?? 0) === 0}
 						<div
 							class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4"
 						>
@@ -444,6 +531,22 @@
 								/>
 							{/each}
 						</div>
+						{#if hasMore}
+							<div class="mt-8 flex justify-center">
+								<button
+									class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+									onclick={loadMore}
+									disabled={loadingMore}
+									class:loading={loadingMore}
+								>
+									{#if loadingMore}
+										<span class="loading loading-spinner"
+										></span>
+									{/if}
+									Load more
+								</button>
+							</div>
+						{/if}
 					{:else}
 						<div
 							class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-base-300 py-16 text-center"

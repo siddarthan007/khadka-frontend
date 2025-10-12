@@ -27,9 +27,10 @@
 	} = $props();
 	let products = $state(data?.products ?? []);
 	let count = $state(data?.count ?? 0);
+	let hasMore = $state((data?.products?.length ?? 0) < (data?.count ?? 0));
 	let q = $state(data?.q ?? '');
 	const pageLimit = 24;
-	let offset = $state(data?.products?.length ?? 0);
+	let offset = $state((data?.offset ?? 0) + (data?.products?.length ?? 0));
 
 	// filters
 	let selectedCategories: string[] = $state([]);
@@ -88,7 +89,8 @@
 		try {
 			const params = new URLSearchParams();
 			params.set('limit', String(reset ? pageLimit : pageLimit));
-			params.set('offset', String(reset ? 0 : offset));
+			const requestOffset = reset ? 0 : offset;
+			params.set('offset', String(requestOffset));
 			if (q.trim()) params.set('q', q.trim());
 			selectedCategories.forEach((id) => params.append('category_id', id));
 			selectedCollections.forEach((id) => params.append('collection_id', id));
@@ -96,14 +98,23 @@
 			if (priceMax != null) params.set('price_max', String(priceMax));
 			const res = await fetch(`/api/products?${params.toString()}`);
 			const json = await res.json();
+			const fetched = json.products ?? [];
 			if (reset) {
-				products = json.products ?? [];
-				offset = products.length;
+				products = fetched;
 			} else {
-				products = [...products, ...(json.products ?? [])];
-				offset = products.length;
+				products = [...products, ...fetched];
 			}
-			count = json.count ?? count;
+			const nextOffset = json.next_offset ?? ((json.offset ?? requestOffset) + (json.limit ?? pageLimit));
+			offset = nextOffset;
+			hasMore = Boolean(json.has_more);
+			if (json.has_price_filter) {
+				count = products.length;
+				if (!fetched.length) {
+					hasMore = false;
+				}
+			} else {
+				count = json.count ?? count;
+			}
 			
 			// Track filter application
 			try {
@@ -315,12 +326,6 @@
 						actionHref="javascript:void(0)"
 						class="min-h-[500px]"
 					/>
-					<button
-						class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 mx-auto block mt-4"
-						onclick={resetFilters}
-					>
-						Reset Filters
-					</button>
 				{:else}
 					<div class="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
 						{#each products as p}
@@ -346,7 +351,7 @@
 						{/each}
 					</div>
 				{/if}
-				{#if products.length < count}
+				{#if hasMore}
 					<div class="mt-8 flex justify-center">
 						<button
 							class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
