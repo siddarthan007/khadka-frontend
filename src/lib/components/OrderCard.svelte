@@ -86,6 +86,20 @@
 		}
 	});
 
+	// Calculate total for cancelled orders manually
+	const calculatedTotal = $derived.by(() => {
+		if (order.status === "cancelled" || order.status === "canceled") {
+			// For cancelled orders, manually calculate from components
+			const subtotal = order.subtotal || 0;
+			const shipping = order.shipping_total || 0;
+			const tax = order.tax_total || 0;
+			const discount = order.discount_total || 0;
+			return subtotal + shipping + tax - discount;
+		}
+		// For active orders, use the order.total from backend
+		return order.total || 0;
+	});
+
 	function humanizeOrderStatus(status: string) {
 		const map: Record<string, string> = {
 			pending: "Order Placed",
@@ -385,11 +399,7 @@
 						<span
 							class="text-sm font-semibold text-primary sm:text-base"
 							>{formatCurrency(
-								order.status === "cancelled" ||
-									order.status === "canceled"
-									? (order.subtotal || 0) + (order.shipping_total || 0) + (order.tax_total || 0) -
-											(order.discount_total || 0)
-									: order.total,
+								calculatedTotal,
 								order.currency_code,
 							)}</span
 						>
@@ -562,11 +572,7 @@
 							<span>Total</span>
 							<span
 								>{formatCurrency(
-									order.status === "cancelled" ||
-										order.status === "canceled"
-										? (order.subtotal || 0) + (order.shipping_total || 0) + (order.tax_total || 0) -
-												(order.discount_total || 0)
-										: order.total,
+									calculatedTotal,
 									order.currency_code,
 								)}</span
 							>
