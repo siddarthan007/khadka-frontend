@@ -17,7 +17,11 @@ function buildSubTree(
   }));
 }
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, setHeaders }) => {
+  setHeaders({
+    'cache-control': 'public, max-age=180, s-maxage=300',
+  });
+
   const handle = params.handle;
   const category = await getProductCategoryByHandle(handle);
   if (!category) {

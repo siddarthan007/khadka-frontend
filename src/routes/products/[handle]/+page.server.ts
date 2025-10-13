@@ -5,7 +5,11 @@ import {
   listProductsByCollectionId,
 } from "$lib/medusa";
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, setHeaders }) => {
+  setHeaders({
+    'cache-control': 'public, max-age=180, s-maxage=300',
+  });
+
   const handle = params.handle;
   const product = await getProductByHandle(handle);
 

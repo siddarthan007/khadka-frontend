@@ -3,7 +3,11 @@ import { json } from "@sveltejs/kit";
 import { searchProductsMeili, searchCategoriesMeili } from "$lib/server/medusa";
 import { checkRateLimit, sanitizeSearchQuery } from "$lib/security";
 
-export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress, setHeaders }) => {
+  setHeaders({
+    'cache-control': 'public, max-age=60, s-maxage=120', // 1 min browser, 2 min CDN
+  });
+
   // Rate limiting
   const clientIp = getClientAddress();
   if (!checkRateLimit(clientIp, 100)) {

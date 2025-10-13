@@ -1,17 +1,10 @@
 <script lang="ts">
 	import SEO from '$lib/components/SEO.svelte';
 	import logo from '$lib/assets/logo.png';
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { Phone, Mail, MapPin, Instagram, Facebook, Twitter, Heart, Star, Users, Award } from '@lucide/svelte';
+	import { Phone, Mail, MapPin, Instagram, Facebook, Twitter, Heart, Users, Award } from '@lucide/svelte';
 
-	let storeMetadata: Record<string, any> = $state({});
-
-	onMount(async () => {
-		// Get store metadata from page data
-		const data = page.data;
-		storeMetadata = data?.storeMetadata ?? {};
-	});
+	let storeMetadata = $state(page.data?.storeMetadata ?? {});
 </script>
 
 <SEO

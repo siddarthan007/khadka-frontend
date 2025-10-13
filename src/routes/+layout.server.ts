@@ -3,6 +3,7 @@ import type { HttpTypes } from "@medusajs/types";
 import { getHierarchicalProductCategories } from "$lib/medusa";
 import { env as privateEnv } from "$env/dynamic/private";
 import { logger } from "$lib/logger";
+import type { LayoutServerLoad } from "./$types";
 
 async function listAllCollectionsWithMetadata(): Promise<
   HttpTypes.AdminCollection[]
@@ -32,7 +33,7 @@ async function listAllCollectionsWithMetadata(): Promise<
   }
 }
 
-export async function load() {
+export const load: LayoutServerLoad = async ({ locals }) => {
   const collections = await listAllCollectionsWithMetadata();
   const collectionItems = collections.map((c) => ({
     title: c.title ?? c.handle,
@@ -55,24 +56,12 @@ export async function load() {
     }));
   } catch {}
 
-  // Fetch store metadata
-  let storeMetadata: Record<string, any> = {};
-  try {
-    const admin = getAdminClient();
-    if (admin) {
-      const { store } = await admin.admin.store.retrieve(
-        privateEnv.MEDUSA_STORE_ID!,
-        { fields: "id,metadata" },
-      );
-      storeMetadata = store.metadata || {};
-    }
-  } catch (error) {
-    logger.error("Failed to fetch store metadata:", error);
-  }
+  // Use store metadata from locals
+  const storeMetadata = locals.storeMetadata;
 
   return {
     collectionItems,
     categoryItems,
     storeMetadata,
   };
-}
+};

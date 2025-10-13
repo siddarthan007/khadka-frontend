@@ -13,7 +13,11 @@ const STATIC_PATHS = [
   "/tos",
 ];
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, setHeaders }) => {
+  setHeaders({
+    'cache-control': 'public, max-age=3600, s-maxage=7200', // 1 hour browser, 2 hours CDN
+  });
+
   const origin = url.origin;
   const lastmod = new Date().toISOString();
 

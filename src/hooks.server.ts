@@ -3,6 +3,12 @@ import { env as privateEnv } from "$env/dynamic/private";
 import { env as publicEnv } from "$env/dynamic/public";
 import type { Handle } from "@sveltejs/kit";
 import { sequence } from "@sveltejs/kit/hooks";
+import { getAdminClient } from "$lib/server/medusa";
+import { logger } from "$lib/logger";
+
+let cachedStoreMetadata: Record<string, any> | null = null;
+let lastFetch = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Security headers middleware - Minimal essential security
@@ -40,6 +46,27 @@ const configMiddleware: Handle = async ({ event, resolve }) => {
     medusaAdminApiKey: privateEnv.MEDUSA_ADMIN_API_KEY!,
     recaptchaSecretKey: privateEnv.RECAPTCHA_SECRET_KEY!,
   };
+
+  // Fetch store metadata with caching
+  if (!cachedStoreMetadata || Date.now() - lastFetch > CACHE_TTL) {
+    const admin = getAdminClient();
+    if (admin) {
+      try {
+        const { store } = await admin.admin.store.retrieve(
+          privateEnv.MEDUSA_STORE_ID!,
+          { fields: "id,metadata" },
+        );
+        cachedStoreMetadata = store.metadata || {};
+        lastFetch = Date.now();
+      } catch (error) {
+        logger.error("Failed to fetch store metadata:", error);
+        cachedStoreMetadata = {};
+      }
+    } else {
+      cachedStoreMetadata = {};
+    }
+  }
+  event.locals.storeMetadata = cachedStoreMetadata;
 
   return resolve(event);
 };

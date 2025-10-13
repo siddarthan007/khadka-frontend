@@ -26,6 +26,7 @@ declare global {
         medusaAdminApiKey: string;
         recaptchaSecretKey: string;
       };
+      storeMetadata: Record<string, any>;
     }
   }
 }

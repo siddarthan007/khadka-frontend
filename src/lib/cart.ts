@@ -2,13 +2,101 @@ import { getStoreClient, resolveDefaultRegion } from "./medusa";
 import { cart } from "$lib/stores/cart";
 import type { HttpTypes } from "@medusajs/types";
 import { get } from "svelte/store";
-import { 
-  trackAddToCart, 
+import {
+  trackAddToCart,
   trackRemoveFromCart,
   formatCartItemsForAnalytics,
   calculateCartValue
 } from "$lib/utils/analytics";
 import { logger } from "$lib/logger";
+
+function normalizeLineItems(targetCart: any) {
+  if (!Array.isArray(targetCart?.items)) return;
+  for (const li of targetCart.items as any[]) {
+    if (!li.variant) {
+      li.variant = {
+        id: li.variant_id,
+        title: li.variant_title,
+        product_id: li.product_id,
+        metadata: {
+          ...(li?.variant?.metadata ?? {}),
+          thumbnail: li.thumbnail,
+        },
+      };
+    } else if (!li.variant?.metadata) {
+      li.variant.metadata = {
+        ...(li?.variant?.metadata ?? {}),
+        thumbnail: li.thumbnail,
+      };
+    }
+  }
+}
+
+function getCartItemCount(targetCart: any): number {
+  if (!Array.isArray(targetCart?.items)) return 0;
+  return (targetCart.items as any[]).reduce(
+    (sum, li: any) => sum + (li?.quantity ?? 0),
+    0,
+  );
+}
+
+function hasResidualCheckoutState(targetCart: any): boolean {
+  if (!targetCart) return false;
+  const shippingTotal = targetCart.shipping_total ?? 0;
+  const shippingTax = targetCart.shipping_tax_total ?? 0;
+  const total = targetCart.total ?? 0;
+  const hasShippingMethods = Array.isArray(targetCart.shipping_methods)
+    ? targetCart.shipping_methods.length > 0
+    : false;
+  const hasShippingAddress = Boolean(targetCart.shipping_address);
+  const hasPaymentSessions = Boolean(
+    targetCart?.payment_collection?.payment_sessions?.length,
+  );
+  return (
+    shippingTotal > 0 ||
+    shippingTax > 0 ||
+    total > 0 ||
+    hasShippingMethods ||
+    hasShippingAddress ||
+    hasPaymentSessions
+  );
+}
+
+async function maybeResetEmptyCart(
+  targetCart: HttpTypes.StoreCart | null,
+  storeClient: any,
+  source: string,
+): Promise<HttpTypes.StoreCart | null> {
+  if (!targetCart) return targetCart;
+  if (!storeClient) return targetCart;
+
+  if (getCartItemCount(targetCart) >= 1) {
+    return targetCart;
+  }
+
+  if (!hasResidualCheckoutState(targetCart)) {
+    return targetCart;
+  }
+
+  try {
+    const payload = (targetCart as any)?.region_id
+      ? { region_id: (targetCart as any).region_id }
+      : {};
+    const { cart: freshCart } = await storeClient.store.cart.create(payload);
+    logger.log("[cart] regenerated empty cart", {
+      source,
+      previousCartId: (targetCart as any)?.id,
+      region: (targetCart as any)?.region_id ?? "default",
+    });
+    return freshCart;
+  } catch (error) {
+    logger.error("[cart] failed to regenerate empty cart", {
+      source,
+      error: (error as any)?.message ?? error,
+    });
+    return targetCart;
+  }
+}
 
 export async function ensureCart(): Promise<string> {
   const existingCart = get(cart);
@@ -34,30 +122,16 @@ export async function getCart(): Promise<HttpTypes.StoreCart | null> {
   if (!store) return null;
   // Use official SDK method only
   const resp = await (store as any).store.cart.retrieve(existingCart.id);
-  const freshCart: any = (resp as any)?.cart ?? resp;
+  let freshCart: any = (resp as any)?.cart ?? resp;
 
-  // Ensure each line item has a variant object with at least title and metadata
-  try {
-    const items: any[] = (freshCart?.items ?? []) as any[];
-    for (const li of items) {
-      if (!li.variant) {
-        li.variant = {
-          id: li.variant_id,
-          title: li.variant_title,
-          product_id: li.product_id,
-          metadata: {
-            ...(li?.variant?.metadata ?? {}),
-            thumbnail: li.thumbnail,
-          },
-        };
-      } else if (!li.variant?.metadata) {
-        li.variant.metadata = {
-          ...(li?.variant?.metadata ?? {}),
-          thumbnail: li.thumbnail,
-        };
-      }
-    }
-  } catch {}
+  freshCart = await maybeResetEmptyCart(freshCart, store, "getCart");
+
+  if (freshCart) {
+    try {
+      normalizeLineItems(freshCart);
+    } catch {}
+  }
+
   cart.set(freshCart);
   return freshCart;
 }
@@ -144,8 +218,17 @@ export async function updateLine(
       quantity,
     },
   );
-  cart.set(updatedCart);
-  return updatedCart;
+  const normalized = await maybeResetEmptyCart(
+    updatedCart,
+    store,
+    "updateLine",
+  );
+  const finalCart = (normalized ?? updatedCart) as HttpTypes.StoreCart;
+  try {
+    normalizeLineItems(finalCart);
+  } catch {}
+  cart.set(finalCart);
+  return finalCart;
 }
 
 export async function removeLine(
@@ -161,7 +244,6 @@ export async function removeLine(
   
   await store.store.cart.deleteLineItem(cartId, lineId);
   const updatedCart = await getCart();
-  cart.set(updatedCart);
   
   // Track remove from cart event
   if (removedItem && existing) {

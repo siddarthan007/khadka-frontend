@@ -18,6 +18,7 @@
 	import { Motion, AnimateSharedLayout } from "svelte-motion";
 	import { formatCurrency } from "$lib/utils";
 	import { logger } from "$lib/logger";
+	import { CheckCircle2, ShieldCheck } from "@lucide/svelte";
 	import {
 		trackBeginCheckout,
 		trackAddShippingInfo,
@@ -59,6 +60,7 @@
 	let saveAddress: boolean = $state(true);
 	let errorMsg: string | null = $state(null);
 	let overlay: boolean = $state(false);
+	let isGuestCheckout: boolean = $state(true);
 
 	// Shipping options
 	let shippingOptions: HttpTypes.StoreCartShippingOption[] = $state([]);
@@ -75,9 +77,41 @@
 	let paymentLoading: boolean = $state(false);
 	let paymentError: string | null = $state(null);
 	let paymentReady: boolean = $state(false);
+	const stripeProviderCache = new Map<string, string | null>();
 
 	// Stepper
 	let step: "address" | "shipping" | "payment" = $state("address");
+	let addressComplete: boolean = $state(false);
+	let shippingComplete: boolean = $state(false);
+	type AddressSection = "shipping" | "billing";
+	type RequiredFieldKey =
+		| "first_name"
+		| "last_name"
+		| "address_1"
+		| "city"
+		| "province"
+		| "postal_code";
+	const EMPTY_ADDRESS_ERRORS: Record<RequiredFieldKey, string> = {
+		first_name: "",
+		last_name: "",
+		address_1: "",
+		city: "",
+		province: "",
+		postal_code: "",
+	};
+	const ADDRESS_LABELS: Record<RequiredFieldKey, string> = {
+		first_name: "First name",
+		last_name: "Last name",
+		address_1: "Address line 1",
+		city: "City",
+		province: "State",
+		postal_code: "Postal code",
+	};
+	let addressErrors = $state({
+		email: "",
+		shipping: { ...EMPTY_ADDRESS_ERRORS },
+		billing: { ...EMPTY_ADDRESS_ERRORS },
+	});
 
 	// Saved addresses
 	let savedAddresses: HttpTypes.StoreCustomerAddress[] = $state([]);
@@ -130,6 +164,126 @@
 		};
 	}
 
+	function resetAddressErrors(section?: AddressSection) {
+		if (!section) {
+			addressErrors.email = "";
+			resetAddressErrors("shipping");
+			resetAddressErrors("billing");
+			return;
+		}
+		for (const key of Object.keys(addressErrors[section]) as RequiredFieldKey[]) {
+			addressErrors[section][key] = "";
+		}
+	}
+
+	type AddressFormState = {
+		first_name: string;
+		last_name: string;
+		address_1: string;
+		address_2: string;
+		city: string;
+		country_code: string;
+		province: string;
+		postal_code: string;
+		phone: string;
+		company: string;
+		address_name: string;
+	};
+
+	function sanitizeAddress(address: AddressFormState): AddressFormState {
+		const normalized: AddressFormState = { ...address };
+		for (const key of Object.keys(normalized) as (keyof AddressFormState)[]) {
+			const value = normalized[key];
+			if (typeof value === "string") {
+				normalized[key] = sanitizeInput(value).trim();
+			}
+		}
+		normalized.country_code =
+			normalized.country_code?.toLowerCase()?.trim() || "us";
+		if (normalized.postal_code) {
+			normalized.postal_code =
+				normalized.postal_code.replace(/\s+/g, "").toUpperCase();
+		}
+		return normalized;
+	}
+
+	function validateAndNormalizeAddresses(): {
+		isValid: boolean;
+		sanitizedShipping: AddressFormState;
+		sanitizedBilling: AddressFormState;
+	} {
+		let isValid = true;
+		resetAddressErrors();
+
+		const normalizedEmail = sanitizeInput(email).trim();
+		email = normalizedEmail;
+		if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+			addressErrors.email = "Enter a valid email address.";
+			isValid = false;
+		}
+
+		const sanitizedShipping = sanitizeAddress(shipping as AddressFormState);
+		shipping = sanitizedShipping;
+		for (const key of Object.keys(ADDRESS_LABELS) as RequiredFieldKey[]) {
+			if (!sanitizedShipping[key]) {
+				addressErrors.shipping[key] = `${ADDRESS_LABELS[key]} is required.`;
+				isValid = false;
+			}
+		}
+		if (
+			sanitizedShipping.postal_code &&
+			!/^[0-9A-Z-]{3,10}$/.test(sanitizedShipping.postal_code)
+		) {
+			addressErrors.shipping.postal_code = "Enter a valid postal code.";
+			isValid = false;
+		}
+
+		let sanitizedBilling: AddressFormState = billingSameAsShipping
+			? { ...sanitizedShipping }
+			: sanitizeAddress(billing as AddressFormState);
+
+		if (!billingSameAsShipping) {
+			billing = sanitizedBilling;
+			for (const key of Object.keys(ADDRESS_LABELS) as RequiredFieldKey[]) {
+				if (!sanitizedBilling[key]) {
+					addressErrors.billing[key] = `${ADDRESS_LABELS[key]} is required.`;
+					isValid = false;
+				}
+			}
+			if (
+				sanitizedBilling.postal_code &&
+				!/^[0-9A-Z-]{3,10}$/.test(sanitizedBilling.postal_code)
+			) {
+				addressErrors.billing.postal_code = "Enter a valid postal code.";
+				isValid = false;
+			}
+		} else {
+			billing = { ...sanitizedShipping };
+		}
+
+		if (!sanitizedShipping.province) {
+			addressErrors.shipping.province = "Please select a state.";
+			isValid = false;
+		}
+		if (!billingSameAsShipping && !sanitizedBilling.province) {
+			addressErrors.billing.province = "Please select a state.";
+			isValid = false;
+		}
+
+		return {
+			isValid,
+			sanitizedShipping,
+			sanitizedBilling,
+		};
+	}
+
+	function clearFieldError(section: AddressSection, key: RequiredFieldKey) {
+		if (addressErrors[section][key]) {
+			addressErrors[section][key] = "";
+		}
+		addressComplete = false;
+	}
+
 	function onSelectShippingAddress(id: string | "new") {
 		selectedShippingAddressId = id;
 		if (id === "new") return;
@@ -141,6 +295,7 @@
 		}
 		const isDefaultSelected = !!(sel as any)?.is_default_shipping;
 		saveAddress = !isDefaultSelected;
+		addressComplete = false;
 	}
 
 	function onSelectBillingAddress(id: string | "new") {
@@ -148,51 +303,55 @@
 		if (id === "new") return;
 		const sel = savedAddresses.find((x) => x.id === id);
 		applyAddressToBilling(sel);
+		addressComplete = false;
 	}
 
 	onMount(async () => {
 		await ensureCart();
-		await getCart();
-		const me = await getCurrentCustomer();
+		const cartPromise = getCart();
+		const customerPromise = getCurrentCustomer().catch(() => null) as Promise<
+			Awaited<ReturnType<typeof getCurrentCustomer>> | null
+		>;
+		const [cartSnapshot, me] = await Promise.all([
+			cartPromise,
+			customerPromise,
+		]);
 		if (me) {
+			isGuestCheckout = false;
 			email = me.email ?? "";
 			const resp = await listAddresses().catch(() => null);
-			savedAddresses = ((resp as any)?.addresses ??
+			const addresses = ((resp as any)?.addresses ??
 				(me as any).shipping_addresses ??
 				[]) as HttpTypes.StoreCustomerAddress[];
+			savedAddresses = addresses;
 			if (savedAddresses.length > 0) {
-				const defaultShipping = savedAddresses.find(
-					(addr: any) => addr?.is_default_shipping,
-				);
-				if (defaultShipping) {
-					selectedShippingAddressId = defaultShipping.id!;
-					applyAddressToShipping(defaultShipping);
-				} else {
-					selectedShippingAddressId = savedAddresses[0]?.id ?? "new";
-					applyAddressToShipping(savedAddresses[0]);
+				const resolvedShipping =
+					savedAddresses.find((addr: any) => addr?.is_default_shipping) ??
+					savedAddresses[0];
+				if (resolvedShipping) {
+					selectedShippingAddressId = resolvedShipping.id ?? "new";
+					applyAddressToShipping(resolvedShipping);
 				}
 
 				const defaultBilling = savedAddresses.find(
 					(addr: any) => addr?.is_default_billing,
 				);
 				if (defaultBilling && !billingSameAsShipping) {
-					selectedBillingAddressId = defaultBilling.id!;
+					selectedBillingAddressId = defaultBilling.id ?? "new";
 					applyAddressToBilling(defaultBilling);
 				} else if (billingSameAsShipping) {
 					selectedBillingAddressId = selectedShippingAddressId;
 				}
 
-				const isDefaultShippingSelected = !!(
-					savedAddresses.find(
-						(x) => x.id === selectedShippingAddressId,
-					) as any
-				)?.is_default_shipping;
+				const isDefaultShippingSelected = Boolean(
+					(resolvedShipping as any)?.is_default_shipping,
+				);
 				saveAddress = !isDefaultShippingSelected;
 			}
 		}
 
 		// Track begin_checkout event
-		const c = get(cartStore);
+		const c = cartSnapshot ?? get(cartStore);
 		if (c && c.items && c.items.length > 0) {
 			try {
 				const items = formatCartItemsForAnalytics(c.items as any[]);
@@ -211,6 +370,7 @@
 	async function continueToShipping() {
 		const ok = await saveAddressesToCart();
 		if (!ok) return;
+		shippingComplete = false;
 		await fetchShippingOptions();
 		step = "shipping";
 	}
@@ -262,25 +422,31 @@
 
 		step = "payment";
 		const ok = await setupPayment();
-		if (!ok && paymentError) showToast(paymentError, { type: "error" });
+		if (!ok) {
+			shippingComplete = false;
+			if (paymentError) {
+				showToast(paymentError, { type: "error" });
+			}
+			step = "shipping";
+			return;
+		}
+		shippingComplete = true;
 
 		// Track add_payment_info event
-		if (ok) {
-			try {
-				const c = get(cartStore);
-				if (c && c.items && c.items.length > 0) {
-					const items = formatCartItemsForAnalytics(c.items as any[]);
-					const value = calculateCartValue(c);
-					trackAddPaymentInfo(
-						value,
-						c.currency_code?.toUpperCase() || "USD",
-						items,
-						"card",
-					);
-				}
-			} catch (e) {
-				logger.warn("Analytics tracking failed:", e);
+		try {
+			const c = get(cartStore);
+			if (c && c.items && c.items.length > 0) {
+				const items = formatCartItemsForAnalytics(c.items as any[]);
+				const value = calculateCartValue(c);
+				trackAddPaymentInfo(
+					value,
+					c.currency_code?.toUpperCase() || "USD",
+					items,
+					"card",
+				);
 			}
+		} catch (e) {
+			logger.warn("Analytics tracking failed:", e);
 		}
 	}
 
@@ -312,27 +478,35 @@
 		const sdk = getStoreClient() as any;
 		const c = get(cartStore);
 		if (!c?.id) return false;
-		if (!email || !email.includes("@")) {
-			errorMsg = "Please enter a valid email.";
-			showToast("Enter a valid email", { type: "error" });
+		const {
+			isValid,
+			sanitizedShipping,
+			sanitizedBilling,
+		} = validateAndNormalizeAddresses();
+		if (!isValid) {
+			addressComplete = false;
+			errorMsg = "Please fix the highlighted fields.";
+			showToast(errorMsg as string, { type: "error" });
 			return false;
 		}
 		try {
-			await sdk.store.cart.update(c.id, { email });
 			const stripAddr = (a: any) => {
 				const { address_name, company, ...rest } = a || {};
 				return rest;
 			};
 			await sdk.store.cart.update(c.id, {
-				shipping_address: stripAddr(shipping),
+				email,
+				shipping_address: stripAddr(sanitizedShipping),
 				billing_address: billingSameAsShipping
-					? stripAddr(shipping)
-					: stripAddr(billing),
+					? stripAddr(sanitizedShipping)
+					: stripAddr(sanitizedBilling),
 			});
+			addressComplete = true;
 			return true;
 		} catch (err: any) {
 			errorMsg = err?.message || "Failed to save addresses";
 			showToast(errorMsg!, { type: "error" });
+			addressComplete = false;
 			return false;
 		}
 	}
@@ -373,23 +547,28 @@
 					);
 			}
 
-			let providerId: string | null = null;
-			const listParams: any = {};
-			if ((c as any).region_id)
-				listParams.region_id = (c as any).region_id;
-			const { payment_providers = [] } =
-				await sdk.store.payment.listPaymentProviders(listParams);
-			providerId =
-				(
-					payment_providers.find((p: any) =>
-						(p.id || "").toLowerCase().includes("stripe"),
-					) || {}
-				).id || null;
-
+			const regionKey = ((c as any)?.region_id as string | undefined) ?? "default";
+			let providerId = stripeProviderCache.get(regionKey) ?? undefined;
+			if (providerId === undefined) {
+				const listParams: any = {};
+				if ((c as any).region_id)
+					listParams.region_id = (c as any).region_id;
+				const { payment_providers = [] } =
+					await sdk.store.payment.listPaymentProviders(listParams);
+				providerId =
+					(
+						payment_providers.find((p: any) =>
+							(p.id || "").toLowerCase().includes("stripe"),
+						) || {}
+					).id || null;
+				stripeProviderCache.set(regionKey, providerId ?? null);
+			}
 			if (!providerId) {
 				paymentError = "Stripe provider unavailable";
 				return false;
 			}
+
+			const effectiveProviderId = providerId;
 
 			if (!c.total || c.total <= 0) {
 				paymentError = "Cart total must be greater than 0 for payment";
@@ -405,7 +584,7 @@
 			let initiateResp: any = null;
 			const hasCustomer = Boolean((c as any)?.customer_id);
 			const initiatePayload: Record<string, any> = {
-				provider_id: providerId,
+				provider_id: effectiveProviderId,
 				data: hasCustomer ? { setup_future_usage: "off_session" } : {},
 			};
 			try {
@@ -768,15 +947,6 @@
 />
 <section class="w-full py-10">
 	<div class="container mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-		{#if overlay}
-			<div
-				class="fixed inset-0 z-[70] flex items-center justify-center bg-black/20 backdrop-blur-sm"
-			>
-				<div
-					class="loading loading-lg loading-spinner text-primary"
-				></div>
-			</div>
-		{/if}
 		<h1 class="mb-6 text-3xl font-bold tracking-tight">Checkout</h1>
 
 		<div class="card border border-base-300 bg-base-100 shadow-xl">
@@ -787,7 +957,7 @@
 						class="relative flex items-center gap-2 rounded-full border border-base-300 bg-base-200/50 p-1"
 					>
 						<button
-							class="relative rounded-full px-3 py-1.5 text-sm"
+							class="relative flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60"
 							onclick={() => (step = "address")}
 						>
 							{#if step === "address"}
@@ -798,12 +968,21 @@
 									></div>
 								</Motion>
 							{/if}
+							{#if addressComplete && step !== "address"}
+								<CheckCircle2 class="relative z-10 h-4 w-4 text-success" />
+							{/if}
 							<span class="relative z-10">Address</span>
 						</button>
 						<button
-							class="relative rounded-full px-3 py-1.5 text-sm"
-							onclick={() => (step = "shipping")}
-							disabled={!shippingOptions.length}
+							class="relative flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+							onclick={async () => {
+								if (!addressComplete) return;
+								if (!shippingOptions.length && !shippingOptionsLoading) {
+									await fetchShippingOptions();
+								}
+								step = "shipping";
+							}}
+							disabled={!addressComplete}
 						>
 							{#if step === "shipping"}
 								<Motion layoutId="checkout-step" let:motion>
@@ -813,13 +992,19 @@
 									></div>
 								</Motion>
 							{/if}
+							{#if shippingComplete && step !== "shipping"}
+								<CheckCircle2 class="relative z-10 h-4 w-4 text-success" />
+							{/if}
 							<span class="relative z-10">Shipping</span>
 						</button>
 						<button
-							class="relative rounded-full px-3 py-1.5 text-sm"
-							onclick={() => (step = "payment")}
-							disabled={(get(cartStore)?.total || 0) > 0 &&
-								!paymentReady}
+							class="relative flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+							onclick={() => {
+								if (!shippingComplete) return;
+								step = "payment";
+							}}
+							disabled={!shippingComplete ||
+								(((get(cartStore)?.total || 0) > 0) && !paymentReady)}
 						>
 							{#if step === "payment"}
 								<Motion layoutId="checkout-step" let:motion>
@@ -842,10 +1027,20 @@
 						</div>
 						<input
 							class="input-bordered input w-full border-base-300 input-primary"
+							class:input-error={Boolean(addressErrors.email)}
 							type="email"
 							bind:value={email}
 							placeholder="you@example.com"
+							oninput={() => {
+								addressErrors.email = "";
+								addressComplete = false;
+							}}
 						/>
+						{#if addressErrors.email}
+							<p class="mt-1 text-sm text-error">
+								{addressErrors.email}
+							</p>
+						{/if}
 					</label>
 
 					{#if savedAddresses.length > 0}
@@ -1041,54 +1236,108 @@
 						bind:value={shipping.address_name}
 					/>
 					<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-						<input
-							class="input-bordered input border-base-300 input-primary"
-							placeholder="First name"
-							bind:value={shipping.first_name}
-						/>
-						<input
-							class="input-bordered input border-base-300 input-primary"
-							placeholder="Last name"
-							bind:value={shipping.last_name}
-						/>
+						<div class="flex flex-col gap-1">
+							<input
+								class="input-bordered input border-base-300 input-primary"
+								class:input-error={Boolean(addressErrors.shipping.first_name)}
+								placeholder="First name"
+								bind:value={shipping.first_name}
+								oninput={() => clearFieldError("shipping", "first_name")}
+							/>
+							{#if addressErrors.shipping.first_name}
+								<p class="text-sm text-error">
+									{addressErrors.shipping.first_name}
+								</p>
+							{/if}
+						</div>
+						<div class="flex flex-col gap-1">
+							<input
+								class="input-bordered input border-base-300 input-primary"
+								class:input-error={Boolean(addressErrors.shipping.last_name)}
+								placeholder="Last name"
+								bind:value={shipping.last_name}
+								oninput={() => clearFieldError("shipping", "last_name")}
+							/>
+							{#if addressErrors.shipping.last_name}
+								<p class="text-sm text-error">
+									{addressErrors.shipping.last_name}
+								</p>
+							{/if}
+						</div>
 					</div>
 					<input
 						class="input-bordered input w-full border-base-300 input-primary"
 						placeholder="Company (optional)"
 						bind:value={shipping.company}
 					/>
-					<input
-						class="input-bordered input w-full border-base-300 input-primary"
-						placeholder="Address 1"
-						bind:value={shipping.address_1}
-					/>
+					<div class="flex flex-col gap-1">
+						<input
+							class="input-bordered input w-full border-base-300 input-primary"
+							class:input-error={Boolean(addressErrors.shipping.address_1)}
+							placeholder="Address 1"
+							bind:value={shipping.address_1}
+							oninput={() => clearFieldError("shipping", "address_1")}
+						/>
+						{#if addressErrors.shipping.address_1}
+							<p class="text-sm text-error">
+								{addressErrors.shipping.address_1}
+							</p>
+						{/if}
+					</div>
 					<input
 						class="input-bordered input w-full border-base-300 input-primary"
 						placeholder="Address 2"
 						bind:value={shipping.address_2}
 					/>
 					<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-						<input
-							class="input-bordered input border-base-300 input-primary"
-							placeholder="City"
-							bind:value={shipping.city}
-						/>
-						<select
-							class="select-bordered select"
-							bind:value={shipping.province}
-						>
+						<div class="flex flex-col gap-1">
+							<input
+								class="input-bordered input border-base-300 input-primary"
+								class:input-error={Boolean(addressErrors.shipping.city)}
+								placeholder="City"
+								bind:value={shipping.city}
+								oninput={() => clearFieldError("shipping", "city")}
+							/>
+							{#if addressErrors.shipping.city}
+								<p class="text-sm text-error">
+									{addressErrors.shipping.city}
+								</p>
+							{/if}
+						</div>
+						<div class="flex flex-col gap-1">
+							<select
+								class="select-bordered select"
+								class:select-error={Boolean(addressErrors.shipping.province)}
+								bind:value={shipping.province}
+								onchange={() => clearFieldError("shipping", "province")}
+							>
 							<option value="" disabled>Select state</option>
 							{#each US_STATES as s}
 								<option value={s.code}>{s.name}</option>
 							{/each}
-						</select>
+							</select>
+							{#if addressErrors.shipping.province}
+								<p class="text-sm text-error">
+									{addressErrors.shipping.province}
+								</p>
+							{/if}
+						</div>
 					</div>
 					<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-						<input
-							class="input-bordered input border-base-300 input-primary"
-							placeholder="Postal code"
-							bind:value={shipping.postal_code}
-						/>
+						<div class="flex flex-col gap-1">
+							<input
+								class="input-bordered input border-base-300 input-primary"
+								class:input-error={Boolean(addressErrors.shipping.postal_code)}
+								placeholder="Postal code"
+								bind:value={shipping.postal_code}
+								oninput={() => clearFieldError("shipping", "postal_code")}
+							/>
+							{#if addressErrors.shipping.postal_code}
+								<p class="text-sm text-error">
+									{addressErrors.shipping.postal_code}
+								</p>
+							{/if}
+						</div>
 						<input
 							class="input-bordered input bg-base-200/60 opacity-100 input-primary dark:bg-base-300/20 dark:text-base-content/80"
 							placeholder="US"
@@ -1114,6 +1363,8 @@
 									if (billingSameAsShipping) {
 										applyAddressToBilling(shipping);
 									}
+									resetAddressErrors("billing");
+									addressComplete = false;
 								}}
 							/>
 							<span class="label-text"
@@ -1122,7 +1373,7 @@
 						</label>
 					</div>
 
-					{#if !(selectedShippingAddressId !== "new" && (savedAddresses.find((x) => x.id === selectedShippingAddressId) as any)?.is_default_shipping)}
+					{#if !isGuestCheckout && !(selectedShippingAddressId !== "new" && (savedAddresses.find((x) => x.id === selectedShippingAddressId) as any)?.is_default_shipping)}
 						<div class="form-control">
 							<label
 								class="label cursor-pointer justify-start gap-3"
@@ -1147,54 +1398,108 @@
 							bind:value={billing.address_name}
 						/>
 						<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-							<input
-								class="input-bordered input border-base-300 input-primary"
-								placeholder="First name"
-								bind:value={billing.first_name}
-							/>
-							<input
-								class="input-bordered input border-base-300 input-primary"
-								placeholder="Last name"
-								bind:value={billing.last_name}
-							/>
+							<div class="flex flex-col gap-1">
+								<input
+									class="input-bordered input border-base-300 input-primary"
+									class:input-error={Boolean(addressErrors.billing.first_name)}
+									placeholder="First name"
+									bind:value={billing.first_name}
+									oninput={() => clearFieldError("billing", "first_name")}
+								/>
+								{#if addressErrors.billing.first_name}
+									<p class="text-sm text-error">
+										{addressErrors.billing.first_name}
+									</p>
+								{/if}
+							</div>
+							<div class="flex flex-col gap-1">
+								<input
+									class="input-bordered input border-base-300 input-primary"
+									class:input-error={Boolean(addressErrors.billing.last_name)}
+									placeholder="Last name"
+									bind:value={billing.last_name}
+									oninput={() => clearFieldError("billing", "last_name")}
+								/>
+								{#if addressErrors.billing.last_name}
+									<p class="text-sm text-error">
+										{addressErrors.billing.last_name}
+									</p>
+								{/if}
+							</div>
 						</div>
 						<input
 							class="input-bordered input w-full border-base-300 input-primary"
 							placeholder="Company (optional)"
 							bind:value={billing.company}
 						/>
-						<input
-							class="input-bordered input w-full border-base-300 input-primary"
-							placeholder="Address 1"
-							bind:value={billing.address_1}
-						/>
+						<div class="flex flex-col gap-1">
+							<input
+								class="input-bordered input w-full border-base-300 input-primary"
+								class:input-error={Boolean(addressErrors.billing.address_1)}
+								placeholder="Address 1"
+								bind:value={billing.address_1}
+								oninput={() => clearFieldError("billing", "address_1")}
+							/>
+							{#if addressErrors.billing.address_1}
+								<p class="text-sm text-error">
+									{addressErrors.billing.address_1}
+								</p>
+							{/if}
+						</div>
 						<input
 							class="input-bordered input w-full border-base-300 input-primary"
 							placeholder="Address 2"
 							bind:value={billing.address_2}
 						/>
 						<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-							<input
-								class="input-bordered input border-base-300 input-primary"
-								placeholder="City"
-								bind:value={billing.city}
-							/>
-							<select
-								class="select-bordered select"
-								bind:value={billing.province}
-							>
+							<div class="flex flex-col gap-1">
+								<input
+									class="input-bordered input border-base-300 input-primary"
+									class:input-error={Boolean(addressErrors.billing.city)}
+									placeholder="City"
+									bind:value={billing.city}
+									oninput={() => clearFieldError("billing", "city")}
+								/>
+								{#if addressErrors.billing.city}
+									<p class="text-sm text-error">
+										{addressErrors.billing.city}
+									</p>
+								{/if}
+							</div>
+							<div class="flex flex-col gap-1">
+								<select
+									class="select-bordered select"
+									class:select-error={Boolean(addressErrors.billing.province)}
+									bind:value={billing.province}
+									onchange={() => clearFieldError("billing", "province")}
+								>
 								<option value="" disabled>Select state</option>
 								{#each US_STATES as s}
 									<option value={s.code}>{s.name}</option>
 								{/each}
-							</select>
+								</select>
+								{#if addressErrors.billing.province}
+									<p class="text-sm text-error">
+										{addressErrors.billing.province}
+									</p>
+								{/if}
+							</div>
 						</div>
 						<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-							<input
-								class="input-bordered input border-base-300 input-primary"
-								placeholder="Postal code"
-								bind:value={billing.postal_code}
-							/>
+							<div class="flex flex-col gap-1">
+								<input
+									class="input-bordered input border-base-300 input-primary"
+									class:input-error={Boolean(addressErrors.billing.postal_code)}
+									placeholder="Postal code"
+									bind:value={billing.postal_code}
+									oninput={() => clearFieldError("billing", "postal_code")}
+								/>
+								{#if addressErrors.billing.postal_code}
+									<p class="text-sm text-error">
+										{addressErrors.billing.postal_code}
+									</p>
+								{/if}
+							</div>
 							<input
 								class="input-bordered input bg-base-200/60 opacity-100 input-primary dark:bg-base-300/20 dark:text-base-content/80"
 								placeholder="US"
@@ -1239,9 +1544,10 @@
 										name="shipping-option"
 										checked={selectedShippingOptionId ===
 											opt.id}
-										onchange={() =>
-											(selectedShippingOptionId =
-												opt.id!)}
+										onchange={() => {
+											selectedShippingOptionId = opt.id!;
+											shippingComplete = false;
+										}}
 									/>
 									<div
 										class="flex w-full items-center justify-between"
@@ -1313,11 +1619,17 @@
 						</div>
 					{/if}
 					{#if paymentLoading}
-						<div class="flex items-center justify-center p-8">
-							<div
-								class="loading loading-md loading-spinner text-primary"
-							></div>
-							<span class="ml-2">Initializing payment...</span>
+						<div class="rounded-2xl border border-base-300 bg-base-200/70 p-6 text-center shadow-sm dark:bg-base-300/30">
+							<div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+								<ShieldCheck class="h-7 w-7" />
+							</div>
+							<div class="mt-4 space-y-1">
+								<p class="text-base font-semibold">Securing your checkout…</p>
+								<p class="text-sm opacity-70">
+									We’re syncing with Stripe to keep your payment safe.
+								</p>
+							</div>
+							<progress class="progress progress-primary mt-5 w-full"></progress>
 						</div>
 					{:else if (get(cartStore)?.total || 0) <= 0}
 						<div class="alert alert-info">
@@ -1378,10 +1690,28 @@
 
 {#if overlay}
 	<div
-		class="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black"
+		class="fixed inset-0 z-[80] flex items-center justify-center"
+		role="alertdialog"
+		aria-live="assertive"
+		aria-modal="true"
 	>
-		<div
-			class="h-12 w-12 animate-spin rounded-full border-b-2 border-primary"
-		></div>
+		<div class="absolute inset-0 bg-base-300/70 backdrop-blur-sm"></div>
+		<div class="relative z-10 w-full max-w-sm rounded-3xl border border-base-200 bg-base-100 p-8 shadow-2xl dark:border-base-300/40 dark:bg-base-200">
+			<div class="flex flex-col items-center gap-5 text-center">
+				<div class="relative h-16 w-16">
+					<div class="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+					<div class="absolute inset-3 flex items-center justify-center rounded-full bg-primary/10 text-primary">
+						<ShieldCheck class="h-7 w-7" />
+					</div>
+				</div>
+				<div class="space-y-1">
+					<p class="text-lg font-semibold">Finishing up your order…</p>
+					<p class="text-sm opacity-70">
+						Please stay on this page while we confirm payment with Stripe.
+					</p>
+				</div>
+				<progress class="progress progress-primary w-full"></progress>
+			</div>
+		</div>
 	</div>
 {/if}

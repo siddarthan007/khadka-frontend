@@ -2,7 +2,11 @@ import type { PageServerLoad } from "./$types";
 import type { HttpTypes } from "@medusajs/types";
 import { getHierarchicalProductCategories } from "$lib/medusa";
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ setHeaders }) => {
+  setHeaders({
+    'cache-control': 'public, max-age=300, s-maxage=600',
+  });
+
   const tree = await getHierarchicalProductCategories();
   // flatten top-level categories for grid, keep full tree for potential future use
   const topLevel: Array<{
