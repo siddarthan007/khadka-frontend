@@ -385,7 +385,11 @@
 						<span
 							class="text-sm font-semibold text-primary sm:text-base"
 							>{formatCurrency(
-								order.total,
+								order.status === "cancelled" ||
+									order.status === "canceled"
+									? (order.subtotal || 0) + (order.shipping_total || 0) + (order.tax_total || 0) -
+											(order.discount_total || 0)
+									: order.total,
 								order.currency_code,
 							)}</span
 						>
@@ -558,7 +562,11 @@
 							<span>Total</span>
 							<span
 								>{formatCurrency(
-									order.total,
+									order.status === "cancelled" ||
+										order.status === "canceled"
+										? (order.subtotal || 0) + (order.shipping_total || 0) + (order.tax_total || 0) -
+												(order.discount_total || 0)
+										: order.total,
 									order.currency_code,
 								)}</span
 							>
