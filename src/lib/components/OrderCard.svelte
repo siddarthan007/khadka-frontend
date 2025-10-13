@@ -68,6 +68,24 @@
 		mouseY.set(-gradientSize);
 	});
 
+	// Calculate true items-only subtotal (excluding shipping and tax)
+	const itemsSubtotal = $derived(() => {
+		if (!order?.items?.length) {
+			// Fallback: calculate from total by subtracting shipping and tax
+			const total = order?.total || 0;
+			const shipping = order?.shipping_total || 0;
+			const tax = order?.tax_total || 0;
+			const discount = order?.discount_total || 0;
+			return Math.max(0, total - shipping - tax + discount);
+		}
+		// Sum up all line items (unit_price * quantity)
+		return order.items.reduce((sum: number, item: any) => {
+			const unitPrice = item.unit_price || 0;
+			const quantity = item.quantity || 1;
+			return sum + (unitPrice * quantity);
+		}, 0);
+	});
+
 	// Hydrate on mount if needed
 	$effect(() => {
 		if (order && !order.__hydrated_full) {
@@ -387,7 +405,7 @@
 							>{formatCurrency(
 								order.status === "cancelled" ||
 									order.status === "canceled"
-									? (order.subtotal || 0) -
+									? itemsSubtotal() -
 											(order.discount_total || 0)
 									: order.total,
 								order.currency_code,
@@ -521,7 +539,7 @@
 							<span class="opacity-70">Subtotal</span>
 							<span class="font-medium text-base-content"
 								>{formatCurrency(
-									order.subtotal ?? order.total,
+									itemsSubtotal(),
 									order.currency_code,
 								)}</span
 							>
@@ -564,7 +582,7 @@
 								>{formatCurrency(
 									order.status === "cancelled" ||
 										order.status === "canceled"
-										? (order.subtotal || 0) -
+										? itemsSubtotal() -
 												(order.discount_total || 0)
 										: order.total,
 									order.currency_code,
