@@ -86,11 +86,35 @@
 		}
 	});
 
+	// Calculate subtotal from items directly
+	const itemsSubtotal = $derived.by(() => {
+		if (!order.items?.length) return 0;
+		return order.items.reduce((sum: number, item: any) => {
+			return sum + (item.quantity * item.unit_price);
+		}, 0);
+	});
+
+	// Calculate corrected subtotal (should be items total minus any item-level discounts)
+	const correctedSubtotal = $derived.by(() => {
+		// If backend subtotal looks wrong (includes shipping/tax), use calculated items total
+		const backendSubtotal = order.subtotal || 0;
+		const shipping = order.shipping_total || 0;
+		const tax = order.tax_total || 0;
+		
+		// If backend subtotal seems to include shipping/tax, subtract them
+		if (backendSubtotal >= itemsSubtotal + shipping) {
+			return backendSubtotal - shipping - tax;
+		}
+		
+		// Otherwise use items calculation
+		return itemsSubtotal;
+	});
+
 	// Calculate total for cancelled orders manually
 	const calculatedTotal = $derived.by(() => {
 		if (order.status === "cancelled" || order.status === "canceled") {
 			// For cancelled orders, manually calculate from components
-			const subtotal = order.subtotal || 0;
+			const subtotal = correctedSubtotal;
 			const shipping = order.shipping_total || 0;
 			const tax = order.tax_total || 0;
 			const discount = order.discount_total || 0;
@@ -531,7 +555,7 @@
 							<span class="opacity-70">Subtotal</span>
 							<span class="font-medium text-base-content"
 								>{formatCurrency(
-									order.subtotal ?? order.total,
+									correctedSubtotal,
 									order.currency_code,
 								)}</span
 							>
