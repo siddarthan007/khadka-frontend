@@ -2061,7 +2061,7 @@
 				class="flex w-full flex-col overflow-hidden rounded-[calc(theme(borderRadius.3xl)-0.5rem)]"
 			>
 				<div
-					class="relative flex flex-col items-center gap-4 bg-gradient-to-b from-base-200 via-base-100 to-base-100 px-8 py-10 text-center dark:from-base-300 dark:via-base-200 dark:to-base-200"
+					class="relative flex flex-col items-center gap-4 bg-base-200 px-8 py-10 text-center dark:bg-base-300 border-b border-base-300/60 dark:border-base-300/40"
 				>
 					<div class="relative h-16 w-16">
 						<div

@@ -488,7 +488,7 @@
 												</button>
 												<input
 													type="text"
-													class="join-item w-14 border-0 bg-transparent text-center text-base font-bold focus:outline-none pointer-events-none"
+													class="join-item w-14 border-0 bg-transparent text-center text-base font-bold focus:outline-none pointer-events-none quantity-input"
 													aria-live="polite"
 													aria-label="Quantity"
 													value={li.quantity ?? 1}

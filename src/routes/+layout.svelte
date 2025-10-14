@@ -765,7 +765,7 @@
 															>
 														</button>
 														<input
-															class="pointer-events-none join-item w-10 border-0 bg-transparent text-center text-sm font-bold focus:outline-none"
+															class="pointer-events-none join-item w-10 border-0 bg-transparent text-center text-sm font-bold focus:outline-none quantity-input"
 															value={li.quantity}
 															readonly
 															aria-live="polite"

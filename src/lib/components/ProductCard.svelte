@@ -217,9 +217,9 @@
 					>
 						<span class="leading-none">−</span>
 					</button>
-					<input
-						type="text"
-						class="join-item w-12 sm:w-14 border-0 bg-transparent text-center text-sm sm:text-base font-bold focus:outline-none pointer-events-none"
+          <input
+            type="text"
+            class="join-item w-12 sm:w-14 border-0 bg-transparent text-center text-sm sm:text-base font-bold focus:outline-none pointer-events-none quantity-input"
 						value={currentQty()}
 						readonly
 						aria-live="polite"

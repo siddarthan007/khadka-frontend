@@ -412,7 +412,7 @@
 												aria-label="Decrease quantity">−</Button
 											>
 											<input
-												class="join-item w-14 sm:w-16 border-0 bg-transparent text-center text-lg font-bold pointer-events-none"
+												class="join-item w-14 sm:w-16 border-0 bg-transparent text-center text-lg font-bold pointer-events-none quantity-input"
 												value={currentQty()}
 												readonly
 												aria-live="polite"

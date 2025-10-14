@@ -242,6 +242,13 @@ body {
     @apply h-9 w-12 rounded-md text-center text-sm font-medium;
   }
 
+  .quantity-input {
+    border: 0 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
   @media (max-width: 640px) {
     :where(.badge) {
       display: inline-flex;
