@@ -1847,7 +1847,18 @@
 				{/if}
 
 				{#if step === "payment"}
-					<h2 class="mt-2 card-title">Payment</h2>
+					<h2 class="mt-2 card-title flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+						<span>Payment</span>
+						{#if (get(cartStore)?.total || 0) > 0}
+							<span class="text-base font-semibold text-primary sm:text-lg">
+								Total due:
+								{formatCurrency(
+									get(cartStore)?.total || 0,
+									get(cartStore)?.currency_code || "usd",
+								)}
+							</span>
+						{/if}
+					</h2>
 					{#if paymentError}
 						<div class="alert alert-error">
 							<span>{paymentError}</span>
@@ -1928,28 +1939,32 @@
 	<div use:melt={$orderDialogPortalled}>
 		<div
 			use:melt={$orderDialogOverlay}
-			class="fixed inset-0 z-[80] bg-base-200/80 backdrop-blur-sm transition-colors dark:bg-base-900/70"
+			class="fixed inset-0 z-[80] bg-base-content/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-150"
 		></div>
 		<div
 			use:melt={$orderDialogContent}
-			class="fixed left-1/2 top-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-base-200/70 bg-base-100/95 p-8 text-base-content shadow-2xl shadow-base-300/40 transition-colors dark:border-base-300/50 dark:bg-base-200/95 dark:text-base-content dark:shadow-black/50"
+			class="fixed left-1/2 top-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 animate-in fade-in zoom-in-95 duration-200 rounded-3xl border-2 border-base-300/60 bg-base-100/95 p-0 text-base-content shadow-[0_25px_50px_-12px_rgba(15,23,42,0.45)] transition-colors dark:border-base-300/40 dark:bg-base-200/95 dark:text-base-content dark:shadow-[0_25px_45px_-15px_rgba(2,6,23,0.8)]"
 		>
-			<div class="flex w-full flex-col items-center gap-5 text-center">
-				<div class="relative h-16 w-16">
-					<div class="absolute inset-0 rounded-full border-4 border-primary/30 dark:border-primary/20"></div>
-					<div class="absolute inset-3 flex items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/15">
-						<ShieldCheck class="h-7 w-7" />
+			<div class="flex w-full flex-col overflow-hidden rounded-[calc(theme(borderRadius.3xl)-0.5rem)]">
+				<div class="relative flex flex-col items-center gap-4 bg-gradient-to-b from-base-200/70 via-base-100/40 to-base-100/95 px-8 py-10 text-center dark:from-base-300/60 dark:via-base-200/40 dark:to-base-200/95">
+					<div class="relative h-16 w-16">
+						<div class="absolute inset-0 rounded-full border-4 border-primary/30 dark:border-primary/25"></div>
+						<div class="absolute inset-3 flex items-center justify-center rounded-full bg-primary/10 text-primary shadow-inner shadow-primary/20 dark:bg-primary/20">
+							<ShieldCheck class="h-7 w-7" />
+						</div>
+					</div>
+					<div class="space-y-2">
+						<p use:melt={$orderDialogTitle} class="text-xl font-semibold">
+							Finishing up your order…
+						</p>
+						<p use:melt={$orderDialogDescription} class="text-sm text-base-content/70 dark:text-base-content/60">
+							Please stay on this page while we confirm payment with Stripe.
+						</p>
 					</div>
 				</div>
-				<div class="space-y-1">
-					<p use:melt={$orderDialogTitle} class="text-lg font-semibold">
-						Finishing up your order…
-					</p>
-					<p use:melt={$orderDialogDescription} class="text-sm opacity-70">
-						Please stay on this page while we confirm payment with Stripe.
-					</p>
+				<div class="bg-base-100/95 px-8 pb-8 pt-4 dark:bg-base-200/95">
+					<progress class="progress progress-primary w-full"></progress>
 				</div>
-				<progress class="progress progress-primary w-full"></progress>
 			</div>
 		</div>
 	</div>
