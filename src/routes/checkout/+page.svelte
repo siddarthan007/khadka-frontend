@@ -1998,31 +1998,26 @@
 							<span>No payment required for this order.</span>
 						</div>
 					{:else if paymentClientSecret && paymentReady}
-						<div
-							class="min-h-20 rounded-lg border border-base-300 p-3"
-						>
-							{#if stripeInstance}
-								<StripePaymentElement
-									stripe={stripeInstance}
-									clientSecret={paymentClientSecret}
-									appearance={stripeAppearance}
-									bind:elements
-									bind:paymentElementRef
-									bind:ready
-									onchange={() => {
-										/* could track completion state */
-									}}
-								/>
-							{:else}
-								<div
-									class="flex items-center gap-2 text-sm opacity-70"
-								>
-									<span
-										class="loading loading-sm loading-spinner"
-									></span> Loading Stripe...
-								</div>
-							{/if}
-						</div>
+						{#if stripeInstance}
+							<StripePaymentElement
+								stripe={stripeInstance}
+								clientSecret={paymentClientSecret}
+								appearance={stripeAppearance}
+								bind:elements
+								bind:paymentElementRef
+								bind:ready
+								onchange={() => {
+									/* could track completion state */
+								}}
+							/>
+						{:else}
+							<div
+								class="flex items-center gap-2 text-sm opacity-70"
+							>
+								<span class="loading loading-sm loading-spinner"
+								></span> Loading Stripe...
+							</div>
+						{/if}
 					{:else}
 						<div class="alert alert-warning">
 							<span
