@@ -462,16 +462,16 @@
 											</div>
 										</div>
 
-										<!-- Right side: Sstepper tepper + Price + Delete -->
+										<!-- Right side: Stepper + Price + Delete -->
 										<div
 											class="flex items-center gap-3 sm:gap-4"
 										>
 											<div
-												class="stepper join h-11 overflow-hidden rounded-stepper-button full border-2 border-base-300 bg-base-100 shadow-md shrink-0"
+												class="stepper join h-11 shrink-0 rounded-full"
 											>
 												<button
 													type="button"
-													class="stepper-button join-item h-11 w-11 flex items-center justify-center text-xl font-bold hover:bg-base-200 active:bg-base-300 transition-all"
+													class="stepper-button join-item h-11 w-11 text-xl font-bold"
 													aria-label="Decrease quantity"
 													onclick={() =>
 														(li.quantity ?? 1) <= 1
@@ -488,7 +488,7 @@
 												</button>
 												<input
 													type="text"
-													class="stepper-input join-item w-14 border-0 bg-transparent text-center text-base font-bold focus:outline-none pointer-events-none"
+													class="stepper-input join-item w-14 text-base font-bold pointer-events-none"
 													aria-live="polite"
 													aria-label="Quantity"
 													value={li.quantity ?? 1}
@@ -496,7 +496,7 @@
 												/>
 												<button
 													type="button"
-													class="stepper-button join-item h-11 w-11 flex items-center justify-center text-xl font-bold hover:bg-base-200 active:bg-base-300 transition-all"
+													class="stepper-button join-item h-11 w-11 text-xl font-bold"
 													aria-label="Increase quantity"
 													onclick={() =>
 														updateLine(
