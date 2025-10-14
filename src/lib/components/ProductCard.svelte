@@ -208,26 +208,26 @@
 		<div class="flex flex-col gap-2">
 			{#if currentQty() > 0}
 				<div class="join h-9 sm:h-10 overflow-hidden rounded-xl border-2 border-base-300 bg-base-100 shadow-md w-full max-w-[140px]">
-          <button
-            type="button"
-            class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50 stepper-button"
+					<button
+						type="button"
+						class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
 						onclick={onDec}
 						disabled={isUpdating}
 						aria-label="Decrease quantity"
 					>
 						<span class="leading-none">−</span>
 					</button>
-					<input
-						type="text"
-						class="join-item w-12 sm:w-14 border-0 bg-transparent text-center text-sm sm:text-base font-bold focus:outline-none pointer-events-none"
+          <input
+            type="text"
+            class="stepper-input join-item w-12 sm:w-14 border-0 bg-transparent text-center text-sm sm:text-base font-bold focus:outline-none pointer-events-none"
 						value={currentQty()}
 						readonly
 						aria-live="polite"
 						aria-label="Quantity"
 					/>
-          <button
-            type="button"
-            class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50 stepper-button"
+					<button
+						type="button"
+						class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
 						onclick={onInc}
 						disabled={isUpdating}
 						aria-label="Increase quantity"
