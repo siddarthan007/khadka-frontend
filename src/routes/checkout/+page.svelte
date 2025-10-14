@@ -954,10 +954,10 @@
 				<!-- Stepper nav -->
 				<AnimateSharedLayout>
 					<div
-						class="relative flex items-center gap-2 rounded-full border border-base-300 bg-base-200/50 p-1"
+						class="relative flex w-full flex-wrap items-center gap-2 rounded-full border border-base-300 bg-base-200/50 p-1 sm:w-max sm:flex-nowrap"
 					>
 						<button
-							class="relative flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
 							onclick={() => (step = "address")}
 						>
 							{#if step === "address"}
@@ -971,10 +971,10 @@
 							{#if addressComplete && step !== "address"}
 								<CheckCircle2 class="relative z-10 h-4 w-4 text-success" />
 							{/if}
-							<span class="relative z-10">Address</span>
+							<span class="relative z-10 text-center">Address</span>
 						</button>
 						<button
-							class="relative flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
 							onclick={async () => {
 								if (!addressComplete) return;
 								if (!shippingOptions.length && !shippingOptionsLoading) {
@@ -995,10 +995,10 @@
 							{#if shippingComplete && step !== "shipping"}
 								<CheckCircle2 class="relative z-10 h-4 w-4 text-success" />
 							{/if}
-							<span class="relative z-10">Shipping</span>
+							<span class="relative z-10 text-center">Shipping</span>
 						</button>
 						<button
-							class="relative flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
 							onclick={() => {
 								if (!shippingComplete) return;
 								step = "payment";
@@ -1014,7 +1014,7 @@
 									></div>
 								</Motion>
 							{/if}
-							<span class="relative z-10">Payment</span>
+							<span class="relative z-10 text-center">Payment</span>
 						</button>
 					</div>
 				</AnimateSharedLayout>
