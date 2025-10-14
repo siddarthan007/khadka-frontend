@@ -1004,27 +1004,27 @@
 				<!-- Stepper nav -->
 				<AnimateSharedLayout>
 					<div
-						class="relative mx-auto flex w-full max-w-lg flex-wrap items-center justify-center gap-4 rounded-full border border-base-300 bg-base-200/70 p-2 sm:flex-nowrap sm:gap-6"
+						class="relative mx-auto flex w-full max-w-lg flex-wrap items-center justify-center gap-4 rounded-full border border-base-300 bg-base-300/50 p-2 shadow-inner dark:bg-base-300/30 sm:flex-nowrap sm:gap-6"
 					>
 						<button
-							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:px-6"
+							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition hover:bg-base-300/30 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-base-100/10 sm:flex-none sm:px-6"
 							onclick={() => (step = "address")}
 						>
 							{#if step === "address"}
 								<Motion layoutId="checkout-step" let:motion>
 									<div
 										use:motion
-										class="absolute inset-0 rounded-full border border-base-300 bg-base-100"
+										class="absolute inset-0 rounded-full border border-base-300 bg-base-100 shadow-md dark:border-base-content/20 dark:bg-base-100/95"
 									></div>
 								</Motion>
 							{/if}
 							{#if addressComplete && step !== "address"}
 								<CheckCircle2 class="relative z-10 h-4 w-4 text-success" />
 							{/if}
-							<span class="relative z-10 text-center">Address</span>
+							<span class="relative z-10 text-center font-semibold">Address</span>
 						</button>
 						<button
-							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:px-6"
+							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition hover:bg-base-300/30 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-base-100/10 sm:flex-none sm:px-6"
 							onclick={async () => {
 								if (!addressComplete) return;
 								if (!shippingOptions.length && !shippingOptionsLoading) {
@@ -1038,17 +1038,17 @@
 								<Motion layoutId="checkout-step" let:motion>
 									<div
 										use:motion
-										class="absolute inset-0 rounded-full border border-base-300 bg-base-100"
+										class="absolute inset-0 rounded-full border border-base-300 bg-base-100 shadow-md dark:border-base-content/20 dark:bg-base-100/95"
 									></div>
 								</Motion>
 							{/if}
 							{#if shippingComplete && step !== "shipping"}
 								<CheckCircle2 class="relative z-10 h-4 w-4 text-success" />
 							{/if}
-							<span class="relative z-10 text-center">Shipping</span>
+							<span class="relative z-10 text-center font-semibold">Shipping</span>
 						</button>
 						<button
-							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:px-6"
+							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition hover:bg-base-300/30 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-base-100/10 sm:flex-none sm:px-6"
 							onclick={() => {
 								if (!shippingComplete) return;
 								step = "payment";
@@ -1060,11 +1060,11 @@
 								<Motion layoutId="checkout-step" let:motion>
 									<div
 										use:motion
-										class="absolute inset-0 rounded-full border border-base-300 bg-base-100"
+										class="absolute inset-0 rounded-full border border-base-300 bg-base-100 shadow-md dark:border-base-content/20 dark:bg-base-100/95"
 									></div>
 								</Motion>
 							{/if}
-							<span class="relative z-10 text-center">Payment</span>
+							<span class="relative z-10 text-center font-semibold">Payment</span>
 						</button>
 					</div>
 				</AnimateSharedLayout>
