@@ -61,6 +61,29 @@ body {
   --color-error: oklch(0.704 0.191 22.216);
 }
 
+@plugin "daisyui/theme" {
+  name: "khadka-dark";
+  prefersdark: true;
+  color-scheme: dark;
+
+  --color-base-100: oklch(0.129 0.042 264.695);
+  --color-base-200: oklch(0.208 0.042 265.755);
+  --color-base-300: oklch(0.279 0.041 260.031);
+  --color-base-content: oklch(0.984 0.003 247.858);
+  --color-primary: oklch(0.75 0.17 145);
+  --color-primary-content: oklch(0.984 0.003 247.858);
+  --color-secondary: oklch(0.7 0.22 29);
+  --color-secondary-content: oklch(0.984 0.003 247.858);
+  --color-accent: oklch(0.279 0.041 260.031);
+  --color-accent-content: oklch(0.984 0.003 247.858);
+  --color-neutral: oklch(0.488 0.243 264.376);
+  --color-neutral-content: oklch(0.984 0.003 247.858);
+  --color-info: oklch(0.696 0.17 162.48);
+  --color-success: oklch(0.75 0.17 145);
+  --color-warning: oklch(0.769 0.188 70.08);
+  --color-error: oklch(0.704 0.191 22.216);
+}
+
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
