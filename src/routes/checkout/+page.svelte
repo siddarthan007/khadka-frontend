@@ -1245,7 +1245,7 @@
 							<span class="label-text">Email</span>
 						</div>
 						<input
-							class="input-bordered input w-full border-base-300 input-primary"
+							class="input-bordered input w-full border-base-300 input-primary rounded-xl"
 							class:input-error={Boolean(addressErrors.email)}
 							type="email"
 							bind:value={email}

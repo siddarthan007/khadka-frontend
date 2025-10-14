@@ -193,6 +193,15 @@ body {
     border: 2px solid var(--input-border) !important;
     outline: none;
   }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea,
+  .input,
+  .select,
+  .textarea {
+    border-radius: var(--radius-xl);
+  }
 }
 
 @layer components {
