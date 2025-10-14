@@ -200,7 +200,7 @@ body {
   .input,
   .select,
   .textarea {
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-xl) !important;
   }
 }
 
@@ -239,6 +239,16 @@ body {
       padding: 0.35rem 0.6rem;
       gap: 0.25rem;
     }
+  }
+
+  .form-control > .label {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  .form-control > .label .label-text {
+    letter-spacing: 0.01em;
+    margin-left: 0.125rem;
   }
 }
 
