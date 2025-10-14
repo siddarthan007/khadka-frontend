@@ -240,16 +240,33 @@ body {
 
   .stepper-input {
     @apply h-9 w-12 rounded-md text-center text-sm font-medium;
-    border: 0 !important;
+    border-width: 0 !important;
+    border-color: transparent !important;
     outline: none !important;
-    box-shadow: none;
-    background-color: transparent;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: inherit;
+    appearance: textfield;
+    -moz-appearance: textfield;
+    -webkit-appearance: none;
+    color-scheme: inherit;
   }
 
   .stepper-input:focus-visible,
   .stepper-input:focus {
     outline: none !important;
-    box-shadow: none;
+    box-shadow: none !important;
+  }
+
+  .stepper-input::-webkit-outer-spin-button,
+  .stepper-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .stepper-input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
   }
 
   @media (max-width: 640px) {
