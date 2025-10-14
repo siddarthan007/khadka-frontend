@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from "svelte";
+	import { onDestroy, onMount } from "svelte";
 	import SEO from "$lib/components/SEO.svelte";
 	import { cart as cartStore } from "$lib/stores/cart";
 	import { ensureCart, getCart, clearCart } from "$lib/cart";
@@ -98,13 +98,16 @@
 
 	// Detect current theme for Stripe appearance
 	function getStripeAppearance(): Appearance {
-		const root = typeof document !== "undefined" ? document.documentElement : null;
+		const root =
+			typeof document !== "undefined" ? document.documentElement : null;
 		const isDark = Boolean(
 			root?.classList.contains("dark") ||
-			root?.dataset.theme === "dark" ||
-			root?.getAttribute("data-theme") === "dark",
+				root?.dataset.theme === "dark" ||
+				root?.getAttribute("data-theme") === "dark",
 		);
-		const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+		const prefersReducedMotion =
+			typeof window !== "undefined" &&
+			window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 		const computed = root ? getComputedStyle(root) : null;
 
 		const fallbackLight = {
@@ -156,7 +159,10 @@
 			return `color-mix(in srgb, ${normalized} ${percentage}%, transparent)`;
 		};
 
-		const radius = readVar("--radius-lg", readVar("--radius", fallbacks.radius));
+		const radius = readVar(
+			"--radius-lg",
+			readVar("--radius", fallbacks.radius),
+		);
 		const surface = readVar("--color-card", fallbacks.colorSurface);
 		const border = readVar("--border", fallbacks.colorBorder);
 		const muted = readVar("--muted", fallbacks.colorMuted);
@@ -172,7 +178,10 @@
 				colorPrimary: primary,
 				colorPrimaryText: primaryForeground,
 				colorBackground: surface,
-				colorText: readVar("--color-card-foreground", fallbacks.colorText),
+				colorText: readVar(
+					"--color-card-foreground",
+					fallbacks.colorText,
+				),
 				colorTextSecondary: readVar(
 					"--muted-foreground",
 					fallbacks.colorTextSecondary,
@@ -183,7 +192,10 @@
 				),
 				colorDanger: readVar("--destructive", fallbacks.colorDanger),
 				colorDangerText: fallbacks.colorDangerText,
-				colorSuccess: readVar("--color-success", fallbacks.colorSuccess),
+				colorSuccess: readVar(
+					"--color-success",
+					fallbacks.colorSuccess,
+				),
 				colorIcon: readVar("--muted-foreground", fallbacks.colorIcon),
 				borderRadius: radius,
 				spacingUnit: "4px",
@@ -194,11 +206,17 @@
 			rules: {
 				".Input": {
 					border: `2px solid ${readVar("--input-border", fallbacks.inputBorder)}`,
-					backgroundColor: readVar("--color-card", fallbacks.inputBackground),
+					backgroundColor: readVar(
+						"--color-card",
+						fallbacks.inputBackground,
+					),
 					borderRadius: radius,
 					paddingInline: "14px",
 					paddingBlock: "11px",
-					color: readVar("--color-card-foreground", fallbacks.colorText),
+					color: readVar(
+						"--color-card-foreground",
+						fallbacks.colorText,
+					),
 					boxShadow: "none",
 					transition: prefersReducedMotion
 						? "none"
@@ -215,7 +233,9 @@
 					boxShadow: prefersReducedMotion
 						? "none"
 						: `0 0 0 4px ${withAlpha(primary, 0.14)}`,
-					transform: prefersReducedMotion ? "none" : "translateY(-1px)",
+					transform: prefersReducedMotion
+						? "none"
+						: "translateY(-1px)",
 				},
 				".Input--invalid": {
 					border: `2px solid ${readVar("--destructive", fallbacks.colorDanger)}`,
@@ -232,7 +252,10 @@
 						: "0 14px 32px -20px rgba(15, 23, 42, 0.18)",
 				},
 				".Label": {
-					color: readVar("--color-card-foreground", fallbacks.colorText),
+					color: readVar(
+						"--color-card-foreground",
+						fallbacks.colorText,
+					),
 					fontWeight: "600",
 					letterSpacing: "0.01em",
 				},
@@ -240,7 +263,10 @@
 					backgroundColor: "transparent",
 					borderRadius: `calc(${radius} - 4px)`,
 					border: `1px solid ${withAlpha(border, 0.9)}`,
-					color: readVar("--color-card-foreground", fallbacks.colorText),
+					color: readVar(
+						"--color-card-foreground",
+						fallbacks.colorText,
+					),
 					transition: prefersReducedMotion
 						? "none"
 						: "color 120ms ease, border-color 120ms ease, background-color 120ms ease, transform 120ms ease",
@@ -282,7 +308,10 @@
 				},
 				".ActionButton--secondary": {
 					backgroundColor: muted,
-					color: readVar("--muted-foreground", fallbacks.colorTextSecondary),
+					color: readVar(
+						"--muted-foreground",
+						fallbacks.colorTextSecondary,
+					),
 				},
 				".Link": {
 					color: primary,
@@ -301,6 +330,79 @@
 	}
 
 	let stripeAppearance: Appearance = $state(getStripeAppearance());
+
+	type ThemeMode = "light" | "dark";
+	let themeMode: ThemeMode = $state("light");
+
+	const dialogOverlayBase =
+		"fixed inset-0 z-[80] backdrop-blur-sm transition-opacity animate-in fade-in duration-150";
+	const dialogContentBase =
+		"fixed left-1/2 top-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 animate-in fade-in zoom-in-95 duration-200 rounded-3xl border-2 p-0 transition-colors";
+	const dialogBodyBase =
+		"flex w-full flex-col overflow-hidden rounded-[calc(theme(borderRadius.3xl)-0.5rem)]";
+	const dialogHeaderBase =
+		"relative flex flex-col items-center gap-4 bg-gradient-to-b px-8 py-10 text-center transition-colors";
+	const dialogFooterBase = "px-8 pb-8 pt-4 transition-colors";
+	const dialogDescriptionBase = "text-sm transition-colors";
+	const dialogOverlayTone: Record<ThemeMode, string> = {
+		light: "bg-base-content/30",
+		dark: "bg-base-content/45",
+	};
+	const dialogContentTone: Record<ThemeMode, string> = {
+		light: "border-base-300/60 bg-base-100/95 text-base-content",
+		dark: "border-base-300/50 bg-base-200/95 text-base-content",
+	};
+	const dialogHeaderTone: Record<ThemeMode, string> = {
+		light: "from-base-200/80 via-base-100/40 to-base-100/95",
+		dark: "from-base-300/70 via-base-200/40 to-base-200/90",
+	};
+	const dialogRingTone: Record<ThemeMode, string> = {
+		light: "border-primary/30",
+		dark: "border-primary/25",
+	};
+	const dialogBadgeBase =
+		"absolute inset-3 flex items-center justify-center rounded-full shadow-inner text-primary transition-colors";
+	const dialogBadgeTone: Record<ThemeMode, string> = {
+		light: "bg-primary/10 shadow-primary/20",
+		dark: "bg-primary/20 shadow-primary/30",
+	};
+	const dialogDescriptionTone: Record<ThemeMode, string> = {
+		light: "text-base-content/70",
+		dark: "text-base-content/60",
+	};
+	const dialogFooterTone: Record<ThemeMode, string> = {
+		light: "bg-base-100/95",
+		dark: "bg-base-200/95",
+	};
+	const dialogShadowByTheme: Record<ThemeMode, string> = {
+		light:
+			"0 28px 55px -18px color-mix(in oklab, var(--fallback-bc) 40%, transparent)",
+		dark:
+			"0 32px 60px -20px color-mix(in oklab, var(--fallback-bc) 65%, transparent)",
+	};
+
+	let themeMutationObserver: MutationObserver | null = null;
+
+	function resolveThemeMode(): ThemeMode {
+		if (typeof document === "undefined") {
+			return "light";
+		}
+		const root = document.documentElement;
+		const attrTheme = root.getAttribute("data-theme") ?? "";
+		const bodyTheme = document.body?.getAttribute("data-theme") ?? "";
+		const isDark =
+			root.classList.contains("dark") ||
+			attrTheme.toLowerCase().includes("dark") ||
+			bodyTheme.toLowerCase().includes("dark");
+		return isDark ? "dark" : "light";
+	}
+
+	function syncThemeModeFromDom() {
+		const next = resolveThemeMode();
+		if (themeMode !== next) {
+			themeMode = next;
+		}
+	}
 
 	// Stepper
 	let step: "address" | "shipping" | "payment" = $state("address");
@@ -394,7 +496,9 @@
 			resetAddressErrors("billing");
 			return;
 		}
-		for (const key of Object.keys(addressErrors[section]) as RequiredFieldKey[]) {
+		for (const key of Object.keys(
+			addressErrors[section],
+		) as RequiredFieldKey[]) {
 			addressErrors[section][key] = "";
 		}
 	}
@@ -415,7 +519,9 @@
 
 	function sanitizeAddress(address: AddressFormState): AddressFormState {
 		const normalized: AddressFormState = { ...address };
-		for (const key of Object.keys(normalized) as (keyof AddressFormState)[]) {
+		for (const key of Object.keys(
+			normalized,
+		) as (keyof AddressFormState)[]) {
 			const value = normalized[key];
 			if (typeof value === "string") {
 				normalized[key] = sanitizeInput(value).trim();
@@ -424,8 +530,9 @@
 		normalized.country_code =
 			normalized.country_code?.toLowerCase()?.trim() || "us";
 		if (normalized.postal_code) {
-			normalized.postal_code =
-				normalized.postal_code.replace(/\s+/g, "").toUpperCase();
+			normalized.postal_code = normalized.postal_code
+				.replace(/\s+/g, "")
+				.toUpperCase();
 		}
 		return normalized;
 	}
@@ -449,7 +556,8 @@
 		shipping = sanitizedShipping;
 		for (const key of Object.keys(ADDRESS_LABELS) as RequiredFieldKey[]) {
 			if (!sanitizedShipping[key]) {
-				addressErrors.shipping[key] = `${ADDRESS_LABELS[key]} is required.`;
+				addressErrors.shipping[key] =
+					`${ADDRESS_LABELS[key]} is required.`;
 				isValid = false;
 			}
 		}
@@ -467,9 +575,12 @@
 
 		if (!billingSameAsShipping) {
 			billing = sanitizedBilling;
-			for (const key of Object.keys(ADDRESS_LABELS) as RequiredFieldKey[]) {
+			for (const key of Object.keys(
+				ADDRESS_LABELS,
+			) as RequiredFieldKey[]) {
 				if (!sanitizedBilling[key]) {
-					addressErrors.billing[key] = `${ADDRESS_LABELS[key]} is required.`;
+					addressErrors.billing[key] =
+						`${ADDRESS_LABELS[key]} is required.`;
 					isValid = false;
 				}
 			}
@@ -477,7 +588,8 @@
 				sanitizedBilling.postal_code &&
 				!/^[0-9A-Z-]{3,10}$/.test(sanitizedBilling.postal_code)
 			) {
-				addressErrors.billing.postal_code = "Enter a valid postal code.";
+				addressErrors.billing.postal_code =
+					"Enter a valid postal code.";
 				isValid = false;
 			}
 		} else {
@@ -530,23 +642,30 @@
 	}
 
 	onMount(async () => {
-		// Watch for theme changes and update Stripe appearance
-		const observer = new MutationObserver(() => {
+		const handleThemeMutation = () => {
+			syncThemeModeFromDom();
 			stripeAppearance = getStripeAppearance();
-		});
-		
-		if (typeof document !== "undefined") {
-			observer.observe(document.documentElement, {
+		};
+
+		if (
+			typeof document !== "undefined" &&
+			typeof MutationObserver !== "undefined"
+		) {
+			handleThemeMutation();
+			themeMutationObserver = new MutationObserver(handleThemeMutation);
+			themeMutationObserver.observe(document.documentElement, {
 				attributes: true,
 				attributeFilter: ["class", "data-theme"],
 			});
+		} else {
+			syncThemeModeFromDom();
 		}
 
 		await ensureCart();
 		const cartPromise = getCart();
-		const customerPromise = getCurrentCustomer().catch(() => null) as Promise<
-			Awaited<ReturnType<typeof getCurrentCustomer>> | null
-		>;
+		const customerPromise = getCurrentCustomer().catch(
+			() => null,
+		) as Promise<Awaited<ReturnType<typeof getCurrentCustomer>> | null>;
 		const [cartSnapshot, me] = await Promise.all([
 			cartPromise,
 			customerPromise,
@@ -561,8 +680,9 @@
 			savedAddresses = addresses;
 			if (savedAddresses.length > 0) {
 				const resolvedShipping =
-					savedAddresses.find((addr: any) => addr?.is_default_shipping) ??
-					savedAddresses[0];
+					savedAddresses.find(
+						(addr: any) => addr?.is_default_shipping,
+					) ?? savedAddresses[0];
 				if (resolvedShipping) {
 					selectedShippingAddressId = resolvedShipping.id ?? "new";
 					applyAddressToShipping(resolvedShipping);
@@ -600,6 +720,10 @@
 				logger.warn("Analytics tracking failed:", e);
 			}
 		}
+	});
+
+	onDestroy(() => {
+		themeMutationObserver?.disconnect();
 	});
 
 	async function continueToShipping() {
@@ -713,11 +837,8 @@
 		const sdk = getStoreClient() as any;
 		const c = get(cartStore);
 		if (!c?.id) return false;
-		const {
-			isValid,
-			sanitizedShipping,
-			sanitizedBilling,
-		} = validateAndNormalizeAddresses();
+		const { isValid, sanitizedShipping, sanitizedBilling } =
+			validateAndNormalizeAddresses();
 		if (!isValid) {
 			addressComplete = false;
 			errorMsg = "Please fix the highlighted fields.";
@@ -782,7 +903,8 @@
 					);
 			}
 
-			const regionKey = ((c as any)?.region_id as string | undefined) ?? "default";
+			const regionKey =
+				((c as any)?.region_id as string | undefined) ?? "default";
 			let providerId = stripeProviderCache.get(regionKey) ?? undefined;
 			if (providerId === undefined) {
 				const listParams: any = {};
@@ -1204,15 +1326,23 @@
 								</Motion>
 							{/if}
 							{#if addressComplete && step !== "address"}
-								<CheckCircle2 class="relative z-10 h-4 w-4 text-success" />
+								<CheckCircle2
+									class="relative z-10 h-4 w-4 text-success"
+								/>
 							{/if}
-							<span class="relative z-10 text-center font-semibold">Address</span>
+							<span
+								class="relative z-10 text-center font-semibold"
+								>Address</span
+							>
 						</button>
 						<button
 							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition hover:bg-base-300/30 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-base-100/10 sm:flex-none sm:px-6"
 							onclick={async () => {
 								if (!addressComplete) return;
-								if (!shippingOptions.length && !shippingOptionsLoading) {
+								if (
+									!shippingOptions.length &&
+									!shippingOptionsLoading
+								) {
 									await fetchShippingOptions();
 								}
 								step = "shipping";
@@ -1228,9 +1358,14 @@
 								</Motion>
 							{/if}
 							{#if shippingComplete && step !== "shipping"}
-								<CheckCircle2 class="relative z-10 h-4 w-4 text-success" />
+								<CheckCircle2
+									class="relative z-10 h-4 w-4 text-success"
+								/>
 							{/if}
-							<span class="relative z-10 text-center font-semibold">Shipping</span>
+							<span
+								class="relative z-10 text-center font-semibold"
+								>Shipping</span
+							>
 						</button>
 						<button
 							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition hover:bg-base-300/30 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-base-100/10 sm:flex-none sm:px-6"
@@ -1239,7 +1374,8 @@
 								step = "payment";
 							}}
 							disabled={!shippingComplete ||
-								(((get(cartStore)?.total || 0) > 0) && !paymentReady)}
+								((get(cartStore)?.total || 0) > 0 &&
+									!paymentReady)}
 						>
 							{#if step === "payment"}
 								<Motion layoutId="checkout-step" let:motion>
@@ -1249,7 +1385,10 @@
 									></div>
 								</Motion>
 							{/if}
-							<span class="relative z-10 text-center font-semibold">Payment</span>
+							<span
+								class="relative z-10 text-center font-semibold"
+								>Payment</span
+							>
 						</button>
 					</div>
 				</AnimateSharedLayout>
@@ -1474,10 +1613,13 @@
 						<div class="flex flex-col gap-1">
 							<input
 								class="input-bordered input border-base-300 input-primary rounded-xl"
-								class:input-error={Boolean(addressErrors.shipping.first_name)}
+								class:input-error={Boolean(
+									addressErrors.shipping.first_name,
+								)}
 								placeholder="First name"
 								bind:value={shipping.first_name}
-								oninput={() => clearFieldError("shipping", "first_name")}
+								oninput={() =>
+									clearFieldError("shipping", "first_name")}
 							/>
 							{#if addressErrors.shipping.first_name}
 								<p class="text-sm text-error">
@@ -1488,10 +1630,13 @@
 						<div class="flex flex-col gap-1">
 							<input
 								class="input-bordered input border-base-300 input-primary rounded-xl"
-								class:input-error={Boolean(addressErrors.shipping.last_name)}
+								class:input-error={Boolean(
+									addressErrors.shipping.last_name,
+								)}
 								placeholder="Last name"
 								bind:value={shipping.last_name}
-								oninput={() => clearFieldError("shipping", "last_name")}
+								oninput={() =>
+									clearFieldError("shipping", "last_name")}
 							/>
 							{#if addressErrors.shipping.last_name}
 								<p class="text-sm text-error">
@@ -1508,10 +1653,13 @@
 					<div class="flex flex-col gap-1">
 						<input
 							class="input-bordered input w-full border-base-300 input-primary rounded-xl"
-							class:input-error={Boolean(addressErrors.shipping.address_1)}
+							class:input-error={Boolean(
+								addressErrors.shipping.address_1,
+							)}
 							placeholder="Address 1"
 							bind:value={shipping.address_1}
-							oninput={() => clearFieldError("shipping", "address_1")}
+							oninput={() =>
+								clearFieldError("shipping", "address_1")}
 						/>
 						{#if addressErrors.shipping.address_1}
 							<p class="text-sm text-error">
@@ -1527,11 +1675,14 @@
 					<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 						<div class="flex flex-col gap-1">
 							<input
-									class="input-bordered input border-base-300 input-primary rounded-xl"
-								class:input-error={Boolean(addressErrors.shipping.city)}
+								class="input-bordered input border-base-300 input-primary rounded-xl"
+								class:input-error={Boolean(
+									addressErrors.shipping.city,
+								)}
 								placeholder="City"
 								bind:value={shipping.city}
-								oninput={() => clearFieldError("shipping", "city")}
+								oninput={() =>
+									clearFieldError("shipping", "city")}
 							/>
 							{#if addressErrors.shipping.city}
 								<p class="text-sm text-error">
@@ -1542,14 +1693,17 @@
 						<div class="flex flex-col gap-1">
 							<select
 								class="select-bordered select rounded-xl"
-								class:select-error={Boolean(addressErrors.shipping.province)}
+								class:select-error={Boolean(
+									addressErrors.shipping.province,
+								)}
 								bind:value={shipping.province}
-								onchange={() => clearFieldError("shipping", "province")}
+								onchange={() =>
+									clearFieldError("shipping", "province")}
 							>
-							<option value="" disabled>Select state</option>
-							{#each US_STATES as s}
-								<option value={s.code}>{s.name}</option>
-							{/each}
+								<option value="" disabled>Select state</option>
+								{#each US_STATES as s}
+									<option value={s.code}>{s.name}</option>
+								{/each}
 							</select>
 							{#if addressErrors.shipping.province}
 								<p class="text-sm text-error">
@@ -1562,10 +1716,13 @@
 						<div class="flex flex-col gap-1">
 							<input
 								class="input-bordered input border-base-300 input-primary rounded-xl"
-								class:input-error={Boolean(addressErrors.shipping.postal_code)}
+								class:input-error={Boolean(
+									addressErrors.shipping.postal_code,
+								)}
 								placeholder="Postal code"
 								bind:value={shipping.postal_code}
-								oninput={() => clearFieldError("shipping", "postal_code")}
+								oninput={() =>
+									clearFieldError("shipping", "postal_code")}
 							/>
 							{#if addressErrors.shipping.postal_code}
 								<p class="text-sm text-error">
@@ -1636,10 +1793,16 @@
 							<div class="flex flex-col gap-1">
 								<input
 									class="input-bordered input border-base-300 input-primary rounded-xl"
-									class:input-error={Boolean(addressErrors.billing.first_name)}
+									class:input-error={Boolean(
+										addressErrors.billing.first_name,
+									)}
 									placeholder="First name"
 									bind:value={billing.first_name}
-									oninput={() => clearFieldError("billing", "first_name")}
+									oninput={() =>
+										clearFieldError(
+											"billing",
+											"first_name",
+										)}
 								/>
 								{#if addressErrors.billing.first_name}
 									<p class="text-sm text-error">
@@ -1650,10 +1813,13 @@
 							<div class="flex flex-col gap-1">
 								<input
 									class="input-bordered input border-base-300 input-primary rounded-xl"
-									class:input-error={Boolean(addressErrors.billing.last_name)}
+									class:input-error={Boolean(
+										addressErrors.billing.last_name,
+									)}
 									placeholder="Last name"
 									bind:value={billing.last_name}
-									oninput={() => clearFieldError("billing", "last_name")}
+									oninput={() =>
+										clearFieldError("billing", "last_name")}
 								/>
 								{#if addressErrors.billing.last_name}
 									<p class="text-sm text-error">
@@ -1670,10 +1836,13 @@
 						<div class="flex flex-col gap-1">
 							<input
 								class="input-bordered input w-full border-base-300 input-primary rounded-xl"
-								class:input-error={Boolean(addressErrors.billing.address_1)}
+								class:input-error={Boolean(
+									addressErrors.billing.address_1,
+								)}
 								placeholder="Address 1"
 								bind:value={billing.address_1}
-								oninput={() => clearFieldError("billing", "address_1")}
+								oninput={() =>
+									clearFieldError("billing", "address_1")}
 							/>
 							{#if addressErrors.billing.address_1}
 								<p class="text-sm text-error">
@@ -1690,10 +1859,13 @@
 							<div class="flex flex-col gap-1">
 								<input
 									class="input-bordered input border-base-300 input-primary rounded-xl"
-									class:input-error={Boolean(addressErrors.billing.city)}
+									class:input-error={Boolean(
+										addressErrors.billing.city,
+									)}
 									placeholder="City"
 									bind:value={billing.city}
-									oninput={() => clearFieldError("billing", "city")}
+									oninput={() =>
+										clearFieldError("billing", "city")}
 								/>
 								{#if addressErrors.billing.city}
 									<p class="text-sm text-error">
@@ -1704,14 +1876,19 @@
 							<div class="flex flex-col gap-1">
 								<select
 									class="select-bordered select rounded-xl"
-									class:select-error={Boolean(addressErrors.billing.province)}
+									class:select-error={Boolean(
+										addressErrors.billing.province,
+									)}
 									bind:value={billing.province}
-									onchange={() => clearFieldError("billing", "province")}
+									onchange={() =>
+										clearFieldError("billing", "province")}
 								>
-								<option value="" disabled>Select state</option>
-								{#each US_STATES as s}
-									<option value={s.code}>{s.name}</option>
-								{/each}
+									<option value="" disabled
+										>Select state</option
+									>
+									{#each US_STATES as s}
+										<option value={s.code}>{s.name}</option>
+									{/each}
 								</select>
 								{#if addressErrors.billing.province}
 									<p class="text-sm text-error">
@@ -1724,10 +1901,16 @@
 							<div class="flex flex-col gap-1">
 								<input
 									class="input-bordered input border-base-300 input-primary rounded-xl"
-									class:input-error={Boolean(addressErrors.billing.postal_code)}
+									class:input-error={Boolean(
+										addressErrors.billing.postal_code,
+									)}
 									placeholder="Postal code"
 									bind:value={billing.postal_code}
-									oninput={() => clearFieldError("billing", "postal_code")}
+									oninput={() =>
+										clearFieldError(
+											"billing",
+											"postal_code",
+										)}
 								/>
 								{#if addressErrors.billing.postal_code}
 									<p class="text-sm text-error">
@@ -1847,16 +2030,24 @@
 				{/if}
 
 				{#if step === "payment"}
-					<h2 class="mt-2 card-title flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+					<h2
+						class="mt-2 card-title flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between"
+					>
 						<span>Payment</span>
 						{#if (get(cartStore)?.total || 0) > 0}
-							<span class="text-base font-semibold text-primary sm:text-lg">
-								Total due:
-								{formatCurrency(
-									get(cartStore)?.total || 0,
-									get(cartStore)?.currency_code || "usd",
-								)}
-							</span>
+							<div class="flex items-baseline gap-1">
+								<span class="text-base font-semibold sm:text-lg"
+									>Total due:</span
+								>
+								<span
+									class="text-base font-semibold text-primary sm:text-lg"
+								>
+									{formatCurrency(
+										get(cartStore)?.total || 0,
+										get(cartStore)?.currency_code || "usd",
+									)}
+								</span>
+							</div>
 						{/if}
 					</h2>
 					{#if paymentError}
@@ -1865,17 +2056,26 @@
 						</div>
 					{/if}
 					{#if paymentLoading}
-						<div class="rounded-2xl border border-base-300 bg-base-200/70 p-6 text-center shadow-sm dark:bg-base-300/30">
-							<div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+						<div
+							class="rounded-2xl border border-base-300 bg-base-200/70 p-6 text-center shadow-sm dark:bg-base-300/30"
+						>
+							<div
+								class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary"
+							>
 								<ShieldCheck class="h-7 w-7" />
 							</div>
 							<div class="mt-4 space-y-1">
-								<p class="text-base font-semibold">Securing your checkout…</p>
+								<p class="text-base font-semibold">
+									Securing your checkout…
+								</p>
 								<p class="text-sm opacity-70">
-									We’re syncing with Stripe to keep your payment safe.
+									We’re syncing with Stripe to keep your
+									payment safe.
 								</p>
 							</div>
-							<progress class="progress progress-primary mt-5 w-full"></progress>
+							<progress
+								class="progress progress-primary mt-5 w-full"
+							></progress>
 						</div>
 					{:else if (get(cartStore)?.total || 0) <= 0}
 						<div class="alert alert-info">
@@ -1915,8 +2115,9 @@
 						</div>
 					{/if}
 					<div class="flex justify-between pt-2">
-						<Button class="btn btn-primary" onclick={() => (step = "shipping")}
-							>Back</Button
+						<Button
+							class="btn btn-primary"
+							onclick={() => (step = "shipping")}>Back</Button
 						>
 						<Button
 							class={"btn btn-primary " +
@@ -1939,31 +2140,48 @@
 	<div use:melt={$orderDialogPortalled}>
 		<div
 			use:melt={$orderDialogOverlay}
-			class="fixed inset-0 z-[80] bg-base-content/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-150"
+			class={`${dialogOverlayBase} ${dialogOverlayTone[themeMode]}`}
 		></div>
 		<div
 			use:melt={$orderDialogContent}
-			class="fixed left-1/2 top-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 animate-in fade-in zoom-in-95 duration-200 rounded-3xl border-2 border-base-300/60 bg-base-100/95 p-0 text-base-content shadow-[0_25px_50px_-12px_rgba(15,23,42,0.45)] transition-colors dark:border-base-300/40 dark:bg-base-200/95 dark:text-base-content dark:shadow-[0_25px_45px_-15px_rgba(2,6,23,0.8)]"
+			class={`${dialogContentBase} ${dialogContentTone[themeMode]}`}
+			style:box-shadow={dialogShadowByTheme[themeMode]}
 		>
-			<div class="flex w-full flex-col overflow-hidden rounded-[calc(theme(borderRadius.3xl)-0.5rem)]">
-				<div class="relative flex flex-col items-center gap-4 bg-gradient-to-b from-base-200/70 via-base-100/40 to-base-100/95 px-8 py-10 text-center dark:from-base-300/60 dark:via-base-200/40 dark:to-base-200/95">
+			<div class={dialogBodyBase}>
+				<div
+					class={`${dialogHeaderBase} ${dialogHeaderTone[themeMode]}`}
+				>
 					<div class="relative h-16 w-16">
-						<div class="absolute inset-0 rounded-full border-4 border-primary/30 dark:border-primary/25"></div>
-						<div class="absolute inset-3 flex items-center justify-center rounded-full bg-primary/10 text-primary shadow-inner shadow-primary/20 dark:bg-primary/20">
+						<div
+							class={`absolute inset-0 rounded-full border-4 transition-colors ${dialogRingTone[themeMode]}`}
+						></div>
+						<div
+							class={`${dialogBadgeBase} ${dialogBadgeTone[themeMode]}`}
+						>
 							<ShieldCheck class="h-7 w-7" />
 						</div>
 					</div>
 					<div class="space-y-2">
-						<p use:melt={$orderDialogTitle} class="text-xl font-semibold">
+						<p
+							use:melt={$orderDialogTitle}
+							class="text-xl font-semibold"
+						>
 							Finishing up your order…
 						</p>
-						<p use:melt={$orderDialogDescription} class="text-sm text-base-content/70 dark:text-base-content/60">
-							Please stay on this page while we confirm payment with Stripe.
+						<p
+							use:melt={$orderDialogDescription}
+							class={`${dialogDescriptionBase} ${dialogDescriptionTone[themeMode]}`}
+						>
+							Please stay on this page while we confirm payment
+							with Stripe.
 						</p>
 					</div>
 				</div>
-				<div class="bg-base-100/95 px-8 pb-8 pt-4 dark:bg-base-200/95">
-					<progress class="progress progress-primary w-full"></progress>
+				<div
+					class={`${dialogFooterBase} ${dialogFooterTone[themeMode]}`}
+				>
+					<progress class="progress progress-primary w-full"
+					></progress>
 				</div>
 			</div>
 		</div>
