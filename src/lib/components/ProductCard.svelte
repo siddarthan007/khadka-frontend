@@ -210,7 +210,7 @@
 				<div class="join h-9 sm:h-10 overflow-hidden rounded-xl border-2 border-base-300 bg-base-100 shadow-md w-full max-w-[140px]">
 					<button
 						type="button"
-						class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
+						class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50 focus:outline-none"
 						onclick={onDec}
 						disabled={isUpdating}
 						aria-label="Decrease quantity"
@@ -227,7 +227,7 @@
 					/>
 					<button
 						type="button"
-						class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
+						class="join-item h-9 sm:h-10 w-10 sm:w-11 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50 focus:outline-none"
 						onclick={onInc}
 						disabled={isUpdating}
 						aria-label="Increase quantity"

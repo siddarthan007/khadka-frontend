@@ -471,7 +471,7 @@
 											>
 												<button
 													type="button"
-													class="join-item h-11 w-11 flex items-center justify-center text-xl font-bold hover:bg-base-200 active:bg-base-300 transition-all"
+													class="join-item h-11 w-11 flex items-center justify-center text-xl font-bold hover:bg-base-200 active:bg-base-300 transition-all focus:outline-none"
 													aria-label="Decrease quantity"
 													onclick={() =>
 														(li.quantity ?? 1) <= 1
@@ -496,7 +496,7 @@
 												/>
 												<button
 													type="button"
-													class="join-item h-11 w-11 flex items-center justify-center text-xl font-bold hover:bg-base-200 active:bg-base-300 transition-all"
+													class="join-item h-11 w-11 flex items-center justify-center text-xl font-bold hover:bg-base-200 active:bg-base-300 transition-all focus:outline-none"
 													aria-label="Increase quantity"
 													onclick={() =>
 														updateLine(
