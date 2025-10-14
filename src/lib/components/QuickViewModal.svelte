@@ -302,7 +302,7 @@
 					<div class="join h-10 sm:h-12 overflow-hidden rounded-xl border-2 border-base-300 bg-base-100 shadow-md w-fit">
 						<button
 							type="button"
-							class="join-item h-10 sm:h-12 w-10 sm:w-12 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
+							class="join-item h-10 sm:h-12 w-10 sm:w-12 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50 stepper-button"
 							onclick={() => (quantity = Math.max(1, quantity - 1))}
 							disabled={adding}
 							aria-label="Decrease quantity"
@@ -319,7 +319,7 @@
 						/>
 						<button
 							type="button"
-							class="join-item h-10 sm:h-12 w-10 sm:w-12 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
+							class="join-item h-10 sm:h-12 w-10 sm:w-12 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50 stepper-button"
 							onclick={() => (quantity = quantity + 1)}
 							disabled={adding}
 							aria-label="Increase quantity"

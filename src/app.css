@@ -235,18 +235,28 @@ body {
 
   /* Stepper standardization */
   .stepper-button {
-    @apply h-9 w-9 min-w-0 rounded-md transition-colors;
+    box-shadow: inset 0 0 0 2px var(--input-border);
+    transition: box-shadow 0.2s ease;
+  }
+
+  .stepper-button:hover {
+    box-shadow:
+      inset 0 0 0 2px var(--input-border),
+      inset 0 0 0 9999px color-mix(in srgb, transparent 85%, var(--input-border));
+  }
+
+  .dark .stepper-button {
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--input-border) 80%, transparent);
+  }
+
+  .dark .stepper-button:hover {
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--input-border) 80%, transparent),
+      inset 0 0 0 9999px color-mix(in srgb, transparent 80%, var(--input-border));
   }
 
   .stepper-input {
     @apply h-9 w-12 rounded-md text-center text-sm font-medium;
-  }
-
-  .quantity-input {
-    border: 0 !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-    outline: none !important;
   }
 
   @media (max-width: 640px) {
