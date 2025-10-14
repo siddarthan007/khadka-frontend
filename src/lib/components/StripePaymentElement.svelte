@@ -29,16 +29,34 @@
 	let container = $state<HTMLDivElement | null>(null);
 	let paymentElement: any = null;
 	let initializing = false;
+	let previousAppearance: any = null;
 
 	async function tryMount() {
 		if (initializing) return;
 		if (!stripe || !clientSecret || !container) return;
-		if (paymentElement) return;
+
+		// If appearance changed and elements exist, recreate elements with new appearance
+		const appearanceChanged = previousAppearance && 
+			JSON.stringify(previousAppearance) !== JSON.stringify(appearance);
+
+		if (appearanceChanged && elements && paymentElement) {
+			try {
+				paymentElement.unmount();
+				paymentElement = null;
+				elements = null;
+				ready = false;
+			} catch (e) {
+				logger.warn('[StripePaymentElement] cleanup error', e);
+			}
+		}
+
+		if (paymentElement && !appearanceChanged) return;
 
 		initializing = true;
 		try {
 			if (!elements) {
 				elements = stripe.elements({ clientSecret, appearance });
+				previousAppearance = appearance;
 				onready?.(new CustomEvent('ready', { detail: { elements } }));
 			}
 			if (elements && !paymentElement) {

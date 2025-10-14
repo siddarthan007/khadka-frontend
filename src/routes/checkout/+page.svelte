@@ -14,6 +14,7 @@
 	import type { HttpTypes } from "@medusajs/types";
 	import { env as publicEnv } from "$env/dynamic/public";
 	import { loadStripe } from "@stripe/stripe-js";
+	import type { Appearance } from "@stripe/stripe-js";
 	import StripePaymentElement from "$lib/components/StripePaymentElement.svelte";
 	import { Motion, AnimateSharedLayout } from "svelte-motion";
 	import { formatCurrency } from "$lib/utils";
@@ -78,6 +79,43 @@
 	let paymentError: string | null = $state(null);
 	let paymentReady: boolean = $state(false);
 	const stripeProviderCache = new Map<string, string | null>();
+
+	// Detect current theme for Stripe appearance
+	function getStripeAppearance(): Appearance {
+		const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+		
+		return {
+			theme: isDark ? "night" : "stripe",
+			variables: {
+				colorPrimary: isDark ? "oklch(0.75 0.17 145)" : "oklch(0.7 0.17 145)",
+				colorBackground: isDark ? "oklch(0.208 0.042 265.755)" : "oklch(1 0 0)",
+				colorText: isDark ? "oklch(0.984 0.003 247.858)" : "oklch(0.129 0.042 264.695)",
+				colorDanger: isDark ? "oklch(0.704 0.191 22.216)" : "oklch(0.65 0.2 29)",
+				fontFamily: "Inter, system-ui, sans-serif",
+				spacingUnit: "4px",
+				borderRadius: "10px",
+			},
+			rules: {
+				".Input": {
+					border: isDark ? "2px solid oklch(1 0 0 / 10%)" : "2px solid oklch(0.929 0.013 255.508)",
+					backgroundColor: isDark ? "oklch(0.279 0.041 260.031)" : "oklch(1 0 0)",
+					boxShadow: "none",
+				},
+				".Input:focus": {
+					border: isDark ? "2px solid oklch(0.75 0.17 145)" : "2px solid oklch(0.7 0.17 145)",
+					boxShadow: isDark
+						? "0 0 0 3px oklch(0.75 0.17 145 / 0.1)"
+						: "0 0 0 3px oklch(0.7 0.17 145 / 0.1)",
+				},
+				".Label": {
+					color: isDark ? "oklch(0.984 0.003 247.858)" : "oklch(0.129 0.042 264.695)",
+					fontWeight: "500",
+				},
+			},
+		};
+	}
+
+	let stripeAppearance: Appearance = $state(getStripeAppearance());
 
 	// Stepper
 	let step: "address" | "shipping" | "payment" = $state("address");
@@ -307,6 +345,18 @@
 	}
 
 	onMount(async () => {
+		// Watch for theme changes and update Stripe appearance
+		const observer = new MutationObserver(() => {
+			stripeAppearance = getStripeAppearance();
+		});
+		
+		if (typeof document !== "undefined") {
+			observer.observe(document.documentElement, {
+				attributes: true,
+				attributeFilter: ["class", "data-theme"],
+			});
+		}
+
 		await ensureCart();
 		const cartPromise = getCart();
 		const customerPromise = getCurrentCustomer().catch(() => null) as Promise<
@@ -954,7 +1004,7 @@
 				<!-- Stepper nav -->
 				<AnimateSharedLayout>
 					<div
-						class="relative flex w-full flex-wrap items-center gap-2 rounded-full border border-base-300 bg-base-200/50 p-1 sm:w-max sm:flex-nowrap"
+						class="relative mx-auto flex w-full max-w-md flex-wrap items-center justify-center gap-2 rounded-full border border-base-300 bg-base-200/50 p-1 sm:flex-nowrap"
 					>
 						<button
 							class="relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
@@ -1643,6 +1693,7 @@
 								<StripePaymentElement
 									stripe={stripeInstance}
 									clientSecret={paymentClientSecret}
+									appearance={stripeAppearance}
 									bind:elements
 									bind:paymentElementRef
 									bind:ready
