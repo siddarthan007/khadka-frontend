@@ -82,33 +82,202 @@
 
 	// Detect current theme for Stripe appearance
 	function getStripeAppearance(): Appearance {
-		const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
-		
+		const root = typeof document !== "undefined" ? document.documentElement : null;
+		const isDark = Boolean(
+			root?.classList.contains("dark") ||
+			root?.dataset.theme === "dark" ||
+			root?.getAttribute("data-theme") === "dark",
+		);
+		const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+		const computed = root ? getComputedStyle(root) : null;
+
+		const fallbackLight = {
+			colorPrimary: "oklch(0.7 0.17 145)",
+			colorPrimaryText: "oklch(0.984 0.003 247.858)",
+			colorBackground: "oklch(1 0 0)",
+			colorSurface: "oklch(1 0 0)",
+			colorText: "oklch(0.129 0.042 264.695)",
+			colorTextSecondary: "oklch(0.554 0.046 257.417)",
+			colorTextPlaceholder: "oklch(0.704 0.04 256.788)",
+			colorIcon: "oklch(0.554 0.046 257.417)",
+			colorDanger: "oklch(0.65 0.2 29)",
+			colorDangerText: "oklch(0.984 0.003 247.858)",
+			colorSuccess: "oklch(0.7 0.17 145)",
+			colorBorder: "oklch(0.929 0.013 255.508)",
+			colorMuted: "oklch(0.968 0.007 247.896)",
+			inputBackground: "oklch(1 0 0)",
+			inputBorder: "oklch(0.929 0.013 255.508)",
+			radius: "12px",
+		};
+		const fallbackDark = {
+			colorPrimary: "oklch(0.75 0.17 145)",
+			colorPrimaryText: "oklch(0.984 0.003 247.858)",
+			colorBackground: "oklch(0.208 0.042 265.755)",
+			colorSurface: "oklch(0.279 0.041 260.031)",
+			colorText: "oklch(0.984 0.003 247.858)",
+			colorTextSecondary: "oklch(0.704 0.04 256.788)",
+			colorTextPlaceholder: "oklch(0.551 0.027 264.364)",
+			colorIcon: "oklch(0.704 0.04 256.788)",
+			colorDanger: "oklch(0.704 0.191 22.216)",
+			colorDangerText: "oklch(0.984 0.003 247.858)",
+			colorSuccess: "oklch(0.75 0.17 145)",
+			colorBorder: "oklch(1 0 0 / 10%)",
+			colorMuted: "oklch(0.279 0.041 260.031)",
+			inputBackground: "oklch(0.279 0.041 260.031)",
+			inputBorder: "oklch(1 0 0 / 10%)",
+			radius: "12px",
+		};
+		const fallbacks = isDark ? fallbackDark : fallbackLight;
+
+		const readVar = (name: string, fallbackValue: string) =>
+			computed?.getPropertyValue(name)?.trim() || fallbackValue;
+		const withAlpha = (color: string, alpha: number) => {
+			const normalized = color.trim();
+			if (/oklch\([^\)]+\)/.test(normalized)) {
+				return normalized.replace(/\)$/, ` / ${alpha})`);
+			}
+			const percentage = Math.round(alpha * 100);
+			return `color-mix(in srgb, ${normalized} ${percentage}%, transparent)`;
+		};
+
+		const radius = readVar("--radius-lg", readVar("--radius", fallbacks.radius));
+		const surface = readVar("--color-card", fallbacks.colorSurface);
+		const border = readVar("--border", fallbacks.colorBorder);
+		const muted = readVar("--muted", fallbacks.colorMuted);
+		const primary = readVar("--color-primary", fallbacks.colorPrimary);
+		const primaryForeground = readVar(
+			"--color-primary-foreground",
+			fallbacks.colorPrimaryText,
+		);
+
 		return {
 			theme: isDark ? "night" : "stripe",
 			variables: {
-				colorPrimary: isDark ? "oklch(0.75 0.17 145)" : "oklch(0.7 0.17 145)",
-				colorBackground: isDark ? "oklch(0.208 0.042 265.755)" : "oklch(1 0 0)",
-				colorText: isDark ? "oklch(0.984 0.003 247.858)" : "oklch(0.129 0.042 264.695)",
-				colorDanger: isDark ? "oklch(0.704 0.191 22.216)" : "oklch(0.65 0.2 29)",
-				fontFamily: "Inter, system-ui, sans-serif",
+				colorPrimary: primary,
+				colorPrimaryText: primaryForeground,
+				colorBackground: surface,
+				colorText: readVar("--color-card-foreground", fallbacks.colorText),
+				colorTextSecondary: readVar(
+					"--muted-foreground",
+					fallbacks.colorTextSecondary,
+				),
+				colorTextPlaceholder: readVar(
+					"--muted-foreground",
+					fallbacks.colorTextPlaceholder,
+				),
+				colorDanger: readVar("--destructive", fallbacks.colorDanger),
+				colorDangerText: fallbacks.colorDangerText,
+				colorSuccess: readVar("--color-success", fallbacks.colorSuccess),
+				colorIcon: readVar("--muted-foreground", fallbacks.colorIcon),
+				borderRadius: radius,
 				spacingUnit: "4px",
-				borderRadius: "10px",
+				fontFamily: "'Inter', system-ui, sans-serif",
+				fontWeightMedium: "600",
+				fontWeightBold: "700",
 			},
 			rules: {
 				".Input": {
-					border: isDark ? "2px solid oklch(1 0 0 / 10%)" : "2px solid oklch(0.929 0.013 255.508)",
-					backgroundColor: isDark ? "oklch(0.279 0.041 260.031)" : "oklch(1 0 0)",
+					border: `2px solid ${readVar("--input-border", fallbacks.inputBorder)}`,
+					backgroundColor: readVar("--color-card", fallbacks.inputBackground),
+					borderRadius: radius,
+					paddingInline: "14px",
+					paddingBlock: "11px",
+					color: readVar("--color-card-foreground", fallbacks.colorText),
 					boxShadow: "none",
+					transition: prefersReducedMotion
+						? "none"
+						: "border 120ms ease, box-shadow 120ms ease, transform 120ms ease",
+				},
+				".Input::placeholder": {
+					color: readVar(
+						"--muted-foreground",
+						fallbacks.colorTextPlaceholder,
+					),
 				},
 				".Input:focus": {
-					border: isDark ? "2px solid oklch(0.75 0.17 145)" : "2px solid oklch(0.7 0.17 145)",
+					border: `2px solid ${primary}`,
+					boxShadow: prefersReducedMotion
+						? "none"
+						: `0 0 0 4px ${withAlpha(primary, 0.14)}`,
+					transform: prefersReducedMotion ? "none" : "translateY(-1px)",
+				},
+				".Input--invalid": {
+					border: `2px solid ${readVar("--destructive", fallbacks.colorDanger)}`,
+					boxShadow: prefersReducedMotion
+						? "none"
+						: `0 0 0 3px ${withAlpha(readVar("--destructive", fallbacks.colorDanger), 0.18)}`,
+				},
+				".Block": {
+					backgroundColor: surface,
+					borderRadius: radius,
+					border: `1px solid ${border}`,
 					boxShadow: isDark
-						? "0 0 0 3px oklch(0.75 0.17 145 / 0.1)"
-						: "0 0 0 3px oklch(0.7 0.17 145 / 0.1)",
+						? "0 12px 22px -18px rgba(10, 10, 20, 0.7)"
+						: "0 14px 32px -20px rgba(15, 23, 42, 0.18)",
 				},
 				".Label": {
-					color: isDark ? "oklch(0.984 0.003 247.858)" : "oklch(0.129 0.042 264.695)",
+					color: readVar("--color-card-foreground", fallbacks.colorText),
+					fontWeight: "600",
+					letterSpacing: "0.01em",
+				},
+				".Tab": {
+					backgroundColor: "transparent",
+					borderRadius: `calc(${radius} - 4px)`,
+					border: `1px solid ${withAlpha(border, 0.9)}`,
+					color: readVar("--color-card-foreground", fallbacks.colorText),
+					transition: prefersReducedMotion
+						? "none"
+						: "color 120ms ease, border-color 120ms ease, background-color 120ms ease, transform 120ms ease",
+					paddingInline: "12px",
+					paddingBlock: "10px",
+				},
+				".Tab:hover": {
+					backgroundColor: withAlpha(primary, 0.08),
+					borderColor: withAlpha(primary, 0.35),
+				},
+				".Tab--selected": {
+					backgroundColor: withAlpha(primary, isDark ? 0.32 : 0.12),
+					borderColor: primary,
+					color: primary,
+					boxShadow: prefersReducedMotion
+						? "none"
+						: `0 6px 18px -12px ${withAlpha(primary, 0.55)}`,
+				},
+				".ActionButton": {
+					borderRadius: radius,
+					border: `1px solid ${withAlpha(border, 0.9)}`,
+					paddingInline: "18px",
+					paddingBlock: "10px",
+					fontWeight: "600",
+					letterSpacing: "0.01em",
+				},
+				".ActionButton--primary": {
+					backgroundColor: primary,
+					color: primaryForeground,
+					border: `1px solid ${withAlpha(primary, 0.6)}`,
+					boxShadow: prefersReducedMotion
+						? "none"
+						: `0 10px 32px -18px ${withAlpha(primary, 0.65)}`,
+				},
+				".ActionButton--primary:hover": {
+					backgroundColor: withAlpha(primary, isDark ? 0.52 : 0.22),
+					borderColor: withAlpha(primary, 0.75),
+					color: primaryForeground,
+				},
+				".ActionButton--secondary": {
+					backgroundColor: muted,
+					color: readVar("--muted-foreground", fallbacks.colorTextSecondary),
+				},
+				".Link": {
+					color: primary,
+					textDecoration: "none",
+					fontWeight: "500",
+				},
+				".Link:hover": {
+					textDecoration: "underline",
+				},
+				".Error": {
+					color: readVar("--destructive", fallbacks.colorDanger),
 					fontWeight: "500",
 				},
 			},
@@ -1654,7 +1823,7 @@
 						</div>
 						<div class="pt-2">
 							<Button
-								class="btn"
+								class="btn btn-primary"
 								onclick={() => (step = "address")}>Back</Button
 							>
 						</div>
@@ -1719,7 +1888,7 @@
 						</div>
 					{/if}
 					<div class="flex justify-between pt-2">
-						<Button class="btn" onclick={() => (step = "shipping")}
+						<Button class="btn btn-primary" onclick={() => (step = "shipping")}
 							>Back</Button
 						>
 						<Button
