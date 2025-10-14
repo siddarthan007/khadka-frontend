@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, onMount } from "svelte";
+	import { onMount } from "svelte";
 	import SEO from "$lib/components/SEO.svelte";
 	import { cart as cartStore } from "$lib/stores/cart";
 	import { ensureCart, getCart, clearCart } from "$lib/cart";
@@ -331,79 +331,6 @@
 
 	let stripeAppearance: Appearance = $state(getStripeAppearance());
 
-	type ThemeMode = "light" | "dark";
-	let themeMode: ThemeMode = $state("light");
-
-	const dialogOverlayBase =
-		"fixed inset-0 z-[80] backdrop-blur-sm transition-opacity animate-in fade-in duration-150";
-	const dialogContentBase =
-		"fixed left-1/2 top-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 animate-in fade-in zoom-in-95 duration-200 rounded-3xl border-2 p-0 transition-colors";
-	const dialogBodyBase =
-		"flex w-full flex-col overflow-hidden rounded-[calc(theme(borderRadius.3xl)-0.5rem)]";
-	const dialogHeaderBase =
-		"relative flex flex-col items-center gap-4 bg-gradient-to-b px-8 py-10 text-center transition-colors";
-	const dialogFooterBase = "px-8 pb-8 pt-4 transition-colors";
-	const dialogDescriptionBase = "text-sm transition-colors";
-	const dialogOverlayTone: Record<ThemeMode, string> = {
-		light: "bg-base-content/30",
-		dark: "bg-base-content/45",
-	};
-	const dialogContentTone: Record<ThemeMode, string> = {
-		light: "border-base-300/60 bg-base-100/95 text-base-content",
-		dark: "border-base-300/50 bg-base-200/95 text-base-content",
-	};
-	const dialogHeaderTone: Record<ThemeMode, string> = {
-		light: "from-base-200/80 via-base-100/40 to-base-100/95",
-		dark: "from-base-300/70 via-base-200/40 to-base-200/90",
-	};
-	const dialogRingTone: Record<ThemeMode, string> = {
-		light: "border-primary/30",
-		dark: "border-primary/25",
-	};
-	const dialogBadgeBase =
-		"absolute inset-3 flex items-center justify-center rounded-full shadow-inner text-primary transition-colors";
-	const dialogBadgeTone: Record<ThemeMode, string> = {
-		light: "bg-primary/10 shadow-primary/20",
-		dark: "bg-primary/20 shadow-primary/30",
-	};
-	const dialogDescriptionTone: Record<ThemeMode, string> = {
-		light: "text-base-content/70",
-		dark: "text-base-content/60",
-	};
-	const dialogFooterTone: Record<ThemeMode, string> = {
-		light: "bg-base-100/95",
-		dark: "bg-base-200/95",
-	};
-	const dialogShadowByTheme: Record<ThemeMode, string> = {
-		light:
-			"0 28px 55px -18px color-mix(in oklab, var(--fallback-bc) 40%, transparent)",
-		dark:
-			"0 32px 60px -20px color-mix(in oklab, var(--fallback-bc) 65%, transparent)",
-	};
-
-	let themeMutationObserver: MutationObserver | null = null;
-
-	function resolveThemeMode(): ThemeMode {
-		if (typeof document === "undefined") {
-			return "light";
-		}
-		const root = document.documentElement;
-		const attrTheme = root.getAttribute("data-theme") ?? "";
-		const bodyTheme = document.body?.getAttribute("data-theme") ?? "";
-		const isDark =
-			root.classList.contains("dark") ||
-			attrTheme.toLowerCase().includes("dark") ||
-			bodyTheme.toLowerCase().includes("dark");
-		return isDark ? "dark" : "light";
-	}
-
-	function syncThemeModeFromDom() {
-		const next = resolveThemeMode();
-		if (themeMode !== next) {
-			themeMode = next;
-		}
-	}
-
 	// Stepper
 	let step: "address" | "shipping" | "payment" = $state("address");
 	let addressComplete: boolean = $state(false);
@@ -642,23 +569,16 @@
 	}
 
 	onMount(async () => {
-		const handleThemeMutation = () => {
-			syncThemeModeFromDom();
+		// Watch for theme changes and update Stripe appearance
+		const observer = new MutationObserver(() => {
 			stripeAppearance = getStripeAppearance();
-		};
+		});
 
-		if (
-			typeof document !== "undefined" &&
-			typeof MutationObserver !== "undefined"
-		) {
-			handleThemeMutation();
-			themeMutationObserver = new MutationObserver(handleThemeMutation);
-			themeMutationObserver.observe(document.documentElement, {
+		if (typeof document !== "undefined") {
+			observer.observe(document.documentElement, {
 				attributes: true,
 				attributeFilter: ["class", "data-theme"],
 			});
-		} else {
-			syncThemeModeFromDom();
 		}
 
 		await ensureCart();
@@ -720,10 +640,6 @@
 				logger.warn("Analytics tracking failed:", e);
 			}
 		}
-	});
-
-	onDestroy(() => {
-		themeMutationObserver?.disconnect();
 	});
 
 	async function continueToShipping() {
@@ -2140,23 +2056,24 @@
 	<div use:melt={$orderDialogPortalled}>
 		<div
 			use:melt={$orderDialogOverlay}
-			class={`${dialogOverlayBase} ${dialogOverlayTone[themeMode]}`}
+			class="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-150 dark:bg-black/70"
 		></div>
 		<div
 			use:melt={$orderDialogContent}
-			class={`${dialogContentBase} ${dialogContentTone[themeMode]}`}
-			style:box-shadow={dialogShadowByTheme[themeMode]}
+			class="fixed left-1/2 top-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 animate-in fade-in zoom-in-95 duration-200 rounded-3xl border-2 border-base-300/60 bg-base-100 p-0 text-base-content shadow-[0_25px_50px_-12px_rgba(15,23,42,0.45)] transition-colors dark:border-base-300/40 dark:bg-base-200 dark:text-base-content dark:shadow-[0_25px_45px_-15px_rgba(2,6,23,0.8)]"
 		>
-			<div class={dialogBodyBase}>
+			<div
+				class="flex w-full flex-col overflow-hidden rounded-[calc(theme(borderRadius.3xl)-0.5rem)]"
+			>
 				<div
-					class={`${dialogHeaderBase} ${dialogHeaderTone[themeMode]}`}
+					class="relative flex flex-col items-center gap-4 bg-gradient-to-b from-base-200 via-base-100 to-base-100 px-8 py-10 text-center dark:from-base-300 dark:via-base-200 dark:to-base-200"
 				>
 					<div class="relative h-16 w-16">
 						<div
-							class={`absolute inset-0 rounded-full border-4 transition-colors ${dialogRingTone[themeMode]}`}
+							class="absolute inset-0 rounded-full border-4 border-primary/30 dark:border-primary/25"
 						></div>
 						<div
-							class={`${dialogBadgeBase} ${dialogBadgeTone[themeMode]}`}
+							class="absolute inset-3 flex items-center justify-center rounded-full bg-primary/10 text-primary shadow-inner shadow-primary/20 dark:bg-primary/20"
 						>
 							<ShieldCheck class="h-7 w-7" />
 						</div>
@@ -2170,16 +2087,14 @@
 						</p>
 						<p
 							use:melt={$orderDialogDescription}
-							class={`${dialogDescriptionBase} ${dialogDescriptionTone[themeMode]}`}
+							class="text-sm text-base-content/70 dark:text-base-content/60"
 						>
 							Please stay on this page while we confirm payment
 							with Stripe.
 						</p>
 					</div>
 				</div>
-				<div
-					class={`${dialogFooterBase} ${dialogFooterTone[themeMode]}`}
-				>
+				<div class="bg-base-100 px-8 pb-8 pt-4 dark:bg-base-200">
 					<progress class="progress progress-primary w-full"
 					></progress>
 				</div>

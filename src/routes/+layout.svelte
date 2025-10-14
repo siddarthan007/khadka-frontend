@@ -1369,5 +1369,7 @@
 
 	<!-- Global Components -->
 	<ToastContainer />
-	<StickyMobileCart />
+	{#if !(page.url.pathname.startsWith("/cart") || page.url.pathname.startsWith("/checkout") || page.url.pathname.startsWith("/tos") || page.url.pathname.startsWith("/privacy") || page.url.pathname.startsWith("/about") || page.url.pathname.startsWith("/orders/lookup") || page.url.pathname.startsWith("/account"))}
+		<StickyMobileCart />
+	{/if}
 </div>

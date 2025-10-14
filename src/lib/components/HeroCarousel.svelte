@@ -279,7 +279,7 @@
 <!-- Full-width carousel -->
 <section class="relative w-full overflow-hidden max-w-[100vw]">
 	<div class="w-full max-w-full">
-		<div class="relative min-h-[350px] sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px] max-w-full">
+		<div class="relative aspect-[16/9] w-full max-w-full sm:aspect-auto sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px]">
 			<!-- Ambient background elements removed to eliminate faint container -->
 
 			<div
@@ -310,7 +310,7 @@
 				{:else}
 					<!-- Slide container with perspective for 3D depth -->
 					<div
-						class="relative h-[350px] w-full sm:h-[400px] md:h-[500px] lg:h-[600px] xl:h-[720px]"
+						class="relative w-full h-full sm:h-[400px] md:h-[500px] lg:h-[600px] xl:h-[720px]"
 						style={`perspective: ${isMobile ? 1200 : 1800}px; transform-style: preserve-3d;`}
 					>
 						{#each activeSlides as slide, i (slide.image ?? i)}
