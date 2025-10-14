@@ -159,6 +159,7 @@ body {
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+  --input-border: oklch(1 0 0 / 18%);
 }
 
 @theme inline {
@@ -234,39 +235,44 @@ body {
   }
 
   /* Stepper standardization */
+  .stepper {
+    @apply inline-flex items-stretch overflow-hidden border border-base-300/70 bg-base-100/90 text-base-content shadow-md transition-colors;
+    backdrop-filter: blur(6px);
+  }
+
+  .dark .stepper {
+    @apply border-base-300/40 bg-base-200/60;
+    backdrop-filter: blur(10px);
+  }
+
   .stepper-button {
-    @apply h-9 w-9 min-w-0 rounded-md transition-colors;
+    @apply flex items-center justify-center font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/50;
+    min-width: 2.5rem;
+  }
+
+  .stepper-button:hover {
+    @apply bg-base-200/80 dark:bg-base-300/60;
+  }
+
+  .stepper-button:active {
+    @apply bg-base-300/80 dark:bg-base-300/70;
+  }
+
+  .stepper-button:disabled {
+    @apply cursor-not-allowed opacity-50;
   }
 
   .stepper-input {
-    @apply h-9 w-12 rounded-md text-center text-sm font-medium;
-    border-width: 0 !important;
-    border-color: transparent !important;
-    outline: none !important;
+    border: none !important;
     background: transparent !important;
-    box-shadow: none !important;
-    color: inherit;
-    appearance: textfield;
-    -moz-appearance: textfield;
-    -webkit-appearance: none;
-    color-scheme: inherit;
+    @apply px-2 text-center text-sm font-bold leading-none text-base-content select-none;
+    min-width: 2.75rem;
   }
 
-  .stepper-input:focus-visible,
-  .stepper-input:focus {
-    outline: none !important;
-    box-shadow: none !important;
-  }
-
-  .stepper-input::-webkit-outer-spin-button,
-  .stepper-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  .stepper-input[type="number"] {
-    appearance: textfield;
-    -moz-appearance: textfield;
+  .stepper-input:focus,
+  .stepper-input:focus-visible {
+    outline: none;
+    box-shadow: none;
   }
 
   @media (max-width: 640px) {

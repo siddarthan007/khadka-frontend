@@ -12,7 +12,6 @@
 		generateOptimizedDescription
 	} from '$lib/seo';
 	import { ShoppingCart } from '@lucide/svelte';
-	import { Button } from '$lib/components/ui/button';
 	import { trackViewItem } from '$lib/utils/analytics';
 	import { onMount } from 'svelte';
 	import { logger } from '$lib/logger';
@@ -402,30 +401,32 @@
 							<div class="space-y-4">
 								{#if currentQty() > 0}
 									<div class="flex flex-row items-center gap-2 sm:gap-3">
-										<div class="join flex-shrink-0 overflow-hidden rounded-2xl border-2 border-base-300 shadow-md">
-											<Button
-												variant="ghost"
-												size="lg"
-												class="join-item text-lg font-bold px-3 sm:px-4"
+										<div class="stepper join flex-shrink-0 rounded-2xl">
+											<button
+												type="button"
+												class="stepper-button join-item px-3 sm:px-4 text-lg font-bold"
 												onclick={decSelected}
 												disabled={isUpdating}
-												aria-label="Decrease quantity">−</Button
+												aria-label="Decrease quantity"
 											>
+												<span class="leading-none">−</span>
+											</button>
 											<input
-												class="stepper-input join-item w-14 sm:w-16 border-0 bg-transparent text-center text-lg font-bold pointer-events-none"
+												class="stepper-input join-item w-14 sm:w-16 text-lg font-bold pointer-events-none"
 												value={currentQty()}
 												readonly
 												aria-live="polite"
 												aria-label="Quantity"
 											/>
-											<Button
-												variant="ghost"
-												size="lg"
-												class="join-item text-lg font-bold px-3 sm:px-4"
+											<button
+												type="button"
+												class="stepper-button join-item px-3 sm:px-4 text-lg font-bold"
 												onclick={incSelected}
 												disabled={isUpdating}
-												aria-label="Increase quantity">+</Button
+												aria-label="Increase quantity"
 											>
+												<span class="leading-none">+</span>
+											</button>
 										</div>
 										<a href="/cart" class="btn btn-outline btn-primary btn-lg rounded-xl flex-1 shadow-md hover:shadow-lg transition-all duration-300 whitespace-nowrap">View cart</a>
 									</div>

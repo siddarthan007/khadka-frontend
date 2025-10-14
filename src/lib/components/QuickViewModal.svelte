@@ -299,10 +299,10 @@
 					<label for="quantity" class="mb-2 block text-sm font-medium">
 						Quantity
 					</label>
-					<div class="join h-10 sm:h-12 overflow-hidden rounded-xl border-2 border-base-300 bg-base-100 shadow-md w-fit">
+					<div class="stepper join h-10 sm:h-12 overflow-hidden rounded-xl border-2 border-base-300 bg-base-100 shadow-md w-fit">
 						<button
 							type="button"
-							class="join-item h-10 sm:h-12 w-10 sm:w-12 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
+							class="stepper-button join-item h-10 sm:h-12 w-10 sm:w-12 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
 							onclick={() => (quantity = Math.max(1, quantity - 1))}
 							disabled={adding}
 							aria-label="Decrease quantity"
@@ -319,7 +319,7 @@
 						/>
 						<button
 							type="button"
-							class="join-item h-10 sm:h-12 w-10 sm:w-12 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
+							class="stepper-button join-item h-10 sm:h-12 w-10 sm:w-12 flex items-center justify-center text-lg font-bold hover:bg-base-200 active:bg-base-300 transition-colors disabled:opacity-50"
 							onclick={() => (quantity = quantity + 1)}
 							disabled={adding}
 							aria-label="Increase quantity"
