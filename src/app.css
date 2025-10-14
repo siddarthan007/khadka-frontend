@@ -194,14 +194,6 @@ body {
     outline: none;
   }
 
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  select,
-  textarea,
-  .input,
-  .select,
-  .textarea {
-    border-radius: var(--radius-xl) !important;
-  }
 }
 
 @layer components {

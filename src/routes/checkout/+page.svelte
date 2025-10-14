@@ -20,6 +20,7 @@
 	import { formatCurrency } from "$lib/utils";
 	import { logger } from "$lib/logger";
 	import { CheckCircle2, ShieldCheck } from "@lucide/svelte";
+	import { createDialog, melt } from "@melt-ui/svelte";
 	import {
 		trackBeginCheckout,
 		trackAddShippingInfo,
@@ -60,7 +61,6 @@
 	let loading: boolean = $state(false);
 	let saveAddress: boolean = $state(true);
 	let errorMsg: string | null = $state(null);
-	let overlay: boolean = $state(false);
 	let isGuestCheckout: boolean = $state(true);
 
 	// Shipping options
@@ -79,6 +79,22 @@
 	let paymentError: string | null = $state(null);
 	let paymentReady: boolean = $state(false);
 	const stripeProviderCache = new Map<string, string | null>();
+
+	const {
+		elements: {
+			portalled: orderDialogPortalled,
+			overlay: orderDialogOverlay,
+			content: orderDialogContent,
+			title: orderDialogTitle,
+			description: orderDialogDescription,
+		},
+		states: { open: orderDialogOpen },
+	} = createDialog({
+		preventScroll: true,
+		closeOnOutsideClick: false,
+		escapeBehavior: "ignore",
+		role: "alertdialog",
+	});
 
 	// Detect current theme for Stripe appearance
 	function getStripeAppearance(): Appearance {
@@ -919,7 +935,7 @@
 	async function submitCheckout() {
 		errorMsg = null;
 		loading = true;
-		overlay = true;
+		orderDialogOpen.set(true);
 		const sdk = getStoreClient() as any;
 		try {
 			const c = get(cartStore);
@@ -1153,7 +1169,7 @@
 			showToast(errorMsg as string, { type: "error" });
 		} finally {
 			loading = false;
-			overlay = false;
+			orderDialogOpen.set(false);
 		}
 	}
 </script>
@@ -1450,14 +1466,14 @@
 
 					<h2 class="mt-2 card-title">Shipping address</h2>
 					<input
-						class="input-bordered input w-full border-base-300 input-primary"
+						class="input-bordered input w-full border-base-300 input-primary rounded-xl"
 						placeholder="Address name (optional)"
 						bind:value={shipping.address_name}
 					/>
 					<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 						<div class="flex flex-col gap-1">
 							<input
-								class="input-bordered input border-base-300 input-primary"
+								class="input-bordered input border-base-300 input-primary rounded-xl"
 								class:input-error={Boolean(addressErrors.shipping.first_name)}
 								placeholder="First name"
 								bind:value={shipping.first_name}
@@ -1471,7 +1487,7 @@
 						</div>
 						<div class="flex flex-col gap-1">
 							<input
-								class="input-bordered input border-base-300 input-primary"
+								class="input-bordered input border-base-300 input-primary rounded-xl"
 								class:input-error={Boolean(addressErrors.shipping.last_name)}
 								placeholder="Last name"
 								bind:value={shipping.last_name}
@@ -1485,13 +1501,13 @@
 						</div>
 					</div>
 					<input
-						class="input-bordered input w-full border-base-300 input-primary"
+						class="input-bordered input w-full border-base-300 input-primary rounded-xl"
 						placeholder="Company (optional)"
 						bind:value={shipping.company}
 					/>
 					<div class="flex flex-col gap-1">
 						<input
-							class="input-bordered input w-full border-base-300 input-primary"
+							class="input-bordered input w-full border-base-300 input-primary rounded-xl"
 							class:input-error={Boolean(addressErrors.shipping.address_1)}
 							placeholder="Address 1"
 							bind:value={shipping.address_1}
@@ -1504,14 +1520,14 @@
 						{/if}
 					</div>
 					<input
-						class="input-bordered input w-full border-base-300 input-primary"
+						class="input-bordered input w-full border-base-300 input-primary rounded-xl"
 						placeholder="Address 2"
 						bind:value={shipping.address_2}
 					/>
 					<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 						<div class="flex flex-col gap-1">
 							<input
-								class="input-bordered input border-base-300 input-primary"
+									class="input-bordered input border-base-300 input-primary rounded-xl"
 								class:input-error={Boolean(addressErrors.shipping.city)}
 								placeholder="City"
 								bind:value={shipping.city}
@@ -1525,7 +1541,7 @@
 						</div>
 						<div class="flex flex-col gap-1">
 							<select
-								class="select-bordered select"
+								class="select-bordered select rounded-xl"
 								class:select-error={Boolean(addressErrors.shipping.province)}
 								bind:value={shipping.province}
 								onchange={() => clearFieldError("shipping", "province")}
@@ -1545,7 +1561,7 @@
 					<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
 						<div class="flex flex-col gap-1">
 							<input
-								class="input-bordered input border-base-300 input-primary"
+								class="input-bordered input border-base-300 input-primary rounded-xl"
 								class:input-error={Boolean(addressErrors.shipping.postal_code)}
 								placeholder="Postal code"
 								bind:value={shipping.postal_code}
@@ -1558,7 +1574,7 @@
 							{/if}
 						</div>
 						<input
-							class="input-bordered input bg-base-200/60 opacity-100 input-primary dark:bg-base-300/20 dark:text-base-content/80"
+							class="input-bordered input bg-base-200/60 opacity-100 input-primary rounded-xl dark:bg-base-300/20 dark:text-base-content/80"
 							placeholder="US"
 							value={(
 								shipping.country_code || "us"
@@ -1566,7 +1582,7 @@
 							disabled
 						/>
 						<input
-							class="input-bordered input border-base-300 input-primary"
+							class="input-bordered input border-base-300 input-primary rounded-xl"
 							placeholder="Phone"
 							bind:value={shipping.phone}
 						/>
@@ -1612,14 +1628,14 @@
 					{#if !billingSameAsShipping}
 						<h2 class="mt-2 card-title">Billing address</h2>
 						<input
-							class="input-bordered input w-full border-base-300 input-primary"
+							class="input-bordered input w-full border-base-300 input-primary rounded-xl"
 							placeholder="Address name (optional)"
 							bind:value={billing.address_name}
 						/>
 						<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 							<div class="flex flex-col gap-1">
 								<input
-									class="input-bordered input border-base-300 input-primary"
+									class="input-bordered input border-base-300 input-primary rounded-xl"
 									class:input-error={Boolean(addressErrors.billing.first_name)}
 									placeholder="First name"
 									bind:value={billing.first_name}
@@ -1633,7 +1649,7 @@
 							</div>
 							<div class="flex flex-col gap-1">
 								<input
-									class="input-bordered input border-base-300 input-primary"
+									class="input-bordered input border-base-300 input-primary rounded-xl"
 									class:input-error={Boolean(addressErrors.billing.last_name)}
 									placeholder="Last name"
 									bind:value={billing.last_name}
@@ -1647,13 +1663,13 @@
 							</div>
 						</div>
 						<input
-							class="input-bordered input w-full border-base-300 input-primary"
+							class="input-bordered input w-full border-base-300 input-primary rounded-xl"
 							placeholder="Company (optional)"
 							bind:value={billing.company}
 						/>
 						<div class="flex flex-col gap-1">
 							<input
-								class="input-bordered input w-full border-base-300 input-primary"
+								class="input-bordered input w-full border-base-300 input-primary rounded-xl"
 								class:input-error={Boolean(addressErrors.billing.address_1)}
 								placeholder="Address 1"
 								bind:value={billing.address_1}
@@ -1666,14 +1682,14 @@
 							{/if}
 						</div>
 						<input
-							class="input-bordered input w-full border-base-300 input-primary"
+							class="input-bordered input w-full border-base-300 input-primary rounded-xl"
 							placeholder="Address 2"
 							bind:value={billing.address_2}
 						/>
 						<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 							<div class="flex flex-col gap-1">
 								<input
-									class="input-bordered input border-base-300 input-primary"
+									class="input-bordered input border-base-300 input-primary rounded-xl"
 									class:input-error={Boolean(addressErrors.billing.city)}
 									placeholder="City"
 									bind:value={billing.city}
@@ -1687,7 +1703,7 @@
 							</div>
 							<div class="flex flex-col gap-1">
 								<select
-									class="select-bordered select"
+									class="select-bordered select rounded-xl"
 									class:select-error={Boolean(addressErrors.billing.province)}
 									bind:value={billing.province}
 									onchange={() => clearFieldError("billing", "province")}
@@ -1707,7 +1723,7 @@
 						<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
 							<div class="flex flex-col gap-1">
 								<input
-									class="input-bordered input border-base-300 input-primary"
+									class="input-bordered input border-base-300 input-primary rounded-xl"
 									class:input-error={Boolean(addressErrors.billing.postal_code)}
 									placeholder="Postal code"
 									bind:value={billing.postal_code}
@@ -1720,7 +1736,7 @@
 								{/if}
 							</div>
 							<input
-								class="input-bordered input bg-base-200/60 opacity-100 input-primary dark:bg-base-300/20 dark:text-base-content/80"
+								class="input-bordered input bg-base-200/60 opacity-100 input-primary rounded-xl dark:bg-base-300/20 dark:text-base-content/80"
 								placeholder="US"
 								value={(
 									billing.country_code || "us"
@@ -1728,7 +1744,7 @@
 								disabled
 							/>
 							<input
-								class="input-bordered input border-base-300 input-primary"
+								class="input-bordered input border-base-300 input-primary rounded-xl"
 								placeholder="Phone"
 								bind:value={billing.phone}
 							/>
@@ -1908,25 +1924,28 @@
 	</div>
 </section>
 
-{#if overlay}
-	<div
-		class="fixed inset-0 z-[80] flex items-center justify-center"
-		role="alertdialog"
-		aria-live="assertive"
-		aria-modal="true"
-	>
-		<div class="absolute inset-0 bg-base-300/70 backdrop-blur-sm"></div>
-		<div class="relative z-10 w-full max-w-sm rounded-3xl border border-base-200 bg-base-100 p-8 shadow-2xl dark:border-base-300/40 dark:bg-base-200">
-			<div class="flex flex-col items-center gap-5 text-center">
+{#if $orderDialogOpen}
+	<div use:melt={$orderDialogPortalled}>
+		<div
+			use:melt={$orderDialogOverlay}
+			class="fixed inset-0 z-[80] bg-base-200/80 backdrop-blur-sm transition-colors dark:bg-base-900/70"
+		></div>
+		<div
+			use:melt={$orderDialogContent}
+			class="fixed left-1/2 top-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-base-200/70 bg-base-100/95 p-8 text-base-content shadow-2xl shadow-base-300/40 transition-colors dark:border-base-300/50 dark:bg-base-200/95 dark:text-base-content dark:shadow-black/50"
+		>
+			<div class="flex w-full flex-col items-center gap-5 text-center">
 				<div class="relative h-16 w-16">
-					<div class="absolute inset-0 rounded-full border-4 border-primary/20"></div>
-					<div class="absolute inset-3 flex items-center justify-center rounded-full bg-primary/10 text-primary">
+					<div class="absolute inset-0 rounded-full border-4 border-primary/30 dark:border-primary/20"></div>
+					<div class="absolute inset-3 flex items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/15">
 						<ShieldCheck class="h-7 w-7" />
 					</div>
 				</div>
 				<div class="space-y-1">
-					<p class="text-lg font-semibold">Finishing up your order…</p>
-					<p class="text-sm opacity-70">
+					<p use:melt={$orderDialogTitle} class="text-lg font-semibold">
+						Finishing up your order…
+					</p>
+					<p use:melt={$orderDialogDescription} class="text-sm opacity-70">
 						Please stay on this page while we confirm payment with Stripe.
 					</p>
 				</div>
