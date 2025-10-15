@@ -39,8 +39,6 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
     "upgrade-insecure-requests"
   ].join('; ');  
   
-  response.headers.set('Content-Security-Policy', csp);
-  
   // Permissions Policy
   response.headers.set('Permissions-Policy', 
     'geolocation=(), microphone=(), camera=(), payment=(self)'
