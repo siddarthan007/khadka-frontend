@@ -98,7 +98,8 @@
 		googleLoading = true;
 		errorMsg = null;
 		try {
-			await startGoogleOAuth('/account');
+			const returnTo = page.url.searchParams.get('returnTo') || '/account';
+			await startGoogleOAuth(returnTo);
 			trackLogin('google');
 		} catch (e) {
 			googleLoading = false;

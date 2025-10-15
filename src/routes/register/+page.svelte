@@ -81,7 +81,9 @@
 
 			if (me) {
 				trackSignUp('email');
-				await goto('/account');
+				// Check for returnTo parameter
+				const returnTo = new URL(window.location.href).searchParams.get('returnTo') || '/account';
+				await goto(returnTo);
 			} else {
 				errorMsg = 'Registration failed';
 			}
@@ -97,7 +99,9 @@
 		googleLoading = true;
 		errorMsg = null;
 		try {
-			await startGoogleOAuth('/account');
+			// Check if there's a returnTo parameter in the URL
+			const returnTo = new URL(window.location.href).searchParams.get('returnTo') || '/account';
+			await startGoogleOAuth(returnTo);
 			trackSignUp('google');
 		} catch (e) {
 			googleLoading = false;

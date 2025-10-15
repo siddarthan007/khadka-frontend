@@ -881,7 +881,7 @@
 													onclick={() => {
 														open.set(false);
 														goto(
-															"/login?return_to=%2Fcheckout",
+															"/login?returnTo=%2Fcheckout",
 														);
 													}}
 												>
