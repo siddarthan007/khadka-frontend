@@ -288,14 +288,13 @@
 </script>
 
 <!-- Full-width carousel -->
-<section class="relative w-full overflow-hidden max-w-[100vw]">
-	<div class="w-full max-w-full">
-		<div class="relative min-h-[350px] sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px] max-w-full">
-			<!-- Ambient background elements removed to eliminate faint container -->
-
+<section class="relative w-full overflow-hidden">
+	<div class="w-full">
+		<!-- Container with dynamic aspect ratio based on screen size -->
+		<div class="relative w-full" style="aspect-ratio: 16/9;">
 			<div
 				bind:this={containerRef}
-				class="relative h-full w-full max-w-full overflow-hidden"
+				class="absolute inset-0 w-full h-full overflow-hidden"
 				role="region"
 				aria-roledescription="carousel"
 				aria-label={'Hero carousel with ' + (activeSlides.length || 0) + ' slides'}
@@ -305,7 +304,6 @@
 				ontouchmove={onTouchMove}
 				ontouchend={onTouchEnd}
 			>
-				<!-- Background mask and floor glow removed -->
 				<!-- Loading state -->
 				{#if activeSlides.length === 0}
 					<div
@@ -321,7 +319,7 @@
 				{:else}
 					<!-- Slide container with perspective for 3D depth -->
 					<div
-						class="relative h-[350px] w-full sm:h-[400px] md:h-[500px] lg:h-[600px] xl:h-[720px]"
+						class="relative w-full h-full"
 						style={`perspective: ${isMobile ? 1200 : 1800}px; transform-style: preserve-3d;`}
 					>
 						{#each activeSlides as slide, i (slide.image ?? i)}
@@ -336,17 +334,17 @@
 										prefersReducedMotion
 									)}
 								>
-									<!-- Card container with full responsive sizing -->
+									<!-- Card container - matches parent container size with slight padding -->
 									<div
-										class="relative h-[85%] w-[90%] mx-auto overflow-hidden rounded-xl sm:h-[87%] sm:w-[88%] sm:rounded-2xl md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] lg:rounded-3xl xl:w-[78%]"
+										class="relative w-[90%] h-[85%] mx-auto overflow-hidden rounded-xl sm:w-[88%] sm:h-[87%] sm:rounded-2xl md:w-[85%] md:h-[88%] lg:w-[82%] lg:h-[90%] lg:rounded-3xl xl:w-[78%]"
 									>
-										<!-- Image with error handling -->
+										<!-- Image with error handling - uses object-contain to fit entire image -->
 										{#if shouldShowSlide(i)}
-											<figure class="absolute inset-0">
+											<figure class="absolute inset-0 bg-gradient-to-br from-base-200 to-base-300">
 												<img
 													src={slide.image}
 													alt={slide.title}
-													class="h-full w-full object-cover object-center transition-opacity duration-300"
+													class="w-full h-full object-contain transition-opacity duration-300"
 													loading={i === current ? 'eager' : 'lazy'}
 													decoding="async"
 													onerror={() => handleImageError(i)}
@@ -363,32 +361,32 @@
 											</div>
 										{/if}
 
-										<!-- Gradient overlay -->
+										<!-- Gradient overlay for text contrast -->
 										<div
-											class="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"
+											class="absolute inset-0 bg-gradient-to-r from-black/50 via-black/30 to-transparent pointer-events-none"
 										></div>
 
-										<!-- Content overlay -->
+										<!-- Content overlay with responsive padding -->
 										<div
-											class={`absolute inset-0 flex ${positionClasses(slide.contentPosition)} p-4 sm:p-6 md:p-8`}
+											class={`absolute inset-0 flex ${positionClasses(slide.contentPosition)} p-6 sm:p-8 md:p-10 lg:p-12 xl:p-16`}
 										>
 											<div class={`flex w-full ${justifyClasses(slide.textAlign)}`}>
 												<div
-													class={`max-w-2xl text-white ${textAlignClass(slide.textAlign)}`}
+													class={`max-w-full sm:max-w-2xl lg:max-w-3xl text-white ${textAlignClass(slide.textAlign)}`}
 													style={contentStyle(i, current, activeSlides.length || 1)}
 													aria-hidden={i !== current}
 												>
 													<!-- Badge -->
 													{#if slide.badge}
 														<div
-															class="mb-4 inline-flex items-center rounded-full border border-white/30 bg-white/20 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm"
+															class="mb-2 sm:mb-3 md:mb-4 inline-flex items-center rounded-full border border-white/30 bg-white/20 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-medium text-white backdrop-blur-sm"
 														>
 															{slide.badge}
 														</div>
 													{/if}
 
-													<!-- Title -->
-													<h1 class="mb-3 text-2xl leading-tight font-bold sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">
+													<!-- Title - responsive sizing that scales with container -->
+													<h1 class="mb-2 sm:mb-3 text-xl leading-tight font-bold sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl drop-shadow-lg">
 														{slide.title}
 														{#if slide.accent}
 															<br />
@@ -398,23 +396,23 @@
 														{/if}
 													</h1>
 
-													<!-- Subtitle -->
+													<!-- Subtitle - scales appropriately -->
 													{#if slide.subtitle}
 														<p
-															class="mb-4 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg md:text-xl"
+															class="mb-3 sm:mb-4 md:mb-6 max-w-full text-sm leading-relaxed text-white/90 sm:text-base md:text-lg lg:text-xl drop-shadow-md"
 														>
 															{slide.subtitle}
 														</p>
 													{/if}
 
-													<!-- CTA Buttons -->
+													<!-- CTA Buttons - responsive sizing -->
 													<div
-														class={`flex flex-col gap-3 sm:flex-row ${justifyClasses(slide.textAlign)}`}
+														class={`flex flex-col gap-2 sm:gap-3 sm:flex-row ${justifyClasses(slide.textAlign)}`}
 													>
 														{#if slide.ctaPrimary}
 															<a
 																href={slide.ctaPrimary.href}
-																class="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base"
+																class="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-6 sm:py-3 sm:text-sm md:px-8 md:py-3.5 md:text-base"
 																tabindex={i === current ? 0 : -1}
 															>
 																{slide.ctaPrimary.label}
@@ -423,7 +421,7 @@
 														{#if slide.ctaSecondary}
 															<a
 																href={slide.ctaSecondary.href}
-																class="inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base"
+																class="inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-6 sm:py-3 sm:text-sm md:px-8 md:py-3.5 md:text-base"
 																tabindex={i === current ? 0 : -1}
 															>
 																{slide.ctaSecondary.label}
