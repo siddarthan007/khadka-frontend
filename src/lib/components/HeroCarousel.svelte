@@ -131,7 +131,7 @@
 		return !imageLoadingErrors.has(index);
 	}
 
-	const isCompactMobile = $derived(() => isMobile && containerWidth > 0 && containerWidth <= 380);
+	const isCompactMobile = $derived(() => isMobile && containerWidth > 0 && containerWidth <= 425);
 
 	$effect(() => {
 		if (!browser || !containerRef) return;
@@ -369,7 +369,7 @@
 												? 'aspect-[4/5] w-[88%] max-w-[360px]'
 												: 'h-[85%] w-[90%] sm:h-[87%] sm:w-[88%] md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] xl:w-[78%]'
 										)}
-										style={isCompactMobile() ? 'min-height: clamp(20rem, 72vw + 3rem, 23.5rem);' : ''}
+										style={isCompactMobile() ? 'min-height: clamp(18rem, 75vw + 3rem, 23rem);' : ''}
 									>
 										<!-- Image with error handling -->
 										{#if shouldShowSlide(i)}
@@ -406,7 +406,7 @@
 												positionClasses(slide.contentPosition),
 												'p-[clamp(1rem,3vw,2rem)] sm:p-6 md:p-8 lg:p-10'
 											)}
-											style={isCompactMobile() ? 'padding: clamp(0.8rem, 3.5vw, 1.4rem);' : ''}
+											style={isCompactMobile() ? 'padding: clamp(0.6rem, 3vw, 1.2rem);' : ''}
 										>
 											<div class={cn('flex w-full', justifyClasses(slide.textAlign))}>
 												<div
@@ -423,7 +423,7 @@
 														<div
 															class={cn(
 																'mb-4 inline-flex items-center rounded-full border border-white/30 bg-white/20 px-3 py-1.5 text-[clamp(0.7rem,1.5vw,0.8rem)] font-medium text-white backdrop-blur-sm',
-																isCompactMobile() && 'mb-3 px-2.5 py-1 text-[clamp(0.65rem,1.8vw,0.75rem)]'
+																isCompactMobile() && 'mb-3 px-2.5 py-1 text-[clamp(0.6rem,1.5vw,0.75rem)]'
 															)}
 														>
 															{slide.badge}
@@ -434,7 +434,7 @@
 													<h1
 														class={cn(
 															'mb-3 leading-tight font-bold text-[clamp(1.8rem,4vw,3rem)] sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl',
-															isCompactMobile() && 'mb-2 text-[clamp(1.4rem,5vw,2.2rem)] leading-[1.15]'
+															isCompactMobile() && 'mb-2 text-[clamp(1.2rem,4vw,2.2rem)] leading-[1.15]'
 														)}
 													>
 														{slide.title}
@@ -455,7 +455,7 @@
 														<p
 															class={cn(
 																'mb-4 max-w-xl text-[clamp(0.9rem,2.5vw,1.2rem)] leading-relaxed text-white/90 sm:text-lg md:text-xl',
-																isCompactMobile() && 'mb-2 text-[clamp(0.75rem,3vw,1rem)] leading-[1.45]'
+																isCompactMobile() && 'mb-2 text-[clamp(0.7rem,2.5vw,1rem)] leading-[1.45]'
 															)}
 														>
 															{slide.subtitle}
@@ -475,7 +475,7 @@
 																href={slide.ctaPrimary.href}
 																class={cn(
 																	'inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-[clamp(0.85rem,2vw,0.95rem)] font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base',
-																	isCompactMobile() && 'px-4 py-2.5 text-[clamp(0.8rem,2.2vw,0.9rem)]'
+																	isCompactMobile() && 'px-4 py-2.5 text-[clamp(0.75rem,2vw,0.9rem)]'
 																)}
 																tabindex={i === current ? 0 : -1}
 															>
@@ -487,7 +487,7 @@
 																href={slide.ctaSecondary.href}
 																class={cn(
 																	'inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-[clamp(0.85rem,2vw,0.95rem)] font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base',
-																	isCompactMobile() && 'px-4 py-2.5 text-[clamp(0.8rem,2.2vw,0.9rem)]'
+																	isCompactMobile() && 'px-4 py-2.5 text-[clamp(0.75rem,2vw,0.9rem)]'
 																)}
 																tabindex={i === current ? 0 : -1}
 															>
