@@ -300,7 +300,7 @@
 						Quantity
 					</label>
 					<div
-						class="stepper join h-10 sm:h-12 w-full sm:w-fit"
+						class="stepper join h-10 sm:h-12"
 						style="--stepper-height: clamp(2.5rem, 6vw, 3rem); --stepper-max-width: 12rem;"
 					>
 						<button

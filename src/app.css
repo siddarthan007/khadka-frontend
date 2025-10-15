@@ -239,7 +239,7 @@ body {
     @apply inline-flex items-stretch overflow-hidden border border-base-300/70 bg-base-100/90 text-base-content shadow-md transition-colors;
     backdrop-filter: blur(6px);
     border-radius: var(--stepper-radius, 0.875rem);
-    width: min(100%, var(--stepper-max-width, 11.5rem));
+    width: var(--stepper-max-width, 11.5rem);
     min-height: var(--stepper-height, 2.5rem);
   }
 
@@ -283,6 +283,12 @@ body {
   .stepper-input:focus-visible {
     outline: none;
     box-shadow: none;
+  }
+
+  @media (max-width: 640px) {
+    .stepper {
+      width: min(100%, var(--stepper-max-width, 11.5rem));
+    }
   }
 
   @media (max-width: 480px) {
