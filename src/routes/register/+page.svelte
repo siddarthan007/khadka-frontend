@@ -196,7 +196,7 @@
 				</div>
 				<div class="divider text-sm text-base-content/50">OR CONTINUE WITH</div>
 				<Button
-					class="btn btn-outline btn-neutral w-full rounded-xl border-2 hover:border-base-content hover:bg-base-content hover:text-base-100 transition-all duration-300 shadow-md hover:shadow-lg"
+					class="btn btn-neutral w-full rounded-xl border-2 hover:border-base-content hover:bg-base-content hover:text-base-100 transition-all duration-300 shadow-md hover:shadow-lg"
 					type="button"
 					disabled={googleLoading}
 					onclick={handleGoogleRegister}

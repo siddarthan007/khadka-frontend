@@ -311,9 +311,9 @@
 		<div
 			class={cn(
 				'relative w-full max-w-full sm:aspect-auto sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px]',
-				isCompactMobile() ? 'min-h-[22rem]' : 'aspect-[16/9]'
+				isCompactMobile() ? 'min-h-[26rem]' : 'aspect-[16/9]'
 			)}
-			style={isCompactMobile() ? 'min-height: clamp(22rem, 78vw + 4rem, 27rem);' : ''}
+			style={isCompactMobile() ? 'min-height: clamp(26rem, 92vw + 4rem, 32rem);' : ''}
 		>
 			<!-- Ambient background elements removed to eliminate faint container -->
 
@@ -366,10 +366,10 @@
 										class={cn(
 											'hero-card relative mx-auto overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl',
 											isCompactMobile()
-												? 'aspect-[4/5] w-[88%] max-w-[360px]'
+												? 'h-[92%] w-[92%] max-w-[340px]'
 												: 'h-[85%] w-[90%] sm:h-[87%] sm:w-[88%] md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] xl:w-[78%]'
 										)}
-										style={isCompactMobile() ? 'min-height: clamp(20rem, 72vw + 3rem, 23.5rem);' : ''}
+										style={isCompactMobile() ? 'min-height: clamp(24rem, 88vw + 3rem, 30rem);' : ''}
 									>
 										<!-- Image with error handling -->
 										{#if shouldShowSlide(i)}
@@ -405,15 +405,15 @@
 												'absolute inset-0 flex hero-content',
 												positionClasses(slide.contentPosition),
 												!isCompactMobile() && 'p-4 sm:p-6 md:p-8'
-											)}
-											style={isCompactMobile() ? 'padding: clamp(1rem, 4vw, 1.6rem);' : ''}
+										)}
+											style={isCompactMobile() ? 'padding: clamp(0.75rem, 4vw, 1.25rem);' : ''}
 										>
 											<div class={cn('flex w-full', justifyClasses(slide.textAlign))}>
 												<div
 													class={cn(
 														'hero-copy max-w-2xl text-white',
 														textAlignClass(slide.textAlign),
-														isCompactMobile() && 'max-w-[95%]'
+														isCompactMobile() && 'max-w-[94%]'
 													)}
 													style={contentStyle(i, current, activeSlides.length || 1, isCompactMobile())}
 													aria-hidden={i !== current}
@@ -433,8 +433,8 @@
 													<!-- Title -->
 													<h1
 														class={cn(
-															'mb-3 leading-tight font-bold text-[clamp(2.1rem,5.5vw,2.85rem)] sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl',
-															isCompactMobile() && 'mb-2 text-[clamp(1.55rem,6.4vw,2.1rem)] leading-[1.15]'
+															'mb-3 leading-tight font-bold text-[clamp(2rem,4.6vw,2.65rem)] sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl',
+															isCompactMobile() && 'mb-2 text-[clamp(1.35rem,5.6vw,1.85rem)] leading-[1.18]'
 														)}
 													>
 														{slide.title}
@@ -454,8 +454,8 @@
 													{#if slide.subtitle}
 														<p
 															class={cn(
-																'mb-4 max-w-xl text-[clamp(1rem,3vw,1.125rem)] leading-relaxed text-white/90 sm:text-lg md:text-xl',
-																isCompactMobile() && 'mb-2 text-[clamp(0.82rem,3.6vw,0.95rem)] leading-[1.45]'
+																'mb-4 max-w-xl text-[clamp(0.95rem,2.7vw,1.1rem)] leading-relaxed text-white/90 sm:text-lg md:text-xl',
+																isCompactMobile() && 'mb-2 text-[clamp(0.78rem,3.3vw,0.9rem)] leading-[1.5]'
 															)}
 														>
 															{slide.subtitle}
@@ -467,7 +467,7 @@
 														class={cn(
 															'flex flex-col gap-3 sm:flex-row',
 															justifyClasses(slide.textAlign),
-															isCompactMobile() && 'gap-2 text-[0.85rem]'
+															isCompactMobile() && 'gap-2 text-[0.8rem]'
 														)}
 													>
 														{#if slide.ctaPrimary}
@@ -475,7 +475,7 @@
 																href={slide.ctaPrimary.href}
 																class={cn(
 																	'inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base',
-																	isCompactMobile() && 'px-4 py-2.5 text-[0.83rem]'
+																	isCompactMobile() && 'px-4 py-2.25 text-[0.8rem]'
 																)}
 																tabindex={i === current ? 0 : -1}
 															>
@@ -487,7 +487,7 @@
 																href={slide.ctaSecondary.href}
 																class={cn(
 																	'inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base',
-																	isCompactMobile() && 'px-4 py-2.5 text-[0.83rem]'
+																	isCompactMobile() && 'px-4 py-2.25 text-[0.8rem]'
 																)}
 																tabindex={i === current ? 0 : -1}
 															>
