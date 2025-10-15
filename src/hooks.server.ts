@@ -24,23 +24,30 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
   // Content Security Policy - Adjust as needed for your resources
   const cspDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.googletagmanager.com https://www.gstatic.com https://www.google.com",
-    "connect-src 'self' https: wss: blob:",
+  
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.googletagmanager.com https://www.gstatic.com https://www.google.com https://www.google-analytics.com",
+  
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: https: blob:",
+  
+    "img-src 'self' data: blob: https: https://js.stripe.com https://www.googletagmanager.com",
+  
     "font-src 'self' https://fonts.gstatic.com data:",
-    "frame-src 'self' https://js.stripe.com https://www.google.com https://checkout.stripe.com https://accounts.google.com",
+  
+    `connect-src 'self' ${publicEnv.PUBLIC_MEDUSA_BACKEND_URL} ${publicEnv.PUBLIC_MEILISEARCH_URL} https://api.stripe.com https://www.google-analytics.com https://www.googletagmanager.com https: wss: blob:`,
+  
+    "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.gstatic.com",
+    
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
     "manifest-src 'self'",
     "worker-src 'self' blob:"
-    // removed upgrade-insecure-requests
   ];
   
   const csp = cspDirectives.join("; ");
   response.headers.set("Content-Security-Policy", csp);
+  
  
   
   // Permissions Policy
