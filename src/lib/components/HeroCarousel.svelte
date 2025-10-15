@@ -311,9 +311,9 @@
 		<div
 			class={cn(
 				'relative w-full max-w-full sm:aspect-auto sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px]',
-				isCompactMobile() ? 'min-h-[22rem]' : 'aspect-[16/9]'
+				isMobile ? '' : 'aspect-[16/9]'
 			)}
-			style={isCompactMobile() ? 'min-height: clamp(22rem, 78vw + 4rem, 27rem);' : ''}
+			style={isMobile ? 'min-height: clamp(22rem, 110vw, 40rem);' : ''}
 		>
 			<!-- Ambient background elements removed to eliminate faint container -->
 
@@ -346,7 +346,7 @@
 					<!-- Slide container with perspective for 3D depth -->
 					<div
 						class="relative w-full h-full sm:h-[400px] md:h-[500px] lg:h-[600px] xl:h-[720px]"
-						style={`perspective: ${isCompactMobile() ? 1000 : isMobile ? 1200 : 1800}px; transform-style: preserve-3d;${isCompactMobile() ? ' min-height: inherit;' : ''}`}
+						style={`perspective: ${isMobile ? 1200 : 1800}px; transform-style: preserve-3d;`}
 					>
 						{#each activeSlides as slide, i (slide.image ?? i)}
 							{#if isRenderableSlide(i, current, activeSlides.length || 1, isMobile)}
@@ -365,11 +365,11 @@
 									<div
 										class={cn(
 											'hero-card relative mx-auto overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl',
-											isCompactMobile()
-												? 'aspect-[4/5] w-[88%] max-w-[380px]'
-												: 'h-[85%] w-[90%] sm:h-[87%] sm:w-[88%] md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] xl:w-[78%]'
+											isMobile
+												? 'aspect-[4/5] w-[88%] max-w-[480px]'
+												: 'h-[85%] w-[90%] sm:h-[87%] sm:w-[88%] md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] xl:w-[78%]',
+											isCompactMobile() ? 'min-height: clamp(20rem, 72vw + 3rem, 23.5rem);' : ''
 										)}
-										style={isCompactMobile() ? 'min-height: clamp(20rem, 72vw + 3rem, 23.5rem);' : ''}
 									>
 										<!-- Image with error handling -->
 										{#if shouldShowSlide(i)}
@@ -411,7 +411,7 @@
 											<div class={cn('flex w-full', justifyClasses(slide.textAlign))}>
 												<div
 													class={cn(
-														'hero-copy max-w-[clamp(20rem,60vw,40rem)] text-white',
+														'hero-copy max-w-[clamp(18rem,58vw,38rem)] text-white',
 														textAlignClass(slide.textAlign),
 														isCompactMobile() && 'max-w-[95%]'
 													)}
@@ -433,7 +433,7 @@
 													<!-- Title -->
 													<h1
 														class={cn(
-															'mb-3 leading-tight font-bold text-[clamp(1.8rem,4vw,3rem)] sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl',
+															'mb-3 leading-tight font-bold text-[clamp(1.6rem,4.2vw,3rem)] sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl',
 															isCompactMobile() && 'mb-2 text-[clamp(1.4rem,5vw,2.2rem)] leading-[1.15]'
 														)}
 													>
@@ -454,7 +454,7 @@
 													{#if slide.subtitle}
 														<p
 															class={cn(
-																'mb-4 max-w-xl text-[clamp(0.9rem,2.5vw,1.2rem)] leading-relaxed text-white/90 sm:text-lg md:text-xl',
+																'mb-4 max-w-xl text-[clamp(0.875rem,2.8vw,1.2rem)] leading-relaxed text-white/90 sm:text-lg md:text-xl',
 																isCompactMobile() && 'mb-2 text-[clamp(0.75rem,3vw,1rem)] leading-[1.45]'
 															)}
 														>
@@ -474,7 +474,7 @@
 															<a
 																href={slide.ctaPrimary.href}
 																class={cn(
-																	'inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-[clamp(0.85rem,2vw,0.95rem)] font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base',
+																	'inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-[clamp(0.8125rem,2.1vw,0.95rem)] font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base',
 																	isCompactMobile() && 'px-4 py-2.5 text-[clamp(0.8rem,2.2vw,0.9rem)]'
 																)}
 																tabindex={i === current ? 0 : -1}
@@ -486,7 +486,7 @@
 															<a
 																href={slide.ctaSecondary.href}
 																class={cn(
-																	'inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-[clamp(0.85rem,2vw,0.95rem)] font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base',
+																	'inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-[clamp(0.8125rem,2.1vw,0.95rem)] font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base',
 																	isCompactMobile() && 'px-4 py-2.5 text-[clamp(0.8rem,2.2vw,0.9rem)]'
 																)}
 																tabindex={i === current ? 0 : -1}
