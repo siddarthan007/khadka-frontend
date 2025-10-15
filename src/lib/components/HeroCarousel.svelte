@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
+	import { cn } from '$lib/utils';
 
 	// --- TYPE DEFINITIONS ---
 	type CTA = { label: string; href: string };
@@ -130,6 +131,19 @@
 		return !imageLoadingErrors.has(index);
 	}
 
+	const isCompactMobile = $derived(() => isMobile && containerWidth > 0 && containerWidth <= 380);
+
+	$effect(() => {
+		if (!browser || !containerRef) return;
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries?.[0];
+			if (!entry) return;
+			containerWidth = entry.contentRect.width;
+		});
+		observer.observe(containerRef);
+		return () => observer.disconnect();
+	});
+
 	// Autoplay management: react to changes in slides or preference without resetting timer unnecessarily
 	$effect(() => {
 		if (browser) {
@@ -235,24 +249,33 @@
 		cur: number,
 		n: number,
 		isMobileFlag: boolean,
-		prefersReducedMotionFlag: boolean
+		prefersReducedMotionFlag: boolean,
+		isCompactMobileFlag: boolean
 	): string {
 		const d = circularDelta(i, cur, n);
 		const abs_d = Math.abs(d);
 
-		// More aggressive motion reduction on mobile for better performance
-		const intensity = prefersReducedMotionFlag ? 0.4 : isMobileFlag ? 0.7 : 1;
-		const mobileFactor = isMobileFlag ? 0.5 : 1; // Reduce movement on mobile
+		// More aggressive motion reduction on compact screens for better performance
+		const mobileFactor = isCompactMobileFlag ? 0.35 : isMobileFlag ? 0.5 : 1;
+		const intensity = prefersReducedMotionFlag ? 0.4 : mobileFactor;
 
-		const tx = d * 25 * mobileFactor * intensity; // Reduced from 30
-		const ty = abs_d * 1.5 * mobileFactor * intensity; // Reduced from 2
-		const tz = -abs_d * 100 * mobileFactor * intensity; // Reduced from 150
-		const rotateY = -d * 8 * mobileFactor * intensity; // Reduced from 12
-		const rotateX = d * 1.5 * mobileFactor * intensity; // Reduced from 2
-		const scale = 1 - Math.min(abs_d * (isMobile ? 0.05 : 0.08), 0.15); // Reduced scaling
+		const tx = d * 22 * mobileFactor * intensity;
+		const ty = abs_d * 1.2 * mobileFactor * intensity;
+		const tz = -abs_d * 85 * mobileFactor * intensity;
+		const rotateY = -d * 6 * mobileFactor * intensity;
+		const rotateX = d * 1.2 * mobileFactor * intensity;
+		const scaleReduction = isCompactMobileFlag ? 0.045 : isMobileFlag ? 0.05 : 0.08;
+		const maxScaleDrop = isCompactMobileFlag ? 0.12 : isMobileFlag ? 0.15 : 0.18;
+		const scale = 1 - Math.min(abs_d * scaleReduction, maxScaleDrop);
 		const zIndex = 100 - abs_d * 10;
-		const opacity = Math.max(0.2, 1 - abs_d * 0.25); // Adjusted opacity
-		const blurPx = prefersReducedMotion ? 0 : abs_d === 0 ? 0 : abs_d === 1 ? 0.5 : 1; // Reduced blur
+		const opacity = Math.max(0.25, 1 - abs_d * 0.22);
+		const blurPx = prefersReducedMotionFlag
+			? 0
+			: abs_d === 0
+				? 0
+				: abs_d === 1
+					? isCompactMobileFlag ? 0.35 : 0.5
+					: 0.8;
 
 		const transition = prefersReducedMotionFlag
 			? 'transform 350ms ease-out, opacity 250ms ease, filter 250ms ease'
@@ -268,10 +291,16 @@
 		`;
 	}
 
-	function contentStyle(i: number, cur: number, n: number): string {
+	function contentStyle(
+		i: number,
+		cur: number,
+		n: number,
+		isCompactMobileFlag: boolean
+	): string {
 		const d = Math.abs(circularDelta(i, cur, n));
 		const opacity = Math.max(0, 1 - d * 0.75);
-		const scale = 1 - d * 0.1;
+		const scaleFactor = isCompactMobileFlag ? 0.06 : 0.1;
+		const scale = 1 - d * scaleFactor;
 		return `opacity: ${opacity}; transform: scale(${scale}); transition: opacity 300ms ease, transform 300ms ease;`;
 	}
 </script>
@@ -279,7 +308,13 @@
 <!-- Full-width carousel -->
 <section class="relative w-full overflow-hidden max-w-[100vw]">
 	<div class="w-full max-w-full">
-		<div class="relative aspect-[16/9] w-full max-w-full sm:aspect-auto sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px]">
+		<div
+			class={cn(
+				'relative w-full max-w-full sm:aspect-auto sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px]',
+				isCompactMobile() ? 'min-h-[22rem]' : 'aspect-[16/9]'
+			)}
+			style={isCompactMobile() ? 'min-height: clamp(22rem, 78vw + 4rem, 27rem);' : ''}
+		>
 			<!-- Ambient background elements removed to eliminate faint container -->
 
 			<div
@@ -311,7 +346,7 @@
 					<!-- Slide container with perspective for 3D depth -->
 					<div
 						class="relative w-full h-full sm:h-[400px] md:h-[500px] lg:h-[600px] xl:h-[720px]"
-						style={`perspective: ${isMobile ? 1200 : 1800}px; transform-style: preserve-3d;`}
+						style={`perspective: ${isCompactMobile() ? 1000 : isMobile ? 1200 : 1800}px; transform-style: preserve-3d;${isCompactMobile() ? ' min-height: inherit;' : ''}`}
 					>
 						{#each activeSlides as slide, i (slide.image ?? i)}
 							{#if isRenderableSlide(i, current, activeSlides.length || 1, isMobile)}
@@ -322,12 +357,19 @@
 										current,
 										activeSlides.length || 1,
 										isMobile,
-										prefersReducedMotion
+										prefersReducedMotion,
+										isCompactMobile()
 									)}
 								>
 									<!-- Card container with full responsive sizing -->
 									<div
-										class="relative h-[85%] w-[90%] mx-auto overflow-hidden rounded-xl sm:h-[87%] sm:w-[88%] sm:rounded-2xl md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] lg:rounded-3xl xl:w-[78%]"
+										class={cn(
+											'hero-card relative mx-auto overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl',
+											isCompactMobile()
+												? 'aspect-[4/5] w-[88%] max-w-[360px]'
+												: 'h-[85%] w-[90%] sm:h-[87%] sm:w-[88%] md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] xl:w-[78%]'
+										)}
+										style={isCompactMobile() ? 'min-height: clamp(20rem, 72vw + 3rem, 23.5rem);' : ''}
 									>
 										<!-- Image with error handling -->
 										{#if shouldShowSlide(i)}
@@ -359,25 +401,42 @@
 
 										<!-- Content overlay -->
 										<div
-											class={`absolute inset-0 flex ${positionClasses(slide.contentPosition)} p-4 sm:p-6 md:p-8`}
+											class={cn(
+												'absolute inset-0 flex hero-content',
+												positionClasses(slide.contentPosition),
+												!isCompactMobile() && 'p-4 sm:p-6 md:p-8'
+											)}
+											style={isCompactMobile() ? 'padding: clamp(1rem, 4vw, 1.6rem);' : ''}
 										>
-											<div class={`flex w-full ${justifyClasses(slide.textAlign)}`}>
+											<div class={cn('flex w-full', justifyClasses(slide.textAlign))}>
 												<div
-													class={`max-w-2xl text-white ${textAlignClass(slide.textAlign)}`}
-													style={contentStyle(i, current, activeSlides.length || 1)}
+													class={cn(
+														'hero-copy max-w-2xl text-white',
+														textAlignClass(slide.textAlign),
+														isCompactMobile() && 'max-w-[95%]'
+													)}
+													style={contentStyle(i, current, activeSlides.length || 1, isCompactMobile())}
 													aria-hidden={i !== current}
 												>
 													<!-- Badge -->
 													{#if slide.badge}
 														<div
-															class="mb-4 inline-flex items-center rounded-full border border-white/30 bg-white/20 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm"
+															class={cn(
+																'mb-4 inline-flex items-center rounded-full border border-white/30 bg-white/20 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm',
+																isCompactMobile() && 'mb-3 px-2.5 py-1 text-[0.7rem]'
+															)}
 														>
 															{slide.badge}
 														</div>
 													{/if}
 
 													<!-- Title -->
-													<h1 class="mb-3 text-2xl leading-tight font-bold sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">
+													<h1
+														class={cn(
+															'mb-3 text-2xl leading-tight font-bold sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl',
+															isCompactMobile() && 'mb-2 text-[clamp(1.9rem,7.2vw,2.5rem)] leading-snug'
+														)}
+													>
 														{slide.title}
 														{#if slide.accent}
 															<br />
@@ -390,7 +449,10 @@
 													<!-- Subtitle -->
 													{#if slide.subtitle}
 														<p
-															class="mb-4 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg md:text-xl"
+															class={cn(
+																'mb-4 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg md:text-xl',
+																isCompactMobile() && 'mb-3 text-[0.95rem] leading-relaxed'
+															)}
 														>
 															{slide.subtitle}
 														</p>
@@ -398,12 +460,19 @@
 
 													<!-- CTA Buttons -->
 													<div
-														class={`flex flex-col gap-3 sm:flex-row ${justifyClasses(slide.textAlign)}`}
+														class={cn(
+															'flex flex-col gap-3 sm:flex-row',
+															justifyClasses(slide.textAlign),
+															isCompactMobile() && 'gap-2 text-[0.9rem]'
+														)}
 													>
 														{#if slide.ctaPrimary}
 															<a
 																href={slide.ctaPrimary.href}
-																class="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base"
+																class={cn(
+																	'inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base',
+																	isCompactMobile() && 'px-5 py-2.5 text-sm'
+																)}
 																tabindex={i === current ? 0 : -1}
 															>
 																{slide.ctaPrimary.label}
@@ -412,7 +481,10 @@
 														{#if slide.ctaSecondary}
 															<a
 																href={slide.ctaSecondary.href}
-																class="inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base"
+																class={cn(
+																	'inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base',
+																	isCompactMobile() && 'px-5 py-2.5 text-sm'
+																)}
 																tabindex={i === current ? 0 : -1}
 															>
 																{slide.ctaSecondary.label}
@@ -481,6 +553,16 @@
 </section>
 
 <style>
+	@media (max-width: 380px) {
+		:global(.hero-copy) {
+			display: grid;
+			gap: clamp(0.75rem, 3.5vw, 1.4rem);
+		}
+
+		:global(.hero-card) {
+			border-radius: min(1.25rem, 6vw);
+		}
+	}
 	.will-change-transform {
 		will-change: transform, opacity, filter;
 	}

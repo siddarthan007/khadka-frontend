@@ -163,13 +163,51 @@
 			"--radius-lg",
 			readVar("--radius", fallbacks.radius),
 		);
-		const surface = readVar("--color-card", fallbacks.colorSurface);
-		const border = readVar("--border", fallbacks.colorBorder);
-		const muted = readVar("--muted", fallbacks.colorMuted);
+		const background = readVar(
+			"--color-background",
+			readVar("--color-base-100", fallbacks.colorBackground),
+		);
+		const surface = readVar(
+			"--color-card",
+			readVar("--color-base-200", fallbacks.colorSurface),
+		);
+		const border = readVar(
+			"--color-border",
+			readVar("--border", fallbacks.colorBorder),
+		);
+		const muted = readVar(
+			"--color-muted",
+			readVar("--color-base-200", fallbacks.colorMuted),
+		);
+		const mutedForeground = readVar(
+			"--color-muted-foreground",
+			fallbacks.colorTextSecondary,
+		);
+		const textColor = readVar(
+			"--color-card-foreground",
+			readVar("--color-base-content", fallbacks.colorText),
+		);
 		const primary = readVar("--color-primary", fallbacks.colorPrimary);
 		const primaryForeground = readVar(
 			"--color-primary-foreground",
-			fallbacks.colorPrimaryText,
+			readVar("--color-primary-content", fallbacks.colorPrimaryText),
+		);
+		const success = readVar("--color-success", fallbacks.colorSuccess);
+		const danger = readVar(
+			"--color-error",
+			readVar("--destructive", fallbacks.colorDanger),
+		);
+		const dangerText = readVar(
+			"--color-base-content",
+			fallbacks.colorDangerText,
+		);
+		const inputBorder = readVar(
+			"--color-input",
+			readVar("--input-border", fallbacks.inputBorder),
+		);
+		const inputBackground = readVar(
+			"--color-card",
+			fallbacks.inputBackground,
 		);
 
 		return {
@@ -177,25 +215,19 @@
 			variables: {
 				colorPrimary: primary,
 				colorPrimaryText: primaryForeground,
-				colorBackground: surface,
-				colorText: readVar(
-					"--color-card-foreground",
-					fallbacks.colorText,
-				),
+				colorBackground: background,
+				colorText: textColor,
 				colorTextSecondary: readVar(
 					"--muted-foreground",
-					fallbacks.colorTextSecondary,
+					mutedForeground,
 				),
 				colorTextPlaceholder: readVar(
 					"--muted-foreground",
 					fallbacks.colorTextPlaceholder,
 				),
-				colorDanger: readVar("--destructive", fallbacks.colorDanger),
-				colorDangerText: fallbacks.colorDangerText,
-				colorSuccess: readVar(
-					"--color-success",
-					fallbacks.colorSuccess,
-				),
+				colorDanger: danger,
+				colorDangerText: dangerText,
+				colorSuccess: success,
 				colorIcon: readVar("--muted-foreground", fallbacks.colorIcon),
 				borderRadius: radius,
 				spacingUnit: "4px",
@@ -205,18 +237,12 @@
 			},
 			rules: {
 				".Input": {
-					border: `2px solid ${readVar("--input-border", fallbacks.inputBorder)}`,
-					backgroundColor: readVar(
-						"--color-card",
-						fallbacks.inputBackground,
-					),
+					border: `2px solid ${inputBorder}`,
+					backgroundColor: inputBackground,
 					borderRadius: radius,
 					paddingInline: "14px",
 					paddingBlock: "11px",
-					color: readVar(
-						"--color-card-foreground",
-						fallbacks.colorText,
-					),
+					color: textColor,
 					boxShadow: "none",
 					transition: prefersReducedMotion
 						? "none"
@@ -238,10 +264,10 @@
 						: "translateY(-1px)",
 				},
 				".Input--invalid": {
-					border: `2px solid ${readVar("--destructive", fallbacks.colorDanger)}`,
+					border: `2px solid ${danger}`,
 					boxShadow: prefersReducedMotion
 						? "none"
-						: `0 0 0 3px ${withAlpha(readVar("--destructive", fallbacks.colorDanger), 0.18)}`,
+						: `0 0 0 3px ${withAlpha(danger, 0.18)}`,
 				},
 				".Block": {
 					backgroundColor: surface,
@@ -252,10 +278,7 @@
 						: "0 14px 32px -20px rgba(15, 23, 42, 0.18)",
 				},
 				".Label": {
-					color: readVar(
-						"--color-card-foreground",
-						fallbacks.colorText,
-					),
+					color: textColor,
 					fontWeight: "600",
 					letterSpacing: "0.01em",
 				},
@@ -263,10 +286,7 @@
 					backgroundColor: "transparent",
 					borderRadius: `calc(${radius} - 4px)`,
 					border: `1px solid ${withAlpha(border, 0.9)}`,
-					color: readVar(
-						"--color-card-foreground",
-						fallbacks.colorText,
-					),
+					color: textColor,
 					transition: prefersReducedMotion
 						? "none"
 						: "color 120ms ease, border-color 120ms ease, background-color 120ms ease, transform 120ms ease",
@@ -310,7 +330,7 @@
 					backgroundColor: muted,
 					color: readVar(
 						"--muted-foreground",
-						fallbacks.colorTextSecondary,
+						mutedForeground,
 					),
 				},
 				".Link": {
@@ -322,7 +342,7 @@
 					textDecoration: "underline",
 				},
 				".Error": {
-					color: readVar("--destructive", fallbacks.colorDanger),
+					color: danger,
 					fontWeight: "500",
 				},
 			},
