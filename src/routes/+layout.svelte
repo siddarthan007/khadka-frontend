@@ -751,11 +751,12 @@
 													class="flex items-center gap-2"
 												>
 													<div
-														class="stepper join h-8 rounded-lg"
+														class="stepper join h-8"
+														style="--stepper-height: 2rem; --stepper-max-width: 8.25rem;"
 													>
 														<button
 															type="button"
-															class="stepper-button join-item h-8 w-8 text-sm font-bold"
+															class="stepper-button join-item flex-1 basis-[2.25rem] text-sm font-bold"
 															onclick={async (e) => { e.stopPropagation(); if ((li.quantity ?? 0) > 1) { const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) - 1); } else { const m = await import('$lib/cart'); await m.removeLine(li.id); } }}
 															aria-label="Decrease quantity"
 														>
@@ -765,7 +766,7 @@
 															>
 														</button>
 														<input
-															class="pointer-events-none stepper-input join-item w-10 text-sm font-bold"
+															class="pointer-events-none stepper-input join-item flex-[1.05] basis-[2.4rem] text-sm font-bold"
 															value={li.quantity}
 															readonly
 															aria-live="polite"
@@ -773,7 +774,7 @@
 														/>
 														<button
 															type="button"
-															class="stepper-button join-item h-8 w-8 text-sm font-bold"
+															class="stepper-button join-item flex-1 basis-[2.25rem] text-sm font-bold"
 															onclick={async (e) => { e.stopPropagation(); const m = await import('$lib/cart'); await m.updateLine(li.id, (li.quantity ?? 0) + 1); }}
 															aria-label="Increase quantity"
 														>

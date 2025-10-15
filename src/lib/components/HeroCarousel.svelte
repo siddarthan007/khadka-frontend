@@ -433,14 +433,18 @@
 													<!-- Title -->
 													<h1
 														class={cn(
-															'mb-3 text-2xl leading-tight font-bold sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl',
-															isCompactMobile() && 'mb-2 text-[clamp(1.9rem,7.2vw,2.5rem)] leading-snug'
+															'mb-3 leading-tight font-bold text-[clamp(2.1rem,5.5vw,2.85rem)] sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl',
+															isCompactMobile() && 'mb-2 text-[clamp(1.55rem,6.4vw,2.1rem)] leading-[1.15]'
 														)}
 													>
 														{slide.title}
 														{#if slide.accent}
 															<br />
-															<span class="text-primary drop-shadow-lg"
+															<span
+																class={cn(
+																	'text-primary drop-shadow-lg',
+																	isCompactMobile() && 'drop-shadow-md'
+																)}
 																>{slide.accent}</span
 															>
 														{/if}
@@ -450,8 +454,8 @@
 													{#if slide.subtitle}
 														<p
 															class={cn(
-																'mb-4 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg md:text-xl',
-																isCompactMobile() && 'mb-3 text-[0.95rem] leading-relaxed'
+																'mb-4 max-w-xl text-[clamp(1rem,3vw,1.125rem)] leading-relaxed text-white/90 sm:text-lg md:text-xl',
+																isCompactMobile() && 'mb-2 text-[clamp(0.82rem,3.6vw,0.95rem)] leading-[1.45]'
 															)}
 														>
 															{slide.subtitle}
@@ -463,7 +467,7 @@
 														class={cn(
 															'flex flex-col gap-3 sm:flex-row',
 															justifyClasses(slide.textAlign),
-															isCompactMobile() && 'gap-2 text-[0.9rem]'
+															isCompactMobile() && 'gap-2 text-[0.85rem]'
 														)}
 													>
 														{#if slide.ctaPrimary}
@@ -471,7 +475,7 @@
 																href={slide.ctaPrimary.href}
 																class={cn(
 																	'inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base',
-																	isCompactMobile() && 'px-5 py-2.5 text-sm'
+																	isCompactMobile() && 'px-4 py-2.5 text-[0.83rem]'
 																)}
 																tabindex={i === current ? 0 : -1}
 															>
@@ -483,7 +487,7 @@
 																href={slide.ctaSecondary.href}
 																class={cn(
 																	'inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base',
-																	isCompactMobile() && 'px-5 py-2.5 text-sm'
+																	isCompactMobile() && 'px-4 py-2.5 text-[0.83rem]'
 																)}
 																tabindex={i === current ? 0 : -1}
 															>

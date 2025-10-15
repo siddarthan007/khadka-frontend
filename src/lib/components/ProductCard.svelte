@@ -207,10 +207,10 @@
 		<span class="text-lg font-extrabold text-primary block">{formatPrice(price)}</span>
 		<div class="flex flex-col gap-2">
       {#if currentQty() > 0}
-        <div class="stepper join h-9 sm:h-10 w-full max-w-[140px] rounded-xl">
+        <div class="stepper join h-9 sm:h-10 w-full">
 					<button
 						type="button"
-            class="stepper-button join-item h-9 sm:h-10 w-10 sm:w-11 text-lg font-bold"
+      class="stepper-button join-item flex-1 basis-[2.5rem] text-lg font-bold"
 						onclick={onDec}
 						disabled={isUpdating}
 						aria-label="Decrease quantity"
@@ -219,7 +219,7 @@
 					</button>
 					<input
 						type="text"
-            class="stepper-input join-item w-12 sm:w-14 text-sm sm:text-base font-bold pointer-events-none"
+      class="stepper-input join-item flex-[1.15] basis-[2.75rem] text-sm sm:text-base font-bold pointer-events-none"
 						value={currentQty()}
 						readonly
 						aria-live="polite"
@@ -227,7 +227,7 @@
 					/>
 					<button
 						type="button"
-            class="stepper-button join-item h-9 sm:h-10 w-10 sm:w-11 text-lg font-bold"
+      class="stepper-button join-item flex-1 basis-[2.5rem] text-lg font-bold"
 						onclick={onInc}
 						disabled={isUpdating}
 						aria-label="Increase quantity"

@@ -401,10 +401,13 @@
 							<div class="space-y-4">
 								{#if currentQty() > 0}
 									<div class="flex flex-row items-center gap-2 sm:gap-3">
-										<div class="stepper join flex-shrink-0 rounded-2xl">
+										<div
+											class="stepper join flex-shrink-0"
+											style="--stepper-max-width: 11rem; --stepper-height: 2.75rem;"
+										>
 											<button
 												type="button"
-												class="stepper-button join-item px-3 sm:px-4 text-lg font-bold"
+												class="stepper-button join-item flex-1 basis-[2.6rem] px-0 text-lg font-bold"
 												onclick={decSelected}
 												disabled={isUpdating}
 												aria-label="Decrease quantity"
@@ -412,7 +415,7 @@
 												<span class="leading-none">−</span>
 											</button>
 											<input
-												class="stepper-input join-item w-14 sm:w-16 text-lg font-bold pointer-events-none"
+												class="stepper-input join-item flex-[1.1] basis-[2.9rem] text-lg font-bold pointer-events-none"
 												value={currentQty()}
 												readonly
 												aria-live="polite"
@@ -420,7 +423,7 @@
 											/>
 											<button
 												type="button"
-												class="stepper-button join-item px-3 sm:px-4 text-lg font-bold"
+												class="stepper-button join-item flex-1 basis-[2.6rem] px-0 text-lg font-bold"
 												onclick={incSelected}
 												disabled={isUpdating}
 												aria-label="Increase quantity"

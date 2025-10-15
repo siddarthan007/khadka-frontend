@@ -238,6 +238,9 @@ body {
   .stepper {
     @apply inline-flex items-stretch overflow-hidden border border-base-300/70 bg-base-100/90 text-base-content shadow-md transition-colors;
     backdrop-filter: blur(6px);
+    border-radius: var(--stepper-radius, 0.875rem);
+    width: min(100%, var(--stepper-max-width, 11.5rem));
+    min-height: var(--stepper-height, 2.5rem);
   }
 
   .dark .stepper {
@@ -245,9 +248,15 @@ body {
     backdrop-filter: blur(10px);
   }
 
+  .stepper > .stepper-button,
+  .stepper > .stepper-input {
+    flex: 1 1 0;
+  }
+
   .stepper-button {
     @apply flex items-center justify-center font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/50;
-    min-width: 2.5rem;
+    min-width: clamp(2.25rem, 18vw, 2.75rem);
+    padding-inline: clamp(0.45rem, 2.5vw, 0.65rem);
   }
 
   .stepper-button:hover {
@@ -266,13 +275,39 @@ body {
     border: none !important;
     background: transparent !important;
     @apply px-2 text-center text-sm font-bold leading-none text-base-content select-none;
-    min-width: 2.75rem;
+    min-width: clamp(2.35rem, 22vw, 3rem);
+    font-size: clamp(0.85rem, 3.5vw, 1rem);
   }
 
   .stepper-input:focus,
   .stepper-input:focus-visible {
     outline: none;
     box-shadow: none;
+  }
+
+  @media (max-width: 480px) {
+    .stepper {
+      --stepper-max-width: 10.25rem;
+      --stepper-height: 2.35rem;
+    }
+
+    .stepper-button {
+      font-size: clamp(1rem, 4vw, 1.1rem);
+    }
+  }
+
+  @media (max-width: 360px) {
+    .stepper {
+      --stepper-max-width: 9.5rem;
+    }
+
+    .stepper-button {
+      min-width: clamp(2.1rem, 22vw, 2.4rem);
+    }
+
+    .stepper-input {
+      min-width: clamp(2.2rem, 24vw, 2.6rem);
+    }
   }
 
   @media (max-width: 640px) {
