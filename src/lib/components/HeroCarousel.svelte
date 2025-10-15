@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
-	import { cn } from '$lib/utils';
 
 	// --- TYPE DEFINITIONS ---
 	type CTA = { label: string; href: string };
@@ -33,7 +32,6 @@
 	let current = $state(0);
 	let hovering = $state(false);
 	let isMobile = $state(false);
-	let isVeryCompact = $state(false);
 	let prefersReducedMotion = $state(false);
 	let imageLoadingErrors = $state(new Set<number>());
 	let timer: ReturnType<typeof setInterval> | null = null;
@@ -60,7 +58,6 @@
 		if (!browser) return;
 		const wasMobile = isMobile;
 		isMobile = window.matchMedia('(max-width: 768px)').matches;
-		isVeryCompact = window.matchMedia('(max-width: 375px)').matches;
 		prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 		// Update container width for responsive calculations
@@ -132,8 +129,6 @@
 	function shouldShowSlide(index: number) {
 		return !imageLoadingErrors.has(index);
 	}
-
-	const isCompactMobile = $derived(() => isMobile && (isVeryCompact || containerWidth > 0 && containerWidth <= 380));
 
 	$effect(() => {
 		if (!browser || !containerRef) return;
@@ -251,33 +246,24 @@
 		cur: number,
 		n: number,
 		isMobileFlag: boolean,
-		prefersReducedMotionFlag: boolean,
-		isCompactMobileFlag: boolean
+		prefersReducedMotionFlag: boolean
 	): string {
 		const d = circularDelta(i, cur, n);
 		const abs_d = Math.abs(d);
 
-		// More aggressive motion reduction on compact screens for better performance
-		const mobileFactor = isVeryCompact ? 0.25 : isCompactMobileFlag ? 0.35 : isMobileFlag ? 0.5 : 1;
-		const intensity = prefersReducedMotionFlag ? 0.4 : mobileFactor;
+		// More aggressive motion reduction on mobile for better performance
+		const intensity = prefersReducedMotionFlag ? 0.4 : isMobileFlag ? 0.7 : 1;
+		const mobileFactor = isMobileFlag ? 0.5 : 1; // Reduce movement on mobile
 
-		const tx = d * 22 * mobileFactor * intensity;
-		const ty = abs_d * 1.2 * mobileFactor * intensity;
-		const tz = -abs_d * 85 * mobileFactor * intensity;
-		const rotateY = -d * 6 * mobileFactor * intensity;
-		const rotateX = d * 1.2 * mobileFactor * intensity;
-		const scaleReduction = isVeryCompact ? 0.03 : isCompactMobileFlag ? 0.045 : isMobileFlag ? 0.05 : 0.08;
-		const maxScaleDrop = isVeryCompact ? 0.1 : isCompactMobileFlag ? 0.12 : isMobileFlag ? 0.15 : 0.18;
-		const scale = 1 - Math.min(abs_d * scaleReduction, maxScaleDrop);
+		const tx = d * 25 * mobileFactor * intensity; // Reduced from 30
+		const ty = abs_d * 1.5 * mobileFactor * intensity; // Reduced from 2
+		const tz = -abs_d * 100 * mobileFactor * intensity; // Reduced from 150
+		const rotateY = -d * 8 * mobileFactor * intensity; // Reduced from 12
+		const rotateX = d * 1.5 * mobileFactor * intensity; // Reduced from 2
+		const scale = 1 - Math.min(abs_d * (isMobileFlag ? 0.05 : 0.08), 0.15); // Reduced scaling
 		const zIndex = 100 - abs_d * 10;
-		const opacity = Math.max(0.25, 1 - abs_d * 0.22);
-		const blurPx = prefersReducedMotionFlag
-			? 0
-			: abs_d === 0
-				? 0
-				: abs_d === 1
-					? isVeryCompact ? 0.25 : isCompactMobileFlag ? 0.35 : 0.5
-					: 0.8;
+		const opacity = Math.max(0.2, 1 - abs_d * 0.25); // Adjusted opacity
+		const blurPx = prefersReducedMotionFlag ? 0 : abs_d === 0 ? 0 : abs_d === 1 ? 0.5 : 1; // Reduced blur
 
 		const transition = prefersReducedMotionFlag
 			? 'transform 350ms ease-out, opacity 250ms ease, filter 250ms ease'
@@ -293,78 +279,18 @@
 		`;
 	}
 
-	function contentStyle(
-		i: number,
-		cur: number,
-		n: number,
-		isCompactMobileFlag: boolean
-	): string {
+	function contentStyle(i: number, cur: number, n: number): string {
 		const d = Math.abs(circularDelta(i, cur, n));
 		const opacity = Math.max(0, 1 - d * 0.75);
-		const scaleFactor = isCompactMobileFlag ? 0.06 : 0.1;
-		const scale = 1 - d * scaleFactor;
+		const scale = 1 - d * 0.1;
 		return `opacity: ${opacity}; transform: scale(${scale}); transition: opacity 300ms ease, transform 300ms ease;`;
-	}
-
-	// Responsive content sizing functions
-	function getResponsiveTitleClasses(isCompactMobileFlag: boolean): string {
-		if (isVeryCompact) {
-			return 'text-[clamp(1.25rem,5.8vw,1.75rem)] leading-[1.1]';
-		}
-		if (isCompactMobileFlag) {
-			return 'text-[clamp(1.55rem,6.4vw,2.1rem)] leading-[1.15]';
-		}
-		return 'text-[clamp(1.5rem,4vw,2.25rem)] sm:text-[clamp(2rem,5vw,3rem)] md:text-[clamp(2.5rem,6vw,4rem)] lg:text-[clamp(3rem,7vw,5rem)] xl:text-[clamp(3.5rem,8vw,6rem)]';
-	}
-
-	function getResponsiveSubtitleClasses(isCompactMobileFlag: boolean): string {
-		if (isVeryCompact) {
-			return 'text-[clamp(0.75rem,3.2vw,0.85rem)] leading-[1.4]';
-		}
-		if (isCompactMobileFlag) {
-			return 'text-[clamp(0.82rem,3.6vw,0.95rem)] leading-[1.45]';
-		}
-		return 'text-[clamp(0.875rem,2.5vw,1rem)] sm:text-[clamp(1rem,3vw,1.125rem)] md:text-[clamp(1.125rem,3.5vw,1.25rem)] lg:text-[clamp(1.25rem,4vw,1.5rem)]';
-	}
-
-	function getResponsiveCTAClasses(isCompactMobileFlag: boolean): string {
-		if (isVeryCompact) {
-			return 'px-[clamp(0.625rem,2.5vw,0.875rem)] py-[clamp(0.5rem,2vw,0.625rem)] text-[clamp(0.65rem,2.6vw,0.75rem)]';
-		}
-		if (isCompactMobileFlag) {
-			return 'px-[clamp(0.75rem,3vw,1rem)] py-[clamp(0.625rem,2.5vw,0.75rem)] text-[clamp(0.7rem,2.8vw,0.83rem)]';
-		}
-		return 'px-[clamp(1rem,3vw,1.5rem)] py-[clamp(0.75rem,2.5vw,1rem)] text-[clamp(0.875rem,2.5vw,1rem)] sm:px-[clamp(1.5rem,4vw,2rem)] sm:py-[clamp(1rem,3vw,1.25rem)] sm:text-[clamp(1rem,3vw,1.125rem)]';
-	}
-
-	function getResponsivePadding(isCompactMobileFlag: boolean): string {
-		if (isVeryCompact) {
-			return 'clamp(0.75rem, 3vw, 1.25rem)';
-		}
-		if (isCompactMobileFlag) {
-			return 'clamp(1rem, 4vw, 1.6rem)';
-		}
-		return 'clamp(1rem, 2.5vw, 2rem) clamp(1.5rem, 3.75vw, 3rem) clamp(2rem, 5vw, 4rem)';
-	}
-
-	function getResponsiveCardSize(isCompactMobileFlag: boolean): string {
-		if (isCompactMobileFlag) {
-			return 'aspect-[4/5] w-[88%] max-w-[360px]';
-		}
-		return 'h-[85%] w-[90%] sm:h-[87%] sm:w-[88%] md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] xl:w-[78%]';
 	}
 </script>
 
 <!-- Full-width carousel -->
 <section class="relative w-full overflow-hidden max-w-[100vw]">
 	<div class="w-full max-w-full">
-		<div
-			class={cn(
-				'relative w-full max-w-full overflow-hidden',
-				isCompactMobile() ? 'min-h-[22rem]' : 'min-h-[20rem] sm:min-h-[25rem] md:min-h-[30rem] lg:min-h-[35rem] xl:min-h-[40rem]'
-			)}
-			style={isCompactMobile() ? 'min-height: clamp(22rem, 78vw + 4rem, 27rem);' : 'min-height: clamp(20rem, 15vw + 10rem, 40rem);'}
-		>
+		<div class="relative min-h-[350px] sm:min-h-[400px] md:min-h-[500px] lg:min-h-[600px] xl:min-h-[720px] max-w-full">
 			<!-- Ambient background elements removed to eliminate faint container -->
 
 			<div
@@ -395,8 +321,8 @@
 				{:else}
 					<!-- Slide container with perspective for 3D depth -->
 					<div
-						class="relative w-full h-full"
-						style={`perspective: ${isCompactMobile() ? 1000 : isMobile ? 1200 : 1800}px; transform-style: preserve-3d;`}
+						class="relative h-[350px] w-full sm:h-[400px] md:h-[500px] lg:h-[600px] xl:h-[720px]"
+						style={`perspective: ${isMobile ? 1200 : 1800}px; transform-style: preserve-3d;`}
 					>
 						{#each activeSlides as slide, i (slide.image ?? i)}
 							{#if isRenderableSlide(i, current, activeSlides.length || 1, isMobile)}
@@ -407,17 +333,12 @@
 										current,
 										activeSlides.length || 1,
 										isMobile,
-										prefersReducedMotion,
-										isCompactMobile()
+										prefersReducedMotion
 									)}
 								>
 									<!-- Card container with full responsive sizing -->
 									<div
-										class={cn(
-											'hero-card relative mx-auto overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl',
-											getResponsiveCardSize(isCompactMobile())
-										)}
-										style={isCompactMobile() ? 'min-height: clamp(20rem, 72vw + 3rem, 23.5rem);' : ''}
+										class="relative h-[85%] w-[90%] mx-auto overflow-hidden rounded-xl sm:h-[87%] sm:w-[88%] sm:rounded-2xl md:h-[88%] md:w-[85%] lg:h-[90%] lg:w-[82%] lg:rounded-3xl xl:w-[78%]"
 									>
 										<!-- Image with error handling -->
 										{#if shouldShowSlide(i)}
@@ -449,50 +370,29 @@
 
 										<!-- Content overlay -->
 										<div
-											class={cn(
-												'absolute inset-0 flex hero-content',
-												positionClasses(slide.contentPosition)
-											)}
-											style={`padding: ${getResponsivePadding(isCompactMobile())};`}
+											class={`absolute inset-0 flex ${positionClasses(slide.contentPosition)} p-4 sm:p-6 md:p-8`}
 										>
-											<div class={cn('flex w-full', justifyClasses(slide.textAlign))}>
+											<div class={`flex w-full ${justifyClasses(slide.textAlign)}`}>
 												<div
-													class={cn(
-														'hero-copy max-w-2xl text-white',
-														textAlignClass(slide.textAlign),
-														isCompactMobile() && 'max-w-[95%]'
-													)}
-													style={contentStyle(i, current, activeSlides.length || 1, isCompactMobile())}
+													class={`max-w-2xl text-white ${textAlignClass(slide.textAlign)}`}
+													style={contentStyle(i, current, activeSlides.length || 1)}
 													aria-hidden={i !== current}
 												>
 													<!-- Badge -->
 													{#if slide.badge}
 														<div
-															class={cn(
-																'mb-4 inline-flex items-center rounded-full border border-white/30 bg-white/20 text-xs font-medium text-white backdrop-blur-sm',
-																isVeryCompact ? 'mb-2 px-2 py-1 text-[0.65rem]' : isCompactMobile() ? 'mb-3 px-2.5 py-1 text-[0.7rem]' : 'px-3 py-1.5'
-															)}
+															class="mb-4 inline-flex items-center rounded-full border border-white/30 bg-white/20 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm"
 														>
 															{slide.badge}
 														</div>
 													{/if}
 
 													<!-- Title -->
-													<h1
-														class={cn(
-															'mb-3 leading-tight font-bold',
-															getResponsiveTitleClasses(isCompactMobile()),
-															(isCompactMobile() || isVeryCompact) && 'mb-2'
-														)}
-													>
+													<h1 class="mb-3 text-2xl leading-tight font-bold sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">
 														{slide.title}
 														{#if slide.accent}
 															<br />
-															<span
-																class={cn(
-																	'text-primary drop-shadow-lg',
-																	isCompactMobile() && 'drop-shadow-md'
-																)}
+															<span class="text-primary drop-shadow-lg"
 																>{slide.accent}</span
 															>
 														{/if}
@@ -501,11 +401,7 @@
 													<!-- Subtitle -->
 													{#if slide.subtitle}
 														<p
-															class={cn(
-																'mb-4 leading-relaxed text-white/90',
-																getResponsiveSubtitleClasses(isCompactMobile()),
-																(isCompactMobile() || isVeryCompact) && 'mb-2'
-															)}
+															class="mb-4 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg md:text-xl"
 														>
 															{slide.subtitle}
 														</p>
@@ -513,19 +409,12 @@
 
 													<!-- CTA Buttons -->
 													<div
-														class={cn(
-															'flex flex-col gap-3 sm:flex-row',
-															justifyClasses(slide.textAlign),
-															(isCompactMobile() || isVeryCompact) && 'gap-2'
-														)}
+														class={`flex flex-col gap-3 sm:flex-row ${justifyClasses(slide.textAlign)}`}
 													>
 														{#if slide.ctaPrimary}
 															<a
 																href={slide.ctaPrimary.href}
-																class={cn(
-																	'inline-flex items-center justify-center rounded-lg bg-primary font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl',
-																	getResponsiveCTAClasses(isCompactMobile())
-																)}
+																class="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-content shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 hover:shadow-xl sm:px-8 sm:py-4 sm:text-base"
 																tabindex={i === current ? 0 : -1}
 															>
 																{slide.ctaPrimary.label}
@@ -534,10 +423,7 @@
 														{#if slide.ctaSecondary}
 															<a
 																href={slide.ctaSecondary.href}
-																class={cn(
-																	'inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20',
-																	getResponsiveCTAClasses(isCompactMobile())
-																)}
+																class="inline-flex items-center justify-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:bg-white/20 sm:px-8 sm:py-4 sm:text-base"
 																tabindex={i === current ? 0 : -1}
 															>
 																{slide.ctaSecondary.label}
@@ -606,16 +492,6 @@
 </section>
 
 <style>
-	@media (max-width: 380px) {
-		:global(.hero-copy) {
-			display: grid;
-			gap: clamp(0.75rem, 3.5vw, 1.4rem);
-		}
-
-		:global(.hero-card) {
-			border-radius: min(1.25rem, 6vw);
-		}
-	}
 	.will-change-transform {
 		will-change: transform, opacity, filter;
 	}
