@@ -62,7 +62,7 @@ function getMeiliClient(): MeiliSearch | null {
       meiliClient = new MeiliSearch({
         host,
         apiKey: publicEnv.PUBLIC_MEILISEARCH_API_KEY,
-        timeout: 10000,
+        timeout: 3000, // Reduced from 10s to 3s for better UX
       });
     } catch (err) {
       logger.warn(

@@ -108,6 +108,13 @@ export function cleanupRateLimitStore(): void {
   }
 }
 
+// Auto-cleanup every 10 minutes
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    cleanupRateLimitStore();
+  }, 10 * 60 * 1000);
+}
+
 /**
  * Validate and sanitize search query
  */

@@ -403,53 +403,53 @@ export async function handleGoogleOAuthCallback(
   }
 }
 
-// Attempts to claim recent guest orders by display_id guesses for a given email.
-// Strategy: probe a small range of recent display ids around a passed hint (optional).
-// If backend exposes a safer index, replace this with that call.
+// SECURITY WARNING: This function attempts to claim orders by guessing IDs.
+// This approach has been DISABLED as it could be used for enumeration attacks.
+// Instead, implement a proper backend endpoint that safely associates guest orders
+// with authenticated customers based on email verification.
 export async function sweepClaimGuestOrders(
   email: string,
   customerId: string,
   hints: Array<string | number> = [],
 ): Promise<number> {
+  // DISABLED: This function is a security risk
+  // Only claim orders if we have exact order IDs from the user (e.g., from email links)
   let claimed = 0;
-  try {
-    const tryIds: Array<string | number> = [];
-    for (const h of hints) tryIds.push(h);
-    // Reduced attempts to minimize 404 noise - only try if we have hints
-    if (hints.length === 0) {
-      return 0;
+  
+  if (hints.length === 0) {
+    return 0;
+  }
+
+  // Only attempt to claim if we have explicit order IDs (not guessing)
+  for (const hint of hints) {
+    const orderId = String(hint);
+    // Only process if it looks like a valid Medusa order ID format
+    if (!orderId.startsWith('order_')) {
+      logger.warn(`Invalid order ID format for claim: ${orderId}`);
+      continue;
     }
 
-    const seen = new Set<string>();
-    for (const key of tryIds) {
-      const k = String(key);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      try {
-        const res = await fetch("/api/orders/claim", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            display_id: k,
-            email,
-            customer_id: customerId,
-          }),
-        });
-        if (res.ok) {
-          claimed++;
-        } else if (res.status !== 404) {
-          // Log non-404 errors (404 is expected for most guesses)
-          logger.warn(
-            `Order claim failed for ${k}: ${res.status} ${res.statusText}`,
-          );
-        }
-      } catch (error) {
-        // Silently continue - these are expected to fail most of the time
+    try {
+      const res = await fetch("/api/orders/claim", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          order_id: orderId, // Use order_id instead of display_id
+          email,
+          customer_id: customerId,
+        }),
+      });
+      if (res.ok) {
+        claimed++;
+      } else if (res.status === 429) {
+        logger.warn("Rate limit hit for order claiming");
+        break; // Stop on rate limit
       }
+    } catch (error) {
+      logger.error(`Failed to claim order ${orderId}:`, error);
     }
-  } catch (error) {
-    logger.error("Error in sweepClaimGuestOrders:", error);
   }
+  
   return claimed;
 }
 export async function updateProfile(

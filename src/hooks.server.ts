@@ -11,15 +11,39 @@ let lastFetch = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Security headers middleware - Minimal essential security
+ * Security headers middleware - Essential security headers
  */
 const securityHeaders: Handle = async ({ event, resolve }) => {
   const response = await resolve(event);
 
-  // Only set essential security headers
+  // Security headers
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  response.headers.set('Referrer-Policy', 'no-referrer-when-downgrade');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  
+  // Content Security Policy - Adjust as needed for your resources
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://js.stripe.com https://www.googletagmanager.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: https: blob:",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "connect-src 'self' https://www.google-analytics.com https://js.stripe.com https://api.stripe.com https://*.meilisearch.com",
+    "frame-src 'self' https://js.stripe.com https://www.google.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests"
+  ].join('; ');
+  
+  response.headers.set('Content-Security-Policy', csp);
+  
+  // Permissions Policy
+  response.headers.set('Permissions-Policy', 
+    'geolocation=(), microphone=(), camera=(), payment=(self)'
+  );
 
   return response;
 };

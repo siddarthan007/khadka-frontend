@@ -15,7 +15,7 @@ function bad(msg: string, status = 400) {
   });
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   try {
     const body = (await request.json()) as ClaimBody;
     const admin = getAdminClient();
@@ -25,6 +25,20 @@ export const POST: RequestHandler = async ({ request }) => {
     if (!order_id && !display_id) return bad("order_id or display_id required");
     if (!email) return bad("email required");
     if (!customer_id) return bad("customer_id required");
+
+    // Rate limit order claim attempts to prevent enumeration attacks
+    const clientIp = getClientAddress();
+    const { checkRateLimit } = await import("$lib/security");
+    const rateLimit = checkRateLimit(`order_claim:${clientIp}`, 10, 60000); // 10 attempts per minute
+    if (!rateLimit.allowed) {
+      return bad("Too many claim attempts. Please try again later.", 429);
+    }
+
+    // Validate email format
+    const { isValidEmail } = await import("$lib/security");
+    if (!isValidEmail(email)) {
+      return bad("Invalid email format", 400);
+    }
 
     // Resolve order
     let order: any = null;
@@ -46,12 +60,17 @@ export const POST: RequestHandler = async ({ request }) => {
       order.email || order.shipping_address?.email || order.customer?.email;
     if (
       !orderEmail ||
-      String(orderEmail).toLowerCase() !== String(email).toLowerCase()
+      String(orderEmail).toLowerCase().trim() !== String(email).toLowerCase().trim()
     ) {
       return bad("Email does not match order", 403);
     }
     if (order.customer_id && order.customer_id !== customer_id) {
       return bad("Order already belongs to another customer", 409);
+    }
+
+    // Verify order is actually a guest order (no customer_id)
+    if (order.customer_id) {
+      return bad("Order already has a customer", 409);
     }
 
     // Update order to associate with the customer

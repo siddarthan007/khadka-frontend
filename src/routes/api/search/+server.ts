@@ -10,9 +10,22 @@ export const GET: RequestHandler = async ({ url, getClientAddress, setHeaders })
 
   // Rate limiting
   const clientIp = getClientAddress();
-  if (!checkRateLimit(clientIp, 100)) {
+  const rateLimitResult = checkRateLimit(clientIp, 100);
+  if (!rateLimitResult.allowed) {
+    setHeaders({
+      'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
+      'X-RateLimit-Limit': '100',
+      'X-RateLimit-Remaining': '0',
+      'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
+    });
     return json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
   }
+  
+  setHeaders({
+    'X-RateLimit-Limit': '100',
+    'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+    'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
+  });
 
   const rawQuery = url.searchParams.get("q")?.trim() ?? "";
   const q = sanitizeSearchQuery(rawQuery);
