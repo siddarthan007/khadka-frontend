@@ -18,25 +18,26 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 
   // Security headers
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   
   // Content Security Policy - Adjust as needed for your resources
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://js.stripe.com https://www.googletagmanager.com",
+    "script-src 'self' https://www.google.com https://www.gstatic.com https://js.stripe.com https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
     "font-src 'self' https://fonts.gstatic.com data:",
-    "connect-src 'self' https://www.google-analytics.com https://js.stripe.com https://api.stripe.com https://*.meilisearch.com",
-    "frame-src 'self' https://js.stripe.com https://www.google.com",
+    "connect-src 'self' https: wss:",
+    "frame-src 'self' https://js.stripe.com https://www.google.com https://checkout.stripe.com https://accounts.google.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
+    "manifest-src 'self'",
+    "worker-src 'self' blob:",
     "upgrade-insecure-requests"
-  ].join('; ');
+  ].join('; ');  
   
   response.headers.set('Content-Security-Policy', csp);
   
