@@ -236,12 +236,14 @@ export async function startGoogleOAuth(
   if (!sdk || typeof window === "undefined") return;
 
   try {
+    // Store returnTo in sessionStorage before OAuth redirect
+    // This persists across the OAuth flow since query params may be lost
+    sessionStorage.setItem("oauth_return_to", returnTo);
+
     const callbackUrl = new URL(
       "/oauth/google/callback",
       window.location.origin,
     );
-
-    callbackUrl.searchParams.set("returnTo", returnTo);
 
     const res = await sdk.auth.login("customer", "google", {
       callbackUrl: callbackUrl.toString(),

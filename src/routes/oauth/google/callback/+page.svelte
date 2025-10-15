@@ -12,7 +12,13 @@
     const url = new URL(page.url, window.location.origin);
     const ok = await handleGoogleOAuthCallback(url.searchParams);
     if (ok) {
-      let returnTo = url.searchParams.get("returnTo") || "/account";
+      // Try to get returnTo from sessionStorage first (set before OAuth redirect)
+      // Fall back to URL param, then default to /account
+      let returnTo = sessionStorage.getItem("oauth_return_to") || url.searchParams.get("returnTo") || "/account";
+      
+      // Clean up sessionStorage
+      sessionStorage.removeItem("oauth_return_to");
+      
       await goto(returnTo);
       return;
     }
