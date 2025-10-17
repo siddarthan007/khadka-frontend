@@ -763,8 +763,9 @@
 			await getCart();
 			return true;
 		} catch (err: any) {
+			errorMsg = err?.message || "Failed to apply shipping method";
 			logger.error("Failed to apply shipping method:", err);
-			showToast("Failed to apply shipping method", { type: "error" });
+			showToast(errorMsg!, { type: "error" });
 			return false;
 		}
 	}
@@ -1913,10 +1914,16 @@
 										</div>
 										<div class="text-right text-sm">
 											{#if opt.price_type === "calculated"}
-												<span class="opacity-80"
-													>Calculated at next step</span
+												<span
+													class="font-medium text-success"
+													>+ {formatCurrency(
+														opt.calculated_price.calculated_amount ?? 0,
+														get(cartStore)
+															?.currency_code ||
+															"USD",
+													)}</span
 												>
-											{:else if (opt.amount ?? 0) <= 0}
+											{:else if ((opt.calculated_price.calculated_amount || opt.amount) ?? 0) <= 0}
 												<span
 													class="font-medium text-success"
 													>+ Free</span
@@ -1925,7 +1932,7 @@
 												<span
 													class="font-medium text-success"
 													>+ {formatCurrency(
-														opt.calculated_price.calculated_amount ?? 0,
+														opt.amount ?? 0,
 														get(cartStore)
 															?.currency_code ||
 															"USD",
