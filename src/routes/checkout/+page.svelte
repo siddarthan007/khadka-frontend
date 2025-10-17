@@ -1995,7 +1995,7 @@
 												<span class="font-medium text-error"
 													>Unavailable</span
 												>
-											{:else if opt.price_type === "calculated" && !calculatedPrices[opt.id]}
+											{:else if opt.price_type === "calculated" && !(opt.id in calculatedPrices)}
 												<span class="opacity-80"
 													>Calculating...</span
 												>
