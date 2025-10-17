@@ -53,7 +53,7 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
   // Permissions Policy
   response.headers.set(
     'Permissions-Policy',
-    'geolocation=(),microphone=(),camera=(),payment=(self "https://checkout.stripe.com")'
+    'geolocation=(),microphone=(),camera=()'
   );
 
   return response;
