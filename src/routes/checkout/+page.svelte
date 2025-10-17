@@ -67,6 +67,18 @@
 	let shippingOptions: HttpTypes.StoreCartShippingOption[] = $state([]);
 	let shippingOptionsLoading: boolean = $state(false);
 	let selectedShippingOptionId: string | null = $state(null);
+	let calculatedPrices: Record<string, number> = $state({});
+
+	function getShippingDisplayAmount(
+		opt: HttpTypes.StoreCartShippingOption,
+	): number {
+		// For calculated price types, use the calculatedPrices map
+		if (opt.price_type === "calculated") {
+			return calculatedPrices[opt.id] ?? 0;
+		}
+		// For flat price types, use amount
+		return opt.amount ?? 0;
+	}
 
 	// Payment
 	let stripePromise: Promise<any> | null = $state(null); // holds the promise from loadStripe
@@ -682,6 +694,33 @@
 					cart_id: c.id,
 				});
 			shippingOptions = shipping_options || [];
+
+			// Calculate prices for shipping options with price_type === "calculated"
+			const promises = shippingOptions
+				.filter((opt) => opt.price_type === "calculated")
+				.map((opt) =>
+					sdk.store.fulfillment.calculate(opt.id, {
+						cart_id: c.id,
+						data: {
+							// pass any custom data needed by fulfillment provider
+						},
+					}),
+				);
+
+			if (promises.length) {
+				Promise.allSettled(promises).then((results) => {
+					const pricesMap: Record<string, number> = {};
+					results
+						.filter((r) => r.status === "fulfilled")
+						.forEach((p) => {
+							const shippingOption = (p as any).value?.shipping_option;
+							if (shippingOption?.id) {
+								pricesMap[shippingOption.id] = shippingOption.amount ?? 0;
+							}
+						});
+					calculatedPrices = pricesMap;
+				});
+			}
 		} catch (err: any) {
 			logger.error("Failed to fetch shipping options:", err);
 			showToast("Failed to load shipping options", { type: "error" });
@@ -1913,17 +1952,11 @@
 											</div>
 										</div>
 										<div class="text-right text-sm">
-											{#if opt.price_type === "calculated"}
-												<span
-													class="font-medium text-success"
-													>+ {formatCurrency(
-														opt.calculated_price.calculated_amount ?? 0,
-														get(cartStore)
-															?.currency_code ||
-															"USD",
-													)}</span
+											{#if opt.price_type === "calculated" && !calculatedPrices[opt.id]}
+												<span class="opacity-80"
+													>Calculating...</span
 												>
-											{:else if ((opt.calculated_price.calculated_amount || opt.amount) ?? 0) <= 0}
+											{:else if getShippingDisplayAmount(opt) <= 0}
 												<span
 													class="font-medium text-success"
 													>+ Free</span
@@ -1932,7 +1965,7 @@
 												<span
 													class="font-medium text-success"
 													>+ {formatCurrency(
-														opt.amount ?? 0,
+														getShippingDisplayAmount(opt),
 														get(cartStore)
 															?.currency_code ||
 															"USD",
