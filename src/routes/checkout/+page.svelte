@@ -19,6 +19,7 @@
 	import { Motion, AnimateSharedLayout } from "svelte-motion";
 	import { formatCurrency } from "$lib/utils";
 	import { logger } from "$lib/logger";
+	import { logApiError } from "$lib/medusa";
 	import { CheckCircle2, ShieldCheck } from "@lucide/svelte";
 	import { createDialog, melt } from "@melt-ui/svelte";
 	import {
@@ -763,8 +764,9 @@
 			await getCart();
 			return true;
 		} catch (err: any) {
-			logger.error("Failed to apply shipping method:", err);
-			showToast("Failed to apply shipping method", { type: "error" });
+			logApiError("applyShippingMethod", err);
+			const errorMessage = err?.response?.data?.message || err?.message || "An unknown error occurred";
+			showToast(`Failed to apply shipping method: ${errorMessage}`, { type: "error" });
 			return false;
 		}
 	}

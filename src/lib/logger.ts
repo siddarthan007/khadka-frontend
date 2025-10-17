@@ -3,7 +3,7 @@
  * Console statements are stripped in production builds
  */
 
-const isDev = !import.meta.env.DEV;
+const isDev = import.meta.env.DEV;
 
 export const logger = {
   /**
