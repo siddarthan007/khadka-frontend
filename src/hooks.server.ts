@@ -20,23 +20,23 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-XSS-Protection', '1; mode=block');
-  
+
   // Content Security Policy - Adjust as needed for your resources
   const cspDirectives = [
     "default-src 'self'",
-  
+
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.googletagmanager.com https://www.gstatic.com https://www.google.com https://www.google-analytics.com",
-  
+
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  
+
     "img-src 'self' data: blob: https: https://js.stripe.com https://www.googletagmanager.com",
-  
+
     "font-src 'self' https://fonts.gstatic.com data:",
-  
+
     `connect-src 'self' ${publicEnv.PUBLIC_MEDUSA_BACKEND_URL} ${publicEnv.PUBLIC_MEILISEARCH_URL} https://api.stripe.com https://www.google-analytics.com https://www.googletagmanager.com https: wss: blob:`,
-  
+
     "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://accounts.google.com https://www.google.com https://recaptcha.google.com https://www.gstatic.com",
-    
+
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -44,14 +44,15 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
     "manifest-src 'self'",
     "worker-src 'self' blob:"
   ];
-  
+
   const csp = cspDirectives.join("; ");
   response.headers.set("Content-Security-Policy", csp);
-  
- 
-  
+
+
+
   // Permissions Policy
-  response.headers.set('Permissions-Policy', 
+  response.headers.set(
+    'Permissions-Policy',
     'geolocation=(), microphone=(), camera=(), payment=(self)'
   );
 
