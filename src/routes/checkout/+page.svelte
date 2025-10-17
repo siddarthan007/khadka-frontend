@@ -1925,7 +1925,7 @@
 												<span
 													class="font-medium text-success"
 													>+ {formatCurrency(
-														Number(opt.calculated_price) ?? 0,
+														opt.calculated_price.calculated_amount ?? 0,
 														get(cartStore)
 															?.currency_code ||
 															"USD",
