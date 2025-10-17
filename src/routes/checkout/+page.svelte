@@ -727,17 +727,24 @@
 							const error = (result as any).reason;
 							let errorMessage = "Unable to calculate shipping";
 							
-							// Try to extract error message from Medusa error response
+							// Extract error message from Medusa FetchError
+							// FetchError has: status (number), statusText (string), message (string)
 							if (error?.message) {
 								errorMessage = error.message;
-							} else if (error?.response?.data?.message) {
-								errorMessage = error.response.data.message;
+							} else if (error?.statusText) {
+								errorMessage = error.statusText;
 							} else if (typeof error === 'string') {
 								errorMessage = error;
 							}
 							
+							// Log the full error object for debugging
 							errorsMap[opt.id] = errorMessage;
-							logger.warn(`Shipping calculation failed for ${opt.id}:`, error);
+							logger.error(`Shipping calculation failed for ${opt.name || opt.id}:`, {
+								errorMessage,
+								status: error?.status,
+								statusText: error?.statusText,
+								fullError: error
+							});
 						}
 					});
 					calculatedPrices = pricesMap;
