@@ -68,6 +68,7 @@
 	let shippingOptionsLoading: boolean = $state(false);
 	let selectedShippingOptionId: string | null = $state(null);
 	let calculatedPrices: Record<string, number> = $state({});
+	let calculationErrors: Record<string, string> = $state({});
 
 	function getShippingDisplayAmount(
 		opt: HttpTypes.StoreCartShippingOption,
@@ -684,6 +685,7 @@
 
 	async function fetchShippingOptions() {
 		shippingOptionsLoading = true;
+		calculationErrors = {}; // Clear previous errors
 		try {
 			const sdk = getStoreClient() as any;
 			const c = get(cartStore);
@@ -710,15 +712,36 @@
 			if (promises.length) {
 				Promise.allSettled(promises).then((results) => {
 					const pricesMap: Record<string, number> = {};
-					results
-						.filter((r) => r.status === "fulfilled")
-						.forEach((p) => {
-							const shippingOption = (p as any).value?.shipping_option;
+					const errorsMap: Record<string, string> = {};
+					results.forEach((result, index) => {
+						const opt = shippingOptions.filter((o) => o.price_type === "calculated")[index];
+						if (!opt) return;
+						
+						if (result.status === "fulfilled") {
+							const shippingOption = (result as any).value?.shipping_option;
 							if (shippingOption?.id) {
 								pricesMap[shippingOption.id] = shippingOption.amount ?? 0;
 							}
-						});
+						} else {
+							// Handle rejected promise (e.g., unserviceable area)
+							const error = (result as any).reason;
+							let errorMessage = "Unable to calculate shipping";
+							
+							// Try to extract error message from Medusa error response
+							if (error?.message) {
+								errorMessage = error.message;
+							} else if (error?.response?.data?.message) {
+								errorMessage = error.response.data.message;
+							} else if (typeof error === 'string') {
+								errorMessage = error;
+							}
+							
+							errorsMap[opt.id] = errorMessage;
+							logger.warn(`Shipping calculation failed for ${opt.id}:`, error);
+						}
+					});
 					calculatedPrices = pricesMap;
+					calculationErrors = errorsMap;
 				});
 			}
 		} catch (err: any) {
@@ -1931,6 +1954,9 @@
 							{#each shippingOptions as opt (opt.id)}
 								<label
 									class="flex cursor-pointer items-center gap-3 rounded-lg border border-base-300 p-3 hover:border-primary/50"
+									class:opacity-50={!!calculationErrors[opt.id]}
+									class:cursor-not-allowed={!!calculationErrors[opt.id]}
+									class:hover:border-base-300={!!calculationErrors[opt.id]}
 								>
 									<input
 										type="radio"
@@ -1938,6 +1964,7 @@
 										name="shipping-option"
 										checked={selectedShippingOptionId ===
 											opt.id}
+										disabled={!!calculationErrors[opt.id]}
 										onchange={() => {
 											selectedShippingOptionId = opt.id!;
 											shippingComplete = false;
@@ -1950,9 +1977,18 @@
 											<div class="font-medium">
 												{opt.name}
 											</div>
+											{#if calculationErrors[opt.id]}
+												<div class="text-xs text-error mt-1">
+													{calculationErrors[opt.id]}
+												</div>
+											{/if}
 										</div>
 										<div class="text-right text-sm">
-											{#if opt.price_type === "calculated" && !calculatedPrices[opt.id]}
+											{#if calculationErrors[opt.id]}
+												<span class="font-medium text-error"
+													>Unavailable</span
+												>
+											{:else if opt.price_type === "calculated" && !calculatedPrices[opt.id]}
 												<span class="opacity-80"
 													>Calculating...</span
 												>
@@ -1985,7 +2021,8 @@
 							<Button
 								class="btn btn-primary"
 								onclick={continueToPayment}
-								disabled={!selectedShippingOptionId}
+								disabled={!selectedShippingOptionId ||
+									!!calculationErrors[selectedShippingOptionId]}
 								>Continue to payment</Button
 							>
 						</div>
