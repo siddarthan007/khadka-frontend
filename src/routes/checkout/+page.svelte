@@ -1910,9 +1910,6 @@
 											<div class="font-medium">
 												{opt.name}
 											</div>
-											<div class="text-xs opacity-70">
-												{opt.provider_id}
-											</div>
 										</div>
 										<div class="text-right text-sm">
 											{#if opt.price_type === "calculated"}
