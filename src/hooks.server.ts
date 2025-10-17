@@ -45,7 +45,7 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
     "worker-src 'self' blob:"
   ];
 
-  const csp = cspDirectives.join("; ");
+  const csp = cspDirectives.join(";");
   response.headers.set("Content-Security-Policy", csp);
 
 
@@ -53,7 +53,7 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
   // Permissions Policy
   response.headers.set(
     'Permissions-Policy',
-    'geolocation=(), microphone=(), camera=(), payment=(self)'
+    'geolocation=(),microphone=(),camera=(),payment=(self "https://checkout.stripe.com")'
   );
 
   return response;
