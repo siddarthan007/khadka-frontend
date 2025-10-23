@@ -19,7 +19,7 @@
 	import { Motion, AnimateSharedLayout } from "svelte-motion";
 	import { formatCurrency } from "$lib/utils";
 	import { logger } from "$lib/logger";
-	import { CheckCircle2, ShieldCheck } from "@lucide/svelte";
+	import { CircleCheckBig, ShieldCheck, Phone } from "@lucide/svelte";
 	import { createDialog, melt } from "@melt-ui/svelte";
 	import {
 		trackBeginCheckout,
@@ -92,6 +92,9 @@
 	let paymentError: string | null = $state(null);
 	let paymentReady: boolean = $state(false);
 	const stripeProviderCache = new Map<string, string | null>();
+	
+	// Store metadata for contact info
+	let storePhone: string | null = $state(null);
 
 	const {
 		elements: {
@@ -602,6 +605,17 @@
 	}
 
 	onMount(async () => {
+		// Fetch store metadata for contact info
+		try {
+			const sdk = getStoreClient() as any;
+			if (sdk?.store?.retrieve) {
+				const storeData = await sdk.store.retrieve();
+				storePhone = storeData?.store?.metadata?.phone || null;
+			}
+		} catch (err) {
+			logger.warn("Failed to fetch store metadata:", err);
+		}
+		
 		// Watch for theme changes and update Stripe appearance
 		const observer = new MutationObserver(() => {
 			stripeAppearance = getStripeAppearance();
@@ -1332,7 +1346,7 @@
 								</Motion>
 							{/if}
 							{#if addressComplete && step !== "address"}
-								<CheckCircle2
+								<CircleCheckBig
 									class="relative z-10 h-4 w-4 text-success"
 								/>
 							{/if}
@@ -1364,7 +1378,7 @@
 								</Motion>
 							{/if}
 							{#if shippingComplete && step !== "shipping"}
-								<CheckCircle2
+								<CircleCheckBig
 									class="relative z-10 h-4 w-4 text-success"
 								/>
 							{/if}
@@ -2020,6 +2034,29 @@
 								</label>
 							{/each}
 						</div>
+						
+						<!-- Shipping Help Contact -->
+						{#if storePhone}
+							<div class="mt-4 rounded-lg bg-base-200/50 border border-base-300 p-3">
+								<div class="flex items-start gap-3">
+									<div class="flex-shrink-0 mt-0.5">
+										<Phone class="w-4 h-4 text-primary" />
+									</div>
+									<div class="flex-1 text-sm">
+										<p class="text-base-content/70">
+											Questions about shipping or delivery?
+										</p>
+										<a 
+											href={`tel:${storePhone}`}
+											class="link link-primary font-medium hover:underline"
+										>
+											Call us at {storePhone}
+										</a>
+									</div>
+								</div>
+							</div>
+						{/if}
+						
 						<div class="flex justify-between pt-2">
 							<Button
 								class="btn btn-primary"
