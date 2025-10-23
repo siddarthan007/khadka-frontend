@@ -21,6 +21,7 @@
 	import { logger } from "$lib/logger";
 	import { CircleCheckBig, ShieldCheck, Phone } from "@lucide/svelte";
 	import { createDialog, melt } from "@melt-ui/svelte";
+	import { page } from "$app/state";
 	import {
 		trackBeginCheckout,
 		trackAddShippingInfo,
@@ -29,6 +30,9 @@
 		formatCartItemsForAnalytics,
 		calculateCartValue,
 	} from "$lib/utils/analytics";
+
+	// Get store metadata from page data (passed from layout)
+	let storeMetadata = $state(page.data?.storeMetadata ?? {});
 
 	let email: string = $state("");
 	let shipping = $state({
@@ -92,9 +96,6 @@
 	let paymentError: string | null = $state(null);
 	let paymentReady: boolean = $state(false);
 	const stripeProviderCache = new Map<string, string | null>();
-	
-	// Store metadata for contact info
-	let storePhone: string | null = $state(null);
 
 	const {
 		elements: {
@@ -605,17 +606,6 @@
 	}
 
 	onMount(async () => {
-		// Fetch store metadata for contact info
-		try {
-			const sdk = getStoreClient() as any;
-			if (sdk?.store?.retrieve) {
-				const storeData = await sdk.store.retrieve();
-				storePhone = storeData?.store?.metadata?.phone || null;
-			}
-		} catch (err) {
-			logger.warn("Failed to fetch store metadata:", err);
-		}
-		
 		// Watch for theme changes and update Stripe appearance
 		const observer = new MutationObserver(() => {
 			stripeAppearance = getStripeAppearance();
@@ -2036,7 +2026,7 @@
 						</div>
 						
 						<!-- Shipping Help Contact -->
-						{#if storePhone}
+						{#if storeMetadata.phone}
 							<div class="mt-4 rounded-lg bg-base-200/50 border border-base-300 p-3">
 								<div class="flex items-start gap-3">
 									<div class="flex-shrink-0 mt-0.5">
@@ -2047,10 +2037,10 @@
 											Questions about shipping or delivery?
 										</p>
 										<a 
-											href={`tel:${storePhone}`}
+											href={`tel:${storeMetadata.phone}`}
 											class="link link-primary font-medium hover:underline"
 										>
-											Call us at {storePhone}
+											Call us at {storeMetadata.phone}
 										</a>
 									</div>
 								</div>
