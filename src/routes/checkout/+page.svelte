@@ -95,6 +95,8 @@
 	let paymentLoading: boolean = $state(false);
 	let paymentError: string | null = $state(null);
 	let paymentReady: boolean = $state(false);
+	let activePaymentSessionId: string | null = $state(null);
+	let activePaymentCollectionId: string | null = $state(null);
 	const stripeProviderCache = new Map<string, string | null>();
 
 	const {
@@ -881,6 +883,8 @@
 	async function setupPayment() {
 		paymentLoading = true;
 		paymentError = null;
+		activePaymentSessionId = null;
+		activePaymentCollectionId = null;
 		try {
 			const sdk = getStoreClient() as any;
 			let c = get(cartStore);
@@ -1031,6 +1035,9 @@
 				return false;
 			}
 
+			activePaymentSessionId = stripeSession?.id ?? null;
+			activePaymentCollectionId = paymentCollection?.id ?? null;
+
 			paymentClientSecret =
 				stripeSession?.data?.client_secret ||
 				stripeSession?.data?.clientSecret ||
@@ -1064,6 +1071,94 @@
 		}
 	}
 
+	// Poll Stripe session status to avoid racing cart completion before webhook authorization
+	async function waitForPaymentAuthorization(
+		sessionId: string,
+		cartId: string,
+		client: any,
+		collectionId?: string | null,
+	) {
+		const fieldStr =
+			"id,*payment_collection,*payment_collection.payment_sessions";
+		const maxAttempts = 20;
+		const delayMs = 600;
+		let lastStatus: string | null = null;
+
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			if (attempt > 0) {
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
+			}
+
+			let resp: any = null;
+			try {
+				resp = await client.store.cart.retrieve(cartId, {
+					fields: fieldStr,
+				});
+			} catch (err: any) {
+				logger.warn(
+					"[checkout] cart retrieve failed while polling payment session",
+					{
+						attempt,
+						cartId,
+						message: err?.message,
+					},
+				);
+				continue;
+			}
+
+			const polledCart = (resp as any)?.cart ?? resp;
+			const sessions =
+				polledCart?.payment_collection?.payment_sessions ?? [];
+			const targetSession = sessions.find((s: any) => s.id === sessionId);
+
+			if (!targetSession) {
+				logger.warn(
+					"[checkout] payment session missing while waiting for authorization",
+					{
+						sessionId,
+						cartId,
+						collectionId:
+							polledCart?.payment_collection?.id ??
+							collectionId ??
+							"unknown",
+						attempt,
+					},
+				);
+				continue;
+			}
+
+			const status = (targetSession.status || "").toLowerCase();
+			if (status !== lastStatus) {
+				lastStatus = status;
+				logger.log("[checkout] polled payment session status", {
+					sessionId,
+					status,
+					attempt,
+				});
+			}
+
+			if (status === "authorized") {
+				return;
+			}
+
+			if (status === "canceled" || status === "error") {
+				throw new Error(
+					"Stripe canceled this payment before we could finish the order.",
+				);
+			}
+
+			if (status === "requires_more") {
+				throw new Error(
+					"Stripe needs additional customer action before we can finish the order.",
+				);
+			}
+		}
+
+		throw new Error(
+			"Timed out waiting for Stripe to confirm the payment. Please retry in a moment.",
+		);
+	}
+
 	async function submitCheckout() {
 		errorMsg = null;
 		loading = true;
@@ -1072,8 +1167,9 @@
 		try {
 			const c = get(cartStore);
 			if (!c?.id) return;
+				const requiresPayment = (c.total || 0) > 0;
 
-			if ((c.total || 0) <= 0) {
+				if (!requiresPayment) {
 				const { cart } = await sdk.store.cart.complete(c.id);
 				if ((cart as any)?.completed_at) {
 					showToast("Order placed successfully", { type: "success" });
@@ -1102,20 +1198,20 @@
 				await applyShippingMethod();
 			}
 
-			if ((c.total || 0) > 0 && !paymentReady) {
+			if (requiresPayment && !paymentReady) {
 				const okPayment = await setupPayment();
 				if (!okPayment)
 					throw new Error(paymentError || "Payment not ready");
 			}
 
-			if ((c.total || 0) > 0 && !paymentClientSecret)
+			if (requiresPayment && !paymentClientSecret)
 				throw new Error("Payment not initialized");
 
 			const stripeInstance = await stripePromise;
-			if ((c.total || 0) > 0 && !stripeInstance)
+			if (requiresPayment && !stripeInstance)
 				throw new Error("Stripe not ready");
 			// Wait briefly for element mount if necessary
-			if ((c.total || 0) > 0) {
+			if (requiresPayment) {
 				let attempts = 0;
 				while (attempts < 10 && (!elements || !ready)) {
 					await new Promise((r) => setTimeout(r, 100));
@@ -1128,7 +1224,7 @@
 
 			const returnUrl = `${publicEnv.PUBLIC_BASE_URL || window.location.origin}/checkout/success`;
 
-			if ((c.total || 0) > 0) {
+			if (requiresPayment) {
 				const { error: submitError } = await elements.submit();
 				if (submitError) {
 					paymentError =
@@ -1138,7 +1234,7 @@
 				}
 			}
 
-			if ((c.total || 0) > 0) {
+			if (requiresPayment) {
 				const { error } = await stripeInstance.confirmPayment({
 					elements,
 					confirmParams: { return_url: returnUrl },
@@ -1153,6 +1249,34 @@
 					paymentError =
 						error.message || "Payment confirmation failed.";
 					throw new Error(paymentError!);
+				}
+			}
+
+			if (requiresPayment) {
+				const sessionIdToPoll =
+					activePaymentSessionId ??
+					(() => {
+						const currentCart = get(cartStore);
+						const sessions =
+							(currentCart?.payment_collection?.payment_sessions ?? []) as any[];
+						const stripeSession = sessions.find((s: any) =>
+							(s?.provider_id || "").toLowerCase().includes("stripe"),
+						);
+						return stripeSession?.id ?? null;
+					})();
+				if (sessionIdToPoll) {
+					await waitForPaymentAuthorization(
+						sessionIdToPoll,
+						c.id,
+						sdk,
+						activePaymentCollectionId,
+					);
+					await getCart().catch(() => null);
+				} else {
+					logger.warn(
+						"[checkout] unable to determine stripe session id before cart completion",
+						{ cartId: c.id },
+					);
 				}
 			}
 
