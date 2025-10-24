@@ -879,6 +879,76 @@
 		}
 	}
 
+	// Ensure Medusa returns the Stripe payment session before we proceed
+	async function resolveStripeSessionWithRetry(
+		initialCollection: any,
+		cartId: string,
+		client: any,
+		providerId: string,
+	) {
+		const fieldStr =
+			"id,*payment_collection,*payment_collection.payment_sessions";
+		const maxAttempts = 8;
+		const delayMs = 450;
+		let collection = initialCollection ?? null;
+
+		const findStripeSession = (candidate: any) => {
+			const sessions = candidate?.payment_sessions ?? [];
+			return sessions.find((s: any) =>
+				(s?.provider_id || "").toLowerCase().includes("stripe"),
+			);
+		};
+
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			if (collection) {
+				const maybeSession = findStripeSession(collection);
+				if (maybeSession) {
+					if (attempt > 0) {
+						logger.log("[checkout] stripe session resolved after retries", {
+							cartId,
+							attempt,
+						});
+					}
+					return { collection, session: maybeSession };
+				}
+				logger.log("[checkout] stripe session missing on attempt", {
+					cartId,
+					attempt,
+					providerId,
+					collectionId: collection?.id,
+					sessionProviders: (collection?.payment_sessions ?? []).map(
+						(s: any) => s.provider_id,
+					),
+				});
+			}
+
+			try {
+				const resp = await client.store.cart.retrieve(cartId, {
+					fields: fieldStr,
+				});
+				const refreshed = (resp as any)?.cart ?? resp;
+				collection = refreshed?.payment_collection ?? null;
+			} catch (error: any) {
+				logger.warn(
+					"[checkout] failed to refresh cart while locating stripe session",
+					{
+						cartId,
+						attempt,
+						message: error?.message,
+					},
+				);
+			}
+
+			if (attempt < maxAttempts - 1) {
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
+			}
+		}
+
+		throw new Error(
+			"Stripe payment session was not ready yet. Please try again in a moment.",
+		);
+	}
+
 	// Setup payment session per Medusa docs: https://docs.medusajs.com/resources/commerce-modules/payment/stripe
 	async function setupPayment() {
 		paymentLoading = true;
@@ -977,63 +1047,16 @@
 			}
 
 			// Try to locate payment collection from initiate response directly first
-			let paymentCollection =
+			const initialCollection =
 				initiateResp?.payment_collection ||
 				initiateResp?.cart?.payment_collection;
-			if (!paymentCollection) {
-				// Retrieve cart with broader fields including nested sessions
-				const fieldStr =
-					"id,*payment_collection,*payment_collection.payment_sessions";
-				const { cart: refreshedA } = await sdk.store.cart.retrieve(
+			const { collection: paymentCollection, session: stripeSession } =
+				await resolveStripeSessionWithRetry(
+					initialCollection,
 					c.id,
-					{ fields: fieldStr },
+					sdk,
+					providerId,
 				);
-				paymentCollection = (refreshedA as any)?.payment_collection;
-				// If still missing, wait briefly and retry once (handles eventual consistency)
-				if (!paymentCollection) {
-					await new Promise((r) => setTimeout(r, 400));
-					const { cart: refreshedB } = await sdk.store.cart.retrieve(
-						c.id,
-						{ fields: fieldStr },
-					);
-					paymentCollection = (refreshedB as any)?.payment_collection;
-				}
-			}
-
-			if (!paymentCollection) {
-				logger.error(
-					"[checkout] payment_collection still missing after initiation",
-					{
-						cartId: c.id,
-						providerId,
-						initiateKeys: Object.keys(initiateResp || {}),
-					},
-				);
-				paymentError =
-					"Stripe payment session not created - backend did not return payment collection";
-				return false;
-			}
-
-			const sessions = paymentCollection?.payment_sessions || [];
-			const stripeSession = sessions.find((s: any) =>
-				(s.provider_id || "").toLowerCase().includes("stripe"),
-			);
-			if (!stripeSession) {
-				logger.error(
-					"[checkout] no stripe session in payment_collection",
-					{
-						cartId: c.id,
-						providerId,
-						paymentCollectionId: paymentCollection?.id,
-						sessionProviders: sessions.map(
-							(s: any) => s.provider_id,
-						),
-					},
-				);
-				paymentError =
-					"Stripe payment session not created - check backend configuration";
-				return false;
-			}
 
 			activePaymentSessionId = stripeSession?.id ?? null;
 			activePaymentCollectionId = paymentCollection?.id ?? null;
