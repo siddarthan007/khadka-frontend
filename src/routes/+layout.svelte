@@ -1334,7 +1334,7 @@
 			>
 				<span class="text-base-content/70"
 					>© {new Date().getFullYear()}
-					<span class="font-semibold text-primary">Khadka Foods</span
+					<span class="font-semibold text-primary">Khadka International Grocery, LLC</span
 					>. All rights reserved.</span
 				>
 				<div class="flex gap-6">
