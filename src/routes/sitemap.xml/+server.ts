@@ -54,25 +54,34 @@ export const GET: RequestHandler = async ({ url, setHeaders }) => {
   }
 
   const allPaths = [...STATIC_PATHS, ...dynamicUrls];
+  // Simple XML escaper to avoid malformed sitemap when values contain special chars
+  const xmlEscape = (s: string) =>
+    s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
 
-  const body = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${allPaths
-  .map((p) => {
-    const priority =
-      p === "/"
-        ? "1.0"
-        : p.startsWith("/products/")
-          ? "0.8"
-          : p.startsWith("/categories/") || p.startsWith("/collections/")
-            ? "0.7"
-            : "0.6";
-    const changefreq =
-      p === "/" ? "daily" : p.startsWith("/products/") ? "weekly" : "monthly";
-    return `  <url><loc>${origin}${p}</loc><lastmod>${lastmod}</lastmod><changefreq>${changefreq}</changefreq><priority>${priority}</priority></url>`;
-  })
-  .join("\n")}
-</urlset>`;
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${allPaths
+    .map((p) => {
+      const priority =
+        p === "/"
+          ? "1.0"
+          : p.startsWith("/products/")
+            ? "0.8"
+            : p.startsWith("/categories/") || p.startsWith("/collections/")
+              ? "0.7"
+              : "0.6";
+      const changefreq =
+        p === "/" ? "daily" : p.startsWith("/products/") ? "weekly" : "monthly";
+      const loc = xmlEscape(`${origin}${p}`);
+      const lm = xmlEscape(lastmod);
+      const cf = xmlEscape(changefreq);
+      const pr = xmlEscape(priority);
+      return `  <url><loc>${loc}</loc><lastmod>${lm}</lastmod><changefreq>${cf}</changefreq><priority>${pr}</priority></url>`;
+    })
+    .join('\n')}\n</urlset>`;
 
   return new Response(body, {
     headers: {
