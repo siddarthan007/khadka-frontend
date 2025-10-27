@@ -1,5 +1,7 @@
 <script lang="ts">
 	import ProductCard from "$lib/components/ProductCard.svelte";
+	import ProductGridSkeleton from '$lib/components/ProductGridSkeleton.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import SEO from "$lib/components/SEO.svelte";
 	import {
 		generateBreadcrumbStructuredData,
@@ -314,33 +316,75 @@
 
 			<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
 				<div class="lg:col-span-12">
-					<div
-						class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4"
-					>
-						{#each products as p}
-							<ProductCard
-								href={`/products/${p.handle}`}
-								title={p.title ?? "Untitled"}
-								image={p.thumbnail ?? p.images?.[0]?.url ?? ""}
-								price={minPrice(p)}
-								variantId={defaultVariantId(p)}
-								createdAt={p?.created_at ?? null}
-							/>
-						{/each}
-					</div>
-					{#if hasMore}
-						<div class="mt-8 flex justify-center">
-							<button
-								class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-								onclick={loadMore}
-								disabled={loadingMore}
-								class:loading={loadingMore}>
-								{#if loadingMore}
-									<span class="loading loading-spinner"></span>
-								{/if}
-								Load more
-							</button>
+					{#if total === 0}
+						<!-- Empty collection - show friendly empty UI like cart -->
+						<EmptyState
+							message="No products in this collection"
+							icon="box"
+							description="This collection doesn't contain any products yet. Try browsing our other collections or products."
+							actionText="Browse Collections"
+							actionHref="/collections"
+							class="min-h-[500px]"
+						/>
+					{:else if products.length === 0}
+						<!-- Show skeleton when there are no products yet -->
+						<ProductGridSkeleton count={12} />
+					{:else}
+						<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+							{#each products as p}
+								<ProductCard
+									href={`/products/${p.handle}`}
+									title={p.title ?? "Untitled"}
+									image={p.thumbnail ?? p.images?.[0]?.url ?? ""}
+									price={minPrice(p)}
+									variantId={defaultVariantId(p)}
+									createdAt={p?.created_at ?? null}
+								/>
+							{/each}
 						</div>
+						
+						<!-- Load More + progress UI (matching home page style) -->
+						{#if hasMore}
+							<div class="mt-8 flex flex-col items-center gap-3">
+								<button
+									class="btn btn-primary btn-md gap-2 rounded-lg hover:shadow-md transition-all disabled:opacity-60"
+									onclick={loadMore}
+									disabled={loadingMore}
+								>
+									{#if loadingMore}
+										<span class="loading loading-spinner loading-sm"></span>
+										Loading...
+									{:else}
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+										</svg>
+										Load More
+									{/if}
+								</button>
+								
+								<!-- Compact progress indicator -->
+								<div class="flex items-center gap-3">
+									<span class="text-xs text-base-content/60">
+										{products.length} / {total}
+									</span>
+									<div class="w-32 h-1.5 bg-base-200 rounded-full overflow-hidden">
+										<div 
+											class="h-full bg-primary rounded-full transition-all duration-500"
+											style="width: {(total > 0 ? (products.length / total) * 100 : 0)}%"
+										></div>
+									</div>
+								</div>
+							</div>
+						{:else if products.length > 0 && products.length >= total}
+							<div class="mt-8 text-center">
+								<p class="text-xs text-base-content/50 flex items-center justify-center gap-1.5">
+									<svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+									</svg>
+									You've seen all {total} products in this collection.
+								</p>
+							</div>
+						{/if}
 					{/if}
 				</div>
 			</div>

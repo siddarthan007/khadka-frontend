@@ -352,17 +352,44 @@
 					</div>
 				{/if}
 				{#if hasMore}
-					<div class="mt-8 flex justify-center">
+					<div class="mt-8 flex flex-col items-center gap-3">
 						<button
-							class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+							class="btn btn-primary btn-md gap-2 rounded-lg hover:shadow-md transition-all disabled:opacity-60"
 							onclick={() => applyFilters(false)}
 							disabled={loading}
-							class:loading>
+						>
 							{#if loading}
-								<span class="loading loading-spinner"></span>
+								<span class="loading loading-spinner loading-sm"></span>
+								Loading...
+							{:else}
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+								</svg>
+								Load More
 							{/if}
-							Load more
 						</button>
+					
+						<!-- Compact progress indicator -->
+						<div class="flex items-center gap-3">
+							<span class="text-xs text-base-content/60">
+								{products.length} / {count}
+							</span>
+							<div class="w-32 h-1.5 bg-base-200 rounded-full overflow-hidden">
+								<div 
+									class="h-full bg-primary rounded-full transition-all duration-500"
+									style="width: {(count > 0 ? (products.length / count) * 100 : 0)}%"
+								></div>
+							</div>
+						</div>
+					</div>
+				{:else if products.length > 0 && products.length >= count}
+					<div class="mt-8 text-center">
+						<p class="text-xs text-base-content/50 flex items-center justify-center gap-1.5">
+							<svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+							</svg>
+							You've seen all {count} products.
+						</p>
 					</div>
 				{/if}
 			</div>

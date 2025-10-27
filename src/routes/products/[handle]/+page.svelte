@@ -25,6 +25,9 @@
 	let activeImage: string | null = $state(
 		product?.thumbnail || product?.images?.[0]?.url || null
 	);
+	
+	// Sticky card control
+	let recommendationsElement: HTMLElement | null = $state(null);
 
 	const isNew = $derived(() => {
 		const created = product?.created_at ? new Date(product.created_at).getTime() : NaN;
@@ -330,8 +333,8 @@
 					{/if}
 				</div>
 
-				<!-- Product Info as sticky card -->
-				<div class="h-fit lg:sticky lg:top-24">
+				<!-- Product Info as sticky card - CSS only, no JS jitter -->
+				<div class="h-fit lg:sticky lg:top-24 lg:self-start" style="will-change: auto;">
 					<div class="card rounded-3xl border-2 border-base-300/50 bg-base-100 shadow-2xl hover:shadow-3xl transition-all duration-500 backdrop-blur-sm">
 						<div class="card-body space-y-6 p-6 lg:p-8">
 							<div class="space-y-3">
@@ -505,53 +508,79 @@
 						</div>
 					</div>
 				</div>
-
-				<!-- Recommendations -->
-				{#if recByCategory.length + recByCollection.length > 0}
-					<div class="col-span-1 lg:col-span-2 mt-16 space-y-10">
-						{#if recByCategory.length > 0}
-							<div>
-								<h3 class="mb-6 text-2xl font-bold flex items-center gap-2">
-									<svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-									You may also like
-								</h3>
-								<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-									{#each recByCategory as p}
-										<ProductCard
-											href={`/products/${p.handle}`}
-											title={p.title}
-											image={p.thumbnail ?? p.images?.[0]?.url ?? ''}
-											price={(p?.variants ?? [])[0]?.calculated_price ?? null}
-											variantId={(p?.variants ?? [])[0]?.id ?? null}
-											createdAt={p?.created_at ?? null}
-										/>
-									{/each}
-								</div>
-							</div>
-						{/if}
-						{#if recByCollection.length > 0}
-							<div>
-								<h3 class="mb-6 text-2xl font-bold flex items-center gap-2">
-									<svg class="w-6 h-6 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-									More from this collection
-								</h3>
-								<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-									{#each recByCollection as p}
-										<ProductCard
-											href={`/products/${p.handle}`}
-											title={p.title}
-											image={p.thumbnail ?? p.images?.[0]?.url ?? ''}
-											price={(p?.variants ?? [])[0]?.calculated_price ?? null}
-											variantId={(p?.variants ?? [])[0]?.id ?? null}
-											createdAt={p?.created_at ?? null}
-										/>
-									{/each}
-								</div>
-							</div>
-						{/if}
-					</div>
-				{/if}
 			</div>
+
+			<!-- Recommendations - Full width section -->
+			{#if recByCategory.length + recByCollection.length > 0}
+				<div bind:this={recommendationsElement} class="mt-12 sm:mt-16 space-y-8 sm:space-y-10">
+					<div class="divider"></div>
+					
+					{#if recByCategory.length > 0}
+						<div>
+							<div class="mb-5 sm:mb-6">
+								<h3 class="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2 sm:gap-3">
+									<div class="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
+										<svg class="w-5 h-5 sm:w-6 sm:h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+										</svg>
+									</div>
+									<span>You may also like</span>
+								</h3>
+							</div>
+							<div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+								{#each recByCategory.slice(0, 8) as p}
+									<ProductCard
+										href={`/products/${p.handle}`}
+										title={p.title}
+										image={p.thumbnail ?? p.images?.[0]?.url ?? ''}
+										price={(p?.variants ?? [])[0]?.calculated_price ?? null}
+										variantId={(p?.variants ?? [])[0]?.id ?? null}
+										createdAt={p?.created_at ?? null}
+										gradientSize={220}
+									/>
+								{/each}
+							</div>
+						</div>
+					{/if}
+					
+					{#if recByCollection.length > 0}
+						<div>
+							<div class="mb-5 sm:mb-6 flex items-center justify-between">
+								<h3 class="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2 sm:gap-3">
+									<div class="p-1.5 sm:p-2 bg-secondary/10 rounded-lg">
+										<svg class="w-5 h-5 sm:w-6 sm:h-6 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+										</svg>
+									</div>
+									<span class="flex-1">More from this collection</span>
+								</h3>
+								{#if product.collection && recByCollection.length > 8}
+									<a href={`/collections/${product.collection.handle}`} class="hidden sm:flex btn btn-ghost btn-sm gap-1.5 text-xs sm:text-sm">
+										<span class="hidden md:inline">View collection</span>
+										<span class="md:hidden">View all</span>
+										<svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+										</svg>
+									</a>
+								{/if}
+							</div>
+							<div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+								{#each recByCollection.slice(0, 8) as p}
+									<ProductCard
+										href={`/products/${p.handle}`}
+										title={p.title}
+										image={p.thumbnail ?? p.images?.[0]?.url ?? ''}
+										price={(p?.variants ?? [])[0]?.calculated_price ?? null}
+										variantId={(p?.variants ?? [])[0]?.id ?? null}
+										createdAt={p?.created_at ?? null}
+										gradientSize={220}
+									/>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		{:else}
 			<!-- Product Not Found Section -->
 			<div class="max-w-2xl mx-auto text-center py-12 sm:py-16">

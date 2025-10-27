@@ -37,7 +37,7 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
   ];
   const allIds = [category.id, ...subcategories.flatMap(collectIds)];
   const { products, count } = await listProductsByCategoryIds(allIds, {
-    limit: 24,
+    limit: 15,
     offset: 0,
     fields: "title,handle,thumbnail,variants.id,*variants.calculated_price",
   });

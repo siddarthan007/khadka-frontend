@@ -24,13 +24,45 @@
 	const slides: any[] = data?.slides ?? [];
 	const collections = (data?.collectionItems ?? []).slice(0, 10);
 	const categories = (data?.categoryItems ?? []).slice(0, 10);
-	let products: any[] = $state((data?.initialProducts ?? []).slice(0, 16));
-	let totalCount: number = $state(data?.initialCount ?? products.length);
+	let products: any[] = $state(data?.initialProducts ?? []);
+	let totalCount: number = $state(data?.initialCount ?? 0);
+	let isLoadingMore = $state(false);
+	let currentOffset = $state(15); // Start from 15 since we loaded 15 initially
+	const PRODUCTS_PER_PAGE = 15;
+
+	// Check if there are more products to load
+	let hasMore = $derived(products.length < totalCount);
+
+	// Load more products function
+	async function loadMoreProducts() {
+		if (isLoadingMore || !hasMore) return;
+
+		isLoadingMore = true;
+		try {
+			const response = await fetch(
+				`/api/products/load-more?offset=${currentOffset}&limit=${PRODUCTS_PER_PAGE}`
+			);
+			
+			if (!response.ok) throw new Error('Failed to load products');
+			
+			const result = await response.json();
+			
+			if (result.success && result.products.length > 0) {
+				products = [...products, ...result.products];
+				currentOffset = result.nextOffset;
+				totalCount = result.count;
+			}
+		} catch (error) {
+			console.error('Error loading more products:', error);
+		} finally {
+			isLoadingMore = false;
+		}
+	}
 
 	const baseUrl = 'https://khadkafoods.com';
 	
-	// Enhanced structured data with ItemList
-	const structuredData = [
+	// Enhanced structured data with ItemList - using $derived to track products changes
+	let structuredData = $derived([
 		generateOrganizationStructuredData({
 			name: 'Khadka Foods',
 			url: baseUrl,
@@ -63,7 +95,7 @@
 				image: p.thumbnail || p.images?.[0]?.url
 			}))
 		})
-	];
+	]);
 </script>
 
 <SEO
@@ -171,7 +203,9 @@
 				<h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-primary">
 					Just for You
 				</h2>
-				<p class="mt-2 text-base-content/60">Handpicked products we think you'll love</p>
+				<p class="mt-2 text-base-content/60">
+					Handpicked products we think you'll love
+				</p>
 			</div>
 			<a class="btn btn-outline btn-primary rounded-xl shadow-md hover:shadow-lg transition-all duration-300" href="/products">
 				View all →
@@ -189,5 +223,48 @@
 				/>
 			{/each}
 		</div>
+		
+		<!-- Load More Button -->
+		{#if hasMore}
+			<div class="mt-10 flex flex-col items-center gap-3">
+				<button
+					class="btn btn-primary btn-md gap-2 rounded-lg hover:shadow-md transition-all disabled:opacity-60"
+					onclick={loadMoreProducts}
+					disabled={isLoadingMore}
+				>
+					{#if isLoadingMore}
+						<span class="loading loading-spinner loading-sm"></span>
+						Loading...
+					{:else}
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
+						Load More
+					{/if}
+				</button>
+				
+				<!-- Compact progress indicator -->
+				<div class="flex items-center gap-3">
+					<span class="text-xs text-base-content/60">
+						{products.length} / {totalCount}
+					</span>
+					<div class="w-32 h-1.5 bg-base-200 rounded-full overflow-hidden">
+						<div 
+							class="h-full bg-primary rounded-full transition-all duration-500"
+							style="width: {(products.length / totalCount) * 100}%"
+						></div>
+					</div>
+				</div>
+			</div>
+		{:else if products.length > 0 && products.length >= totalCount}
+			<div class="mt-10 text-center">
+				<p class="text-xs text-base-content/50 flex items-center justify-center gap-1.5">
+					<svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+					</svg>
+					You've seen all {totalCount} products in our catalog.
+				</p>
+			</div>
+		{/if}
 	</div>
 </section>

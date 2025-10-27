@@ -45,7 +45,7 @@
 	let offset = $state(initialProducts.length);
 	let currentIds = $state(allIds);
 	let currentCount = $state(initialTotal);
-	const pageLimit = 24;
+	const pageLimit = 15; // Changed to 15 for consistency with home page
 
 	function mergeUniqueProducts(existing: any[], additions: any[]) {
 		const seen = new Set(existing.map((item) => item.id));
@@ -423,49 +423,51 @@
 			</header>
 
 			<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
-				<!-- Sidebar -->
+				<!-- Sidebar - Now sticky -->
 				<aside class="lg:col-span-4 xl:col-span-3">
-					<div
-						class="card border-2 border-base-300/50 bg-base-100 shadow-xl rounded-3xl"
-					>
-						<div class="card-body p-4">
-							<h2 class="card-title text-xl font-bold">
-								Subcategories
-							</h2>
-							<ul class="menu w-full menu-sm rounded-box">
-								<li>
-									<button
-										class={cn(
-											"flex w-full justify-between rounded-xl",
-											selected === "all"
-												? "active bg-primary/10 font-semibold text-primary border-2 border-primary/20"
-												: "hover:bg-base-200 transition-colors",
-										)}
-										onclick={() => onSelect("all")}
-									>
-										<span>All products</span>
-										<span class="ml-auto">{total}</span>
-									</button>
-								</li>
-								{#each subcategories as sc}
+					<div class="lg:sticky lg:top-24 lg:self-start" style="will-change: auto;">
+						<div
+							class="card border-2 border-base-300/50 bg-base-100 shadow-xl rounded-3xl"
+						>
+							<div class="card-body p-4">
+								<h2 class="card-title text-xl font-bold">
+									Subcategories
+								</h2>
+								<ul class="menu w-full menu-sm rounded-box">
 									<li>
 										<button
 											class={cn(
 												"flex w-full justify-between rounded-xl",
-												selected === sc.id
+												selected === "all"
 													? "active bg-primary/10 font-semibold text-primary border-2 border-primary/20"
 													: "hover:bg-base-200 transition-colors",
 											)}
-											onclick={() => onSelect(sc.id)}
+											onclick={() => onSelect("all")}
 										>
-											<span>{sc.name}</span>
-											<span class="ml-auto"
-												>{subCounts[sc.id] ?? 0}</span
-											>
+											<span>All products</span>
+											<span class="ml-auto">{total}</span>
 										</button>
 									</li>
-								{/each}
-							</ul>
+									{#each subcategories as sc}
+										<li>
+											<button
+												class={cn(
+													"flex w-full justify-between rounded-xl",
+													selected === sc.id
+														? "active bg-primary/10 font-semibold text-primary border-2 border-primary/20"
+														: "hover:bg-base-200 transition-colors",
+												)}
+												onclick={() => onSelect(sc.id)}
+											>
+												<span>{sc.name}</span>
+												<span class="ml-auto"
+													>{subCounts[sc.id] ?? 0}</span
+												>
+											</button>
+										</li>
+									{/each}
+								</ul>
+							</div>
 						</div>
 					</div>
 				</aside>
@@ -532,19 +534,44 @@
 							{/each}
 						</div>
 						{#if hasMore}
-							<div class="mt-8 flex justify-center">
+							<div class="mt-10 flex flex-col items-center gap-3">
 								<button
-									class="btn btn-primary btn-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+									class="btn btn-primary btn-md gap-2 rounded-lg hover:shadow-md transition-all disabled:opacity-60"
 									onclick={loadMore}
 									disabled={loadingMore}
-									class:loading={loadingMore}
 								>
 									{#if loadingMore}
-										<span class="loading loading-spinner"
-										></span>
+										<span class="loading loading-spinner loading-sm"></span>
+										Loading...
+									{:else}
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+										</svg>
+										Load More
 									{/if}
-									Load more
 								</button>
+								
+								<!-- Compact progress indicator -->
+								<div class="flex items-center gap-3">
+									<span class="text-xs text-base-content/60">
+										{visible.length} / {currentCount}
+									</span>
+									<div class="w-32 h-1.5 bg-base-200 rounded-full overflow-hidden">
+										<div 
+											class="h-full bg-primary rounded-full transition-all duration-500"
+											style="width: {(visible.length / currentCount) * 100}%"
+										></div>
+									</div>
+								</div>
+							</div>
+						{:else if visible.length > 0 && visible.length >= currentCount}
+							<div class="mt-10 text-center">
+								<p class="text-xs text-base-content/50 flex items-center justify-center gap-1.5">
+									<svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+									</svg>
+									All {currentCount} products loaded
+								</p>
 							</div>
 						{/if}
 					{:else}
