@@ -19,16 +19,18 @@
 			categoryItems?: Array<{ name: string; handle: string; thumbnail?: string | null }>;
 			initialProducts?: any[];
 			initialCount?: number;
+			storeMetadata?: Record<string, any>;
 		};
 	} = $props();
 	const slides: any[] = data?.slides ?? [];
-	const collections = (data?.collectionItems ?? []).slice(0, 10);
-	const categories = (data?.categoryItems ?? []).slice(0, 10);
+	const collections = (data?.collectionItems ?? []);
+	const categories = (data?.categoryItems ?? []);
 	let products: any[] = $state(data?.initialProducts ?? []);
 	let totalCount: number = $state(data?.initialCount ?? 0);
 	let isLoadingMore = $state(false);
 	let currentOffset = $state(15); // Start from 15 since we loaded 15 initially
 	const PRODUCTS_PER_PAGE = 15;
+	let storeMetadata: Record<string, any> = $state(data?.storeMetadata ?? {});
 
 	// Check if there are more products to load
 	let hasMore = $derived(products.length < totalCount);
@@ -70,14 +72,14 @@
 			description: 'Premium quality groceries, fresh produce, and international foods delivered to your door. Shop authentic products from around the world.',
 			socialLinks: [
 				// Add your social media links here
-				// 'https://facebook.com/khadkafoods',
-				// 'https://twitter.com/khadkafoods',
-				// 'https://instagram.com/khadkafoods'
+				`https://facebook.com/${storeMetadata.facebook}`,
+				`https://twitter.com/${storeMetadata.twitter}`,
+				`https://instagram.com/${storeMetadata.instagram}`
 			],
 			contactPoint: {
-				telephone: '+1-555-123-4567', // Update with real phone
-				contactType: 'Customer Service',
-				email: 'support@khadkafoods.com' // Update with real email
+				telephone: '+1-814-520-5112', // Update with real phone
+				contactType: 'Contact Us',
+				email: 'info@khadkafoods.com' // Update with real email
 			}
 		}),
 		generateWebsiteStructuredData({

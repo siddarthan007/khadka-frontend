@@ -5,6 +5,7 @@ import { listBasicProducts } from "$lib/medusa";
 export const load: PageServerLoad = async ({ parent }) => {
   const slides = (await getHeroSlides()) ?? [];
   const parentData = (await parent()) as {
+    storeMetadata: Record<string, any>;
     collectionItems?: Array<{ title: string; handle: string; emoji?: string }>;
   };
   const collectionItems = parentData?.collectionItems ?? [];
@@ -18,5 +19,6 @@ export const load: PageServerLoad = async ({ parent }) => {
     collectionItems,
     initialProducts,
     initialCount,
+    storeMetadata: parentData.storeMetadata,
   };
 };
